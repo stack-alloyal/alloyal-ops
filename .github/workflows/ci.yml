@@ -119,6 +119,18 @@ jobs:
             exit 1
           fi
 
+      # A massa sintética é o que destrava construir o produto sem a réplica.
+      # Reexecução é a operação mais comum, e é justamente a que falha primeiro.
+      - name: Portão 4d — seed contra banco real
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          node --test packages/db/dist/seed/seed-db.test.js 2>&1 | tee seed.txt
+          if grep -qE '^# skipped [1-9]' seed.txt; then
+            echo "::error::Testes do seed foram PULADOS."
+            exit 1
+          fi
+
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes
@@ -159,3 +171,5 @@ jobs:
           pnpm --filter @ops/worker build
           node --test apps/worker/dist/cycle.test.js
           node --test apps/worker/dist/quality.test.js
+          pnpm --filter @ops/db build
+          node --test packages/db/dist/seed/seed.test.js

@@ -7,6 +7,7 @@
 import pg from 'pg'
 
 export { migrate } from './migrate.js'
+export * from './seed/index.js'
 
 /**
  * Pool do gateway EXTERNO (portal do cliente).

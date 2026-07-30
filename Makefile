@@ -25,6 +25,10 @@ db-up: ## Sobe apenas Postgres e Redis
 db-migrate: ## Aplica migrations (usa DATABASE_URL_ADMIN)
 	pnpm --filter @ops/db build && pnpm --filter @ops/db migrate
 
+.PHONY: seed
+seed: ## Popula um banco descartável com massa sintética (recusa base com dado real)
+	pnpm --filter @ops/db build && pnpm --filter @ops/db seed
+
 .PHONY: db-test
 db-test: ## Sobe Postgres descartável e roda o portão de isolamento de tenant
 	@docker rm -f ops-pg-test >/dev/null 2>&1 || true
