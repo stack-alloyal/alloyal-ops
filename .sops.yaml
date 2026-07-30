@@ -2,4 +2,4 @@
 # Substituir o placeholder pela saída de `age-keygen` — ver infra/secrets/README.md.
 creation_rules:
   - path_regex: infra/secrets/.*\.sops\.ya?ml$
-    age: 'PLACEHOLDER_CHAVE_PUBLICA_AGE'
+    age: 'age1upe2255ngpx6pvp0kuczvqttwwcatncyq9h2rja2nyxpcdlevphqafj7nz'
