@@ -194,7 +194,8 @@ export async function consolidar(
       // efeito no driver, mas o motivo registrado é diferente.
       const qualidade = qualidadePorConta(r, frescor)
       const completo = Object.values(qualidade).every((q) => q.status === 'ok')
-      completo ? completos++ : parciais++
+      if (completo) completos++
+      else parciais++
 
       await cliente.query(
         `UPDATE metrics.daily_snapshot
@@ -498,7 +499,8 @@ async function publicar(
           suprimido = EXCLUDED.suprimido, gerado_em = now()`,
       [r.account_id, competencia, metrica, suprimir ? null : valor, nBase, suprimir],
     )
-    suprimir ? suprimidos++ : publicados++
+    if (suprimir) suprimidos++
+    else publicados++
   }
   return { publicados, suprimidos }
 }
