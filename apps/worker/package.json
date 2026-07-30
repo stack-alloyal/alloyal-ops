@@ -12,7 +12,11 @@
   "dependencies": {
     "@ops/db": "workspace:*",
     "@ops/metrics": "workspace:*",
-    "bullmq": "^5.34.0"
+    "bullmq": "^5.34.0",
+    "pg": "^8.13.0"
   },
-  "devDependencies": { "typescript": "^5.7.0" }
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/pg": "^8.11.0"
+  }
 }

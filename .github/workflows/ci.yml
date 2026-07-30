@@ -106,6 +106,19 @@ jobs:
             exit 1
           fi
 
+      # O executor de ciclos: a semântica de falha só é verificável contra banco
+      # real, porque o que importa é o efeito em watermark, cycle_run e trava.
+      - name: Portão 4c — executor de ciclos (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          pnpm --filter @ops/worker build
+          node --test apps/worker/dist/runner.test.js 2>&1 | tee run.txt
+          if grep -qE '^# skipped [1-9]' run.txt; then
+            echo "::error::Testes do executor foram PULADOS."
+            exit 1
+          fi
+
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes
@@ -143,4 +156,6 @@ jobs:
         run: |
           pnpm --filter @ops/auth build && node --test packages/auth/dist/auth.test.js
           pnpm --filter @ops/contracts build && node --test packages/contracts/dist/contracts.test.js
-          pnpm --filter @ops/worker build && node --test apps/worker/dist/cycle.test.js
+          pnpm --filter @ops/worker build
+          node --test apps/worker/dist/cycle.test.js
+          node --test apps/worker/dist/quality.test.js

@@ -12,6 +12,11 @@
  *
  * Declarar o contrato antes de implementar é deliberado: é ele que gera o painel
  * de pipeline e as verificações de qualidade, e ele não muda entre A e B.
+ *
+ * Declarar cron em UTC com um comentário dizendo o horário local é a forma
+ * clássica de o comentário e o valor divergirem — e o sintoma aparece meses
+ * depois, como "o snapshot saiu na hora errada". As agendas abaixo estão em
+ * horário de São Paulo, e o agendador aplica o fuso (ver `queue.ts`).
  */
 
 import { defineCycle } from '../cycle.js'
@@ -71,7 +76,7 @@ export const c2BaseElegivel = defineCycle({
   descricao: 'Base elegível e ativada',
   fonte: 'replica',
   metodo: 'full',
-  agenda: '0 5 * * *', // 02:00 BRT
+  agenda: '0 2 * * *',
   janela: 'estado_atual',
   chaveNatural: ['account_id'],
   emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'snapshot_parcial' },
@@ -84,7 +89,7 @@ export const c3Reconciliacao = defineCycle({
   descricao: 'Reconciliação de 90 dias com a origem',
   fonte: 'replica',
   metodo: 'reconciliacao',
-  agenda: '0 7 * * *', // 04:00 BRT
+  agenda: '0 4 * * *',
   janela: '90d',
   chaveNatural: ['account_id', 'dia'],
   emFalha: { tentativas: 1, backoff: 'fixo', alarmeApos: 1, degradacao: 'reprocessa' },
@@ -97,7 +102,7 @@ export const c8Adimplencia = defineCycle({
   descricao: 'Adimplência do Omie',
   fonte: 'omie',
   metodo: 'full',
-  agenda: '0 9 * * *', // 06:00 BRT
+  agenda: '0 6 * * *',
   janela: 'estado_atual',
   chaveNatural: ['account_id'],
   emFalha: { tentativas: 3, backoff: 'exponencial', alarmeApos: 1, degradacao: 'neutro_sinalizado' },
@@ -108,19 +113,19 @@ export const c8Adimplencia = defineCycle({
 /**
  * C12 — snapshot diário.
  *
- * ESPERA C2, C3, C6 e C8 até 06:50 BRT. O que não chegou entra como lacuna
- * marcada e o snapshot é publicado PARCIAL.
+ * ESPERA C2, C3, C6 e C8 até 06:50. O que não chegou entra como lacuna marcada
+ * e o snapshot é publicado PARCIAL — nunca bloqueado.
  *
- * A v1.0 dizia "bloqueia o dia". Snapshot bloqueado significa produto no ar sem
- * número nenhum — pior que número parcial e sinalizado, e tornava a meta O2
- * (100% de contas com sinal atualizado) impossível por construção.
+ * Bloquear significaria produto no ar sem número nenhum, e tornaria a meta de
+ * cobertura de sinal impossível por construção: bastaria uma fonte atrasar para
+ * o dia inteiro ficar sem dado.
  */
 export const c12Snapshot = defineCycle({
   id: 'C12',
   descricao: 'Snapshot diário, sinais e avaliação de gatilhos',
   fonte: 'ops',
   metodo: 'consolidacao',
-  agenda: '0 10 * * *', // 07:00 BRT
+  agenda: '0 7 * * *',
   janela: 'dia_anterior',
   chaveNatural: ['competencia', 'account_id'],
   emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'snapshot_parcial' },
