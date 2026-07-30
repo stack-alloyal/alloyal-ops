@@ -12,6 +12,7 @@
     "@ops/auth": "workspace:*",
     "@ops/db": "workspace:*",
     "@ops/metrics": "workspace:*",
+    "@ops/success": "workspace:*",
     "@ops/ui": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",

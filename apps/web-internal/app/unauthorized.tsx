@@ -7,7 +7,7 @@
  */
 export default function NaoAutenticado() {
   return (
-    <section>
+    <section className="ops-barrado">
       <h1>Sessão não reconhecida</h1>
       <p>
         Esta área exige login com uma conta <strong>@alloyal.com.br</strong>. Se você

@@ -247,4 +247,25 @@ describe('consolidação diária', { skip: !ADMIN }, () => {
     assert.equal(r.contas, 0)
     assert.equal(r.sinais, 0)
   })
+
+  test('os pesos efetivos somam 100 pontos percentuais', async () => {
+    // A unidade é ponto percentual, não fração — e um driver ausente redistribui
+    // o próprio peso. Se a soma escapar de 100, ou a renormalização quebrou ou
+    // alguém trocou a unidade, e nos dois casos a faixa passa a mentir.
+    const { rows } = await pool.query<{ account_id: string; soma: string }>(
+      `SELECT account_id, sum(peso_efetivo)::text AS soma
+         FROM metrics.signal_driver
+        WHERE competencia = $1 AND peso_efetivo > 0
+        GROUP BY account_id`,
+      [COMPETENCIA],
+    )
+    assert.ok(rows.length > 0, 'nenhum driver gravado')
+    for (const r of rows) {
+      const soma = Number(r.soma)
+      assert.ok(
+        Math.abs(soma - 100) < 0.5,
+        `conta ${r.account_id}: pesos somam ${soma}, não 100 — unidade ou renormalização errada`,
+      )
+    }
+  })
 })

@@ -1,4 +1,5 @@
 import '@ops/ui/tokens.css'
+import '@ops/ui/app.css'
 
 import type { ReactNode } from 'react'
 
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="ops-shell__header">
           <strong>Alloyal Ops</strong>
           <nav aria-label="Ferramentas">
-            <a href="/success">Success</a>
+            <a href="/">Minha fila</a>
+            <a href="/gatilhos">Gatilhos</a>
+            <a href="/dados">Dados</a>
           </nav>
         </header>
         <main>{children}</main>

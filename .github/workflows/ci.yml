@@ -156,6 +156,19 @@ jobs:
             exit 1
           fi
 
+      # O recorte das telas: quem vê qual item, quem abre qual conta. As
+      # asserções são sobre o que NÃO aparece — a classe de erro que passa numa
+      # revisão de tela, porque a tela fica bonita e mostra demais.
+      - name: Portão 4h — recorte da fila e do Cliente 360 (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          node --test packages/success/dist/fila.test.js packages/success/dist/conta.test.js 2>&1 | tee sup.txt
+          if grep -qE '^# skipped [1-9]' sup.txt; then
+            echo "::error::Testes de recorte da superfície foram PULADOS."
+            exit 1
+          fi
+
       # A declaração dos ciclos alimenta o painel de pipeline: ele precisa
       # mostrar o que está de fato rodando, não o que estava no código dele.
       - name: Portão 4g — declaração dos ciclos (Postgres real)
@@ -197,6 +210,7 @@ jobs:
           node --test packages/metrics/dist/metrics.test.js
           node --test packages/metrics/dist/drivers.test.js
           node --test packages/metrics/dist/gatilhos.test.js
+          pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
 
       - name: Testes das demais unidades
         run: |

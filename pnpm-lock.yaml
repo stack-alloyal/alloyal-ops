@@ -38,6 +38,9 @@ importers:
       '@ops/metrics':
         specifier: workspace:*
         version: link:../../packages/metrics
+      '@ops/success':
+        specifier: workspace:*
+        version: link:../../packages/success
       '@ops/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -157,6 +160,28 @@ importers:
 
   packages/metrics:
     devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/success:
+    dependencies:
+      '@ops/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@ops/metrics':
+        specifier: workspace:*
+        version: link:../metrics
+      pg:
+        specifier: ^8.13.0
+        version: 8.22.0
+    devDependencies:
+      '@ops/db':
+        specifier: workspace:*
+        version: link:../db
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.20.0
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

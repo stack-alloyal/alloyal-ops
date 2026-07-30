@@ -7,7 +7,7 @@
  */
 export default function SemPermissao() {
   return (
-    <section>
+    <section className="ops-barrado">
       <h1>Sem permissão para esta área</h1>
       <p>
         Você está autenticado, mas o seu papel não dá acesso a esta tela. Os papéis

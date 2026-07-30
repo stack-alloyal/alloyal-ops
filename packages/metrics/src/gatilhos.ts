@@ -79,6 +79,29 @@ export interface Gatilho {
   readonly cooldownDias: number | null
   /** O que este gatilho existe para pegar. Aparece no painel e na biblioteca. */
   readonly proposito: string
+  /**
+   * Volume esperado, em itens por 100 contas por mês (doc 01, tabela de F2).
+   *
+   * Não é enfeite de documentação: é o número contra o qual a liderança julga,
+   * nos 14 dias de modo sombra, se um gatilho deve ser promovido. Um gatilho
+   * três vezes acima da estimativa não está achando três vezes mais problema —
+   * está com o limiar errado, e promovê-lo custa a confiança na fila inteira.
+   *
+   * `null` para os gatilhos cujo volume não é estimável a priori (renovação
+   * segue a base dividida por 12; NPS segue a cadência da pesquisa).
+   */
+  readonly volumeEstimado: readonly [number, number] | null
+  /**
+   * O que falta para este gatilho poder ser avaliado, ou `null` se nada falta.
+   *
+   * Um gatilho que não produziu item pode estar em dois estados MUITO
+   * diferentes: a base está boa e ele não teve o que pegar, ou ele nunca foi
+   * avaliado porque o dado não chega. Tratar os dois como "sem ocorrência"
+   * esconde um pipeline faltando atrás de uma base saudável — e é o tipo de
+   * silêncio que só se descobre quando alguém pergunta por que o NPS nunca
+   * gerou trabalho.
+   */
+  readonly fonteAusente: string | null
   /** `null` quando o dado necessário ainda não existe: declarado, não avaliado. */
   readonly avaliar: (e: EstadoConta) => Candidato | null
 }
@@ -110,6 +133,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'financeiro',
     cooldownDias: 30,
     proposito: 'Cobrança relacional enquanto ainda cabe conversa, não cobrança',
+    volumeEstimado: [8, 15],
+    fonteAusente: null,
     avaliar: (e) => {
       const d = e.diasAtrasoMax
       if (d === null || d < ATRASO_ITEM_FINANCEIRO || d >= 60) return null
@@ -129,6 +154,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'financeiro',
     cooldownDias: 30,
     proposito: 'Escalar antes da provisão, enquanto retenção ainda tem alavanca',
+    volumeEstimado: [3, 6],
+    fonteAusente: null,
     avaliar: (e) => {
       const d = e.diasAtrasoMax
       if (d === null || d < 60 || d >= 90) return null
@@ -148,6 +175,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'financeiro',
     cooldownDias: null,
     proposito: 'Provisão e encerramento por inadimplência — decisão de crédito',
+    volumeEstimado: [1, 3],
+    fonteAusente: null,
     avaliar: (e) => {
       const d = e.diasAtrasoMax
       if (d === null || d < 90) return null
@@ -169,6 +198,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'adesao',
     cooldownDias: 45,
     proposito: 'A queda que ainda dá tempo de reverter',
+    volumeEstimado: [5, 12],
+    fonteAusente: null,
     avaliar: (e) => {
       if (e.adesao30d === null || e.adesao30dAnterior === null || e.adesao30dAnterior <= 0) {
         return null
@@ -195,6 +226,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'adesao',
     cooldownDias: 60,
     proposito: 'Clube que nunca decolou — diferente do que caiu',
+    volumeEstimado: [10, 20],
+    fonteAusente: null,
     avaliar: (e) => {
       if (e.adesao30d === null || e.adesao30d >= e.pisoSegmento) return null
       // Duas competências: uma só pode ser sazonalidade, e item disparado por
@@ -220,6 +253,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'onboarding',
     cooldownDias: 30,
     proposito: 'A alavanca que só o cliente puxa — e que move mais o TTFT',
+    volumeEstimado: [2, 5],
+    fonteAusente: null,
     avaliar: (e) => {
       if (e.coberturaCadastral === null || e.coberturaCadastral >= 0.6) return null
       if (e.diasDesdeGoLive === null || e.diasDesdeGoLive < 30) return null
@@ -250,6 +285,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'churn_silencioso',
     cooldownDias: 30,
     proposito: 'Cliente que já parou de ser cliente e ainda não avisou',
+    volumeEstimado: [5, 10],
+    fonteAusente: null,
     avaliar: (e) => {
       const sev = e.severidadeChurnSilencioso
       if (!sev || !['risco', 'risco_alto', 'critico', 'pdd'].includes(sev)) return null
@@ -303,6 +340,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'relacionamento',
     cooldownDias: 45,
     proposito: 'Conta que sumiu do radar antes de sumir do contrato',
+    volumeEstimado: [8, 15],
+    fonteAusente: null,
     avaliar: (e) => {
       if (e.diasSemContato === null || e.diasSemContato <= 60) return null
       return {
@@ -321,6 +360,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'renovacao',
     cooldownDias: null,
     proposito: 'Nunca descobrir um vencimento pelo vencimento',
+    volumeEstimado: null,
+    fonteAusente: null,
     avaliar: (e) => {
       const d = e.diasParaVigenciaFim
       if (d === null || d > 90 || d < 0) return null
@@ -341,6 +382,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'voz',
     cooldownDias: 30,
     proposito: 'Detrator vira conversa, não estatística',
+    volumeEstimado: null,
+    fonteAusente: 'pesquisa de NPS (C10, sem fonte definida)',
     avaliar: (e) => {
       // Declarado e não avaliado até existir pesquisa: sem fonte, o gatilho não
       // inventa um valor — ele simplesmente não dispara.
@@ -361,6 +404,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'produto',
     cooldownDias: 7,
     proposito: 'Falha nossa vira conversa nossa, antes de virar reclamação',
+    volumeEstimado: null,
+    fonteAusente: 'monitoramento de indisponibilidade do app (C11)',
     avaliar: (e) => {
       if (e.horasIndisponibilidade === null || e.horasIndisponibilidade <= 4) return null
       return {
@@ -379,6 +424,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'onboarding',
     cooldownDias: null,
     proposito: 'Implantação parada é TTFT crescendo em silêncio',
+    volumeEstimado: null,
+    fonteAusente: 'marcos de implantação — projetos ainda não são alimentados',
     avaliar: (e) => {
       if (!e.marcosAtrasados || e.marcosAtrasados <= 0) return null
       return {
@@ -397,6 +444,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'expansao',
     cooldownDias: 90,
     proposito: 'Expansão com evidência, não com palpite',
+    volumeEstimado: [3, 8],
+    fonteAusente: 'catálogo de produtos contratados por conta',
     avaliar: (e) => {
       if (!e.produtosAusentes?.length) return null
       if (e.adesao30d === null || e.adesao30d < e.pisoSegmento * 1.5) return null
@@ -416,6 +465,8 @@ export const GATILHOS: readonly Gatilho[] = [
     familia: 'carteira',
     cooldownDias: null,
     proposito: 'Reclassificação nunca acontece em silêncio',
+    volumeEstimado: null,
+    fonteAusente: 'histórico de reclassificação de segmento',
     avaliar: (e) => {
       if (!e.segmentoMudou) return null
       return {
