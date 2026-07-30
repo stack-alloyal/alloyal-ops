@@ -16,6 +16,7 @@ import pg from 'pg'
 import { todosOsCiclos } from './cycle.js'
 import './cycles/index.js'
 import { criarWorker, registrarAgendas } from './queue.js'
+import { registrarDeclaracoes } from './registro.js'
 import type { Alarme } from './runner.js'
 
 function inventario(): void {
@@ -57,6 +58,10 @@ async function subirWorker(): Promise<void> {
   }
 
   const deps = { conexao: urlRedis(), pool, alarmar, log }
+
+  // O painel de pipeline lê daqui: ele mostra o que está de fato rodando.
+  log(`declarações publicadas: ${await registrarDeclaracoes(pool)}`)
+
   const fila = await registrarAgendas(deps)
   const worker = criarWorker(deps)
 

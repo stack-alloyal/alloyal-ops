@@ -128,10 +128,16 @@ services:
       PORT: '3000'
       # Conecta como ops_api: sem acesso a public_v (migration 0005).
       DATABASE_URL: ${DATABASE_URL_API:?defina no .env}
-    # NENHUMA porta publicada. A aplicação confia no cabeçalho de identidade do
-    # oauth2-proxy, e esse cabeçalho é falsificável por quem falar direto com ela.
-    # A defesa é dupla: sem porta exposta, e @ops/auth só aceita o cabeçalho
-    # quando a conexão vem da faixa do proxy (ADR-016).
+      # Prova de que a requisição passou pelo proxy. Sem isto a aplicação
+      # recusa autenticar — e é assim que se quer que ela falhe.
+      OPS_PROXY_SECRET: ${OPS_PROXY_SECRET:?defina no .env}
+      AUTH_DOMINIO: ${AUTH_DOMINIO:-alloyal.com.br}
+    # NENHUMA porta publicada. A identidade chega por cabeçalho, e cabeçalho é
+    # falsificável por quem fala direto com a aplicação. Defesa em duas camadas:
+    # sem porta exposta, e a aplicação só aceita o cabeçalho de identidade quando
+    # a requisição traz o SEGREDO que o proxy injeta (ADR-016). Em Server
+    # Component não há acesso ao endereço de rede de quem chamou — por isso a
+    # prova é um segredo, e não uma faixa de IP.
     networks:
       - ops-net
       - proxy-net

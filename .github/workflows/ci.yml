@@ -143,6 +143,13 @@ jobs:
             exit 1
           fi
 
+      # A declaração dos ciclos alimenta o painel de pipeline: ele precisa
+      # mostrar o que está de fato rodando, não o que estava no código dele.
+      - name: Portão 4f — declaração dos ciclos (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: node --test apps/worker/dist/registro.test.js
+
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes

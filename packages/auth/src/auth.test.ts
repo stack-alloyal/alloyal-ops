@@ -2,12 +2,26 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { PAPEIS, PERMISSOES, permissoesDe } from './papeis.js'
-import { HEADER_EMAIL, identidadeDaRequisicao, ipEmFaixa } from './proxy.js'
+import {
+  ConfiguracaoInsegura,
+  HEADER_EMAIL,
+  HEADER_SEGREDO,
+  identidadeDaRequisicao,
+  ipEmFaixa,
+  permiteIdentidadeDeDesenvolvimento,
+  segredosIguais,
+} from './proxy.js'
 import { emitirToken, hashToken, validarToken } from './magic-link.js'
 
 const FAIXAS = ['172.16.0.0/12', '127.0.0.1/32']
+const SEGREDO = 'segredo-do-proxy-de-teste'
 const opts = {
   faixasConfiaveis: FAIXAS,
+  dominio: 'alloyal.com.br',
+  papeisDe: async () => ['ops-csm'],
+}
+const optsSegredo = {
+  segredoDoProxy: SEGREDO,
   dominio: 'alloyal.com.br',
   papeisDe: async () => ['ops-csm'],
 }
@@ -26,18 +40,75 @@ test('identidade é aceita quando a requisição vem do proxy', async () => {
 
 test('cabeçalho de identidade de fora da faixa do proxy é ignorado', async () => {
   // O ataque: contêiner comprometido em outra rede da VM manda o cabeçalho e
-  // vira administrador. Sem esta checagem, autenticação por header é aberta.
+  // vira administrador. Sem prova de proxy, autenticação por header é aberta.
   await assert.rejects(
     identidadeDaRequisicao({ [HEADER_EMAIL]: 'invasor@alloyal.com.br' }, '10.9.9.9', opts),
-    /fora da faixa do proxy/,
+    /não comprovou ter passado pelo proxy/,
   )
 })
 
 test('sem IP de origem não há identidade', async () => {
   await assert.rejects(
     identidadeDaRequisicao({ [HEADER_EMAIL]: 'pessoa@alloyal.com.br' }, undefined, opts),
-    /fora da faixa do proxy/,
+    /não comprovou ter passado pelo proxy/,
   )
+})
+
+// ── Prova por segredo compartilhado ──────────────────────────────────────────
+
+test('o segredo do proxy autentica onde não há endereço de rede', async () => {
+  // É o caso do Server Component do Next: só existem cabeçalhos, e o endereço
+  // do peer não está disponível em lugar nenhum.
+  const id = await identidadeDaRequisicao(
+    { [HEADER_EMAIL]: 'pessoa@alloyal.com.br', [HEADER_SEGREDO]: SEGREDO },
+    undefined,
+    optsSegredo,
+  )
+  assert.equal(id.email, 'pessoa@alloyal.com.br')
+})
+
+test('segredo errado ou ausente não autentica', async () => {
+  for (const h of [{}, { [HEADER_SEGREDO]: 'chute' }, { [HEADER_SEGREDO]: '' }]) {
+    await assert.rejects(
+      identidadeDaRequisicao(
+        { [HEADER_EMAIL]: 'invasor@alloyal.com.br', ...h },
+        undefined,
+        optsSegredo,
+      ),
+      /não comprovou ter passado pelo proxy/,
+    )
+  }
+})
+
+test('x-forwarded-for NÃO serve como prova', async () => {
+  // Seria circular: defender-se de cabeçalho falsificado usando outro cabeçalho.
+  await assert.rejects(
+    identidadeDaRequisicao(
+      { [HEADER_EMAIL]: 'invasor@alloyal.com.br', 'x-forwarded-for': '172.18.0.5' },
+      undefined,
+      opts,
+    ),
+    /não comprovou ter passado pelo proxy/,
+  )
+})
+
+test('sem NENHUMA prova configurada, a autenticação é recusada', async () => {
+  // Configuração incompleta não pode virar sistema aberto — é o modo de falha
+  // que transforma um esquecimento de deploy num acesso irrestrito.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'pessoa@alloyal.com.br' }, '172.18.0.5', {
+      dominio: 'alloyal.com.br',
+      papeisDe: async () => ['ops-csm'],
+    }),
+    ConfiguracaoInsegura,
+  )
+})
+
+test('a comparação do segredo não vaza por tamanho nem por conteúdo', () => {
+  assert.equal(segredosIguais('abc', 'abc'), true)
+  assert.equal(segredosIguais('abc', 'abd'), false)
+  assert.equal(segredosIguais('abc', 'abcd'), false)
+  assert.equal(segredosIguais('', ''), true)
 })
 
 test('domínio de fora é recusado mesmo vindo do proxy', async () => {
@@ -167,4 +238,21 @@ test('e-mail é comparado sem depender de caixa nem de espaço', () => {
     AGORA,
   )
   assert.equal(r.ok, true)
+})
+
+// ─── A saída de desenvolvimento ──────────────────────────────────────────────
+
+test('a identidade de desenvolvimento é impossível em produção', () => {
+  // A pior classe de falha de autenticação: silenciosa, total, e descoberta por
+  // terceiros. Nenhuma variável de configuração pode desligar esta checagem.
+  assert.equal(permiteIdentidadeDeDesenvolvimento('production', 'invasor@alloyal.com.br'), false)
+  assert.equal(permiteIdentidadeDeDesenvolvimento('production', 'qualquer@coisa'), false)
+})
+
+test('fora de produção, ela exige a variável explícita', () => {
+  assert.equal(permiteIdentidadeDeDesenvolvimento('development', undefined), false)
+  assert.equal(permiteIdentidadeDeDesenvolvimento('development', ''), false)
+  assert.equal(permiteIdentidadeDeDesenvolvimento(undefined, undefined), false)
+  assert.equal(permiteIdentidadeDeDesenvolvimento('development', 'dev@alloyal.com.br'), true)
+  assert.equal(permiteIdentidadeDeDesenvolvimento('test', 'dev@alloyal.com.br'), true)
 })
