@@ -15,6 +15,7 @@ export * from './score.js'
 export * from './drivers.js'
 export * from './lineage.js'
 export * from './churn.js'
+export * from './gatilhos.js'
 export * from './catalog/conta.js'
 export * from './catalog/receita.js'
 

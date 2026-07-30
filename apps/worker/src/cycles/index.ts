@@ -20,6 +20,7 @@
  */
 
 import { consolidar } from '../consolidacao.js'
+import { avaliarFila } from '../fila.js'
 import { defineCycle } from '../cycle.js'
 import { poolDoWorker } from '../db.js'
 
@@ -136,15 +137,26 @@ export const c12Snapshot = defineCycle({
     // A competência é o dia anterior fechado: transação do dia corrente entra
     // no snapshot de amanhã.
     const competencia = new Date(ctx.agora.getTime() - 86_400_000).toISOString().slice(0, 10)
-    const r = await consolidar(poolDoWorker(), competencia, { agora: ctx.agora })
+    const pool = poolDoWorker()
+    const r = await consolidar(pool, competencia, { agora: ctx.agora })
     ctx.log(
       `${r.contas} contas · ${r.completos} completas · ${r.parciais} parciais · ` +
         `${r.emChurnSilencioso} em churn silencioso · ${r.suprimidos} recortes suprimidos`,
     )
+
+    // A fila é avaliada DEPOIS da consolidação, na mesma execução: um item de
+    // trabalho gerado contra sinais da competência anterior mandaria o CSM agir
+    // sobre um número que já mudou.
+    const f = await avaliarFila(pool, competencia, { agora: ctx.agora })
+    ctx.log(
+      `fila · ${f.criados} criados (${f.emSombra} em sombra, ${f.emBacklog} no backlog) · ` +
+        `${f.atualizados} atualizados · ${f.bloqueadosPorCarencia} em carência`,
+    )
+
     return {
       linhasLidas: r.contas,
-      linhasGravadas: r.sinais + r.publicados + r.suprimidos,
-      detalhe: { ...r },
+      linhasGravadas: r.sinais + r.publicados + r.suprimidos + f.criados,
+      detalhe: { consolidacao: r, fila: f },
     }
   },
 })
