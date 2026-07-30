@@ -163,7 +163,12 @@ jobs:
         env:
           DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
         run: |
-          node --test packages/success/dist/fila.test.js packages/success/dist/conta.test.js 2>&1 | tee sup.txt
+          # --test-concurrency=1 é obrigatório: os dois arquivos truncam as
+          # MESMAS tabelas, e em paralelo um limpa o cenário do outro. A falha
+          # seria intermitente — a pior classe, porque some quando se investiga.
+          node --test --test-concurrency=1 \
+            packages/success/dist/fila.test.js \
+            packages/success/dist/conta.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1
