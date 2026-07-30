@@ -131,6 +131,18 @@ jobs:
             exit 1
           fi
 
+      # A consolidação: primeiro caminho de ponta a ponta do repositório —
+      # fatos gerados, sinais calculados, agregados publicados com supressão.
+      - name: Portão 4e — consolidação (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          node --test apps/worker/dist/consolidacao.test.js 2>&1 | tee cons.txt
+          if grep -qE '^# skipped [1-9]' cons.txt; then
+            echo "::error::Testes da consolidação foram PULADOS."
+            exit 1
+          fi
+
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes
@@ -163,6 +175,7 @@ jobs:
         run: |
           pnpm --filter @ops/metrics build
           node --test packages/metrics/dist/metrics.test.js
+          node --test packages/metrics/dist/drivers.test.js
 
       - name: Testes das demais unidades
         run: |

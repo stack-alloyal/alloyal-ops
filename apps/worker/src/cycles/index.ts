@@ -19,7 +19,9 @@
  * horário de São Paulo, e o agendador aplica o fuso (ver `queue.ts`).
  */
 
+import { consolidar } from '../consolidacao.js'
 import { defineCycle } from '../cycle.js'
+import { poolDoWorker } from '../db.js'
 
 const naoImplementado = (id: string) => async () => {
   throw new Error(
@@ -130,7 +132,21 @@ export const c12Snapshot = defineCycle({
   chaveNatural: ['competencia', 'account_id'],
   emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'snapshot_parcial' },
   fase: 'F1',
-  executar: naoImplementado('C12'),
+  executar: async (ctx) => {
+    // A competência é o dia anterior fechado: transação do dia corrente entra
+    // no snapshot de amanhã.
+    const competencia = new Date(ctx.agora.getTime() - 86_400_000).toISOString().slice(0, 10)
+    const r = await consolidar(poolDoWorker(), competencia, { agora: ctx.agora })
+    ctx.log(
+      `${r.contas} contas · ${r.completos} completas · ${r.parciais} parciais · ` +
+        `${r.emChurnSilencioso} em churn silencioso · ${r.suprimidos} recortes suprimidos`,
+    )
+    return {
+      linhasLidas: r.contas,
+      linhasGravadas: r.sinais + r.publicados + r.suprimidos,
+      detalhe: { ...r },
+    }
+  },
 })
 
 export const CICLOS_ESPERADOS_PELO_SNAPSHOT = ['C2', 'C3', 'C6', 'C8'] as const

@@ -29,6 +29,16 @@ export interface DriverSpec {
   readonly nome: string
   /** Peso inicial. A soma dos nove é 100. Recalibrado na F6 contra desfecho real. */
   readonly peso: number
+  /**
+   * Um valor baixo aqui, sozinho, justifica escalar a conta?
+   *
+   * Driver ABSOLUTO mede uma condição real: 90 dias de atraso é ruim para
+   * qualquer cliente, em qualquer base. Driver RELATIVO mede posição — e
+   * posição sempre tem alguém no fim da fila. Deixar um driver relativo decidir
+   * a faixa faz um quarto da base ser "crítica" por construção, todo dia,
+   * independentemente de a base estar bem ou mal.
+   */
+  readonly absoluto: boolean
   readonly explicacao: string
 }
 
@@ -43,6 +53,7 @@ export interface DriverSpec {
 export const DRIVERS: readonly DriverSpec[] = [
   {
     id: 'S-FIN',
+    absoluto: true,
     nome: 'Adimplência',
     peso: 25,
     explicacao:
@@ -50,12 +61,14 @@ export const DRIVERS: readonly DriverSpec[] = [
   },
   {
     id: 'S-ADO',
+    absoluto: true,
     nome: 'Adesão vs. meta do segmento',
     peso: 20,
     explicacao: 'Adesão de 30 dias sobre o piso definido para o segmento do cliente.',
   },
   {
     id: 'S-TEN',
+    absoluto: true,
     nome: 'Tendência de adesão',
     peso: 15,
     explicacao:
@@ -63,18 +76,21 @@ export const DRIVERS: readonly DriverSpec[] = [
   },
   {
     id: 'S-USO',
+    absoluto: false,
     nome: 'Intensidade',
     peso: 10,
     explicacao: 'Percentil do cliente na base em transações por vida ativa.',
   },
   {
     id: 'S-CAD',
+    absoluto: true,
     nome: 'Cobertura cadastral',
     peso: 5,
     explicacao: 'Vidas cadastradas sobre contratadas. É a alavanca que depende do cliente.',
   },
   {
     id: 'S-REL',
+    absoluto: true,
     nome: 'Recência de relacionamento',
     peso: 10,
     explicacao:
@@ -82,18 +98,21 @@ export const DRIVERS: readonly DriverSpec[] = [
   },
   {
     id: 'S-SUP',
+    absoluto: true,
     nome: 'Suporte',
     peso: 5,
     explicacao: 'Volume anômalo de tickets, SLA estourado e CSAT.',
   },
   {
     id: 'S-ENG',
+    absoluto: true,
     nome: 'Engajamento',
     peso: 5,
     explicacao: 'Aderência (DAU sobre MAU) e tendência de MAU.',
   },
   {
     id: 'S-VOZ',
+    absoluto: true,
     nome: 'Voz',
     peso: 5,
     explicacao: 'NPS do gestor e do usuário final, medidos separadamente.',
@@ -163,16 +182,21 @@ export function faixaSaude(score: number): FaixaSaude {
 /**
  * Faixa de risco por regra explícita — o que o CSM vê da F1 até a F6.
  *
- * Não é um score: é uma regra que cabe numa frase. Qualquer driver em nível
- * crítico coloca a conta em risco, independentemente da média. É deliberadamente
- * conservador: a média esconde exatamente o caso que interessa, do mesmo modo
- * que a regra do elo mais fraco no PROFI (doc 01, anexo B).
+ * Não é um score: é uma regra que cabe numa frase. Qualquer driver ABSOLUTO em
+ * nível crítico coloca a conta em risco, independentemente da média — a média
+ * esconde exatamente o caso que interessa, do mesmo modo que a regra do elo mais
+ * fraco no PROFI.
+ *
+ * Drivers relativos ficam de fora do julgamento. Intensidade de uso é percentil:
+ * alguém está sempre no último quartil, e deixar isso declarar "crítico" produz
+ * uma base em que 25% das contas estão sempre em chamas — o que é o mesmo que
+ * nenhuma estar.
  */
 export function faixaPorRegra(valores: readonly DriverValue[]): FaixaSaude {
-  const presentes = valores.filter((v) => v.valor !== null) as readonly {
-    id: DriverId
-    valor: number
-  }[]
+  const absolutos = new Set(DRIVERS.filter((d) => d.absoluto).map((d) => d.id))
+  const presentes = valores.filter(
+    (v) => v.valor !== null && absolutos.has(v.id),
+  ) as readonly { id: DriverId; valor: number }[]
   if (presentes.length === 0) return 'atencao'
   const pior = Math.min(...presentes.map((v) => v.valor))
   if (pior < 25) return 'critico'
