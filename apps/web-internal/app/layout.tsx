@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <strong>Alloyal Ops</strong>
           <nav aria-label="Ferramentas">
             <a href="/">Minha fila</a>
+            <a href="/saidas">Saídas</a>
             <a href="/gatilhos">Gatilhos</a>
             <a href="/dados">Dados</a>
           </nav>

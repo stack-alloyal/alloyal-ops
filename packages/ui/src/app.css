@@ -302,3 +302,85 @@ summary:hover { color: var(--ops-fg); }
 .conta__vazio { color: var(--ops-fg-muted); }
 .conta__pendentes { margin-top: var(--ops-space-6); color: var(--ops-fg-muted); }
 .conta__pendentes ul { margin: var(--ops-space-2) 0 0; padding-left: var(--ops-space-4); }
+
+/* ── Saídas · churn real ───────────────────────────────────────────────── */
+
+.saidas h2 { font-size: 15px; margin: var(--ops-space-6) 0 var(--ops-space-2); }
+.saidas__lista { list-style: none; padding: 0; display: grid; gap: var(--ops-space-3); }
+
+.saida {
+  border: 1px solid var(--ops-border);
+  border-left: 3px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  padding: var(--ops-space-3);
+}
+.saida[data-estado='anunciado'] { border-left-color: var(--ops-critico); }
+.saida[data-estado='em_aviso']  { border-left-color: var(--ops-atencao); }
+.saida[data-estado='retido']    { border-left-color: var(--ops-saudavel); }
+
+.saida__cabeca { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ops-space-2); }
+.saida__mrr { font-family: var(--ops-font-num); color: var(--ops-fg-muted); font-size: 13px; }
+.saida__janela { margin-left: auto; font-size: 13px; font-weight: 600; }
+
+/* As quatro datas como linha do tempo: o que falta tem que ser óbvio de longe. */
+.saida__datas {
+  list-style: none;
+  margin: var(--ops-space-3) 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ops-space-2);
+}
+.saida__datas li {
+  padding: var(--ops-space-2) var(--ops-space-3);
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-bg-subtle);
+}
+.saida__datas li[data-feito='nao'] { border-style: dashed; opacity: 0.8; }
+.saida__passo {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ops-fg-muted);
+}
+.saida__datas strong { font-family: var(--ops-font-num); }
+.saida__datas small { display: block; color: var(--ops-fg-muted); font-size: 12px; }
+
+.saida__acoes { display: grid; gap: var(--ops-space-2); }
+.saida__acoes form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ops-space-2);
+  font-size: 13px;
+}
+.saida__acoes label { display: flex; align-items: center; gap: var(--ops-space-2); color: var(--ops-fg-muted); }
+.saida__acoes input[type='number'] { width: 5em; }
+.saida__acoes input {
+  padding: var(--ops-space-1) var(--ops-space-2);
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-bg);
+  color: var(--ops-fg);
+  font: inherit;
+}
+.saida__acoes input[type='text'] { flex: 1; min-width: 12em; }
+.saida__acoes button {
+  padding: var(--ops-space-1) var(--ops-space-3);
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-bg);
+  color: var(--ops-fg);
+  font: inherit;
+  cursor: pointer;
+}
+.saida__acoes button:hover { border-color: var(--ops-fg-muted); }
+/* Encerrar grava no ledger e não se desfaz: o botão diz isso pela cor. */
+.saida__acoes button[data-perigo='sim'] { border-color: var(--ops-critico); color: var(--ops-critico); }
+.saida__acoes small { color: var(--ops-fg-muted); }
+.saida__falta { color: var(--ops-fg-muted); font-size: 13px; margin: 0; }
+
+.conta__aviso[data-estado='ok']    { border-color: var(--ops-saudavel); }
+.conta__aviso[data-estado='falha'] { border-color: var(--ops-critico); }

@@ -156,7 +156,8 @@ jobs:
             exit 1
           fi
 
-      # O recorte das telas: quem vê qual item, quem abre qual conta. As
+      # O recorte das telas e o fluxo de saída: quem vê qual item, quem abre
+      # qual conta, e as duas confirmações sem as quais a receita não se move. As
       # asserções são sobre o que NÃO aparece — a classe de erro que passa numa
       # revisão de tela, porque a tela fica bonita e mostra demais.
       - name: Portão 4h — recorte da fila e do Cliente 360 (Postgres real)
@@ -168,7 +169,8 @@ jobs:
           # seria intermitente — a pior classe, porque some quando se investiga.
           node --test --test-concurrency=1 \
             packages/success/dist/fila.test.js \
-            packages/success/dist/conta.test.js 2>&1 | tee sup.txt
+            packages/success/dist/conta.test.js \
+            packages/success/dist/cancelamento.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1

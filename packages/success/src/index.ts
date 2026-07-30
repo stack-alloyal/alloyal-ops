@@ -13,3 +13,4 @@
 export * from './fila.js'
 export * from './calibracao.js'
 export * from './conta.js'
+export * from './cancelamento.js'
