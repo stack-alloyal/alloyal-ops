@@ -1,0 +1,37 @@
+# Blindagem de segredos (repo de ops) — nunca versionar segredos/credenciais.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+oauth2.env
+.license*
+# Ruído
+node_modules
+*.log
+.DS_Store
+.venv
+__pycache__/
+
+# ── Build ──
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Segredos: só o *.sops.yaml cifrado e os *.example entram ──
+infra/.env
+infra/oauth2.env
+!infra/.env.example
+!infra/oauth2.env.example
+!infra/secrets/*.sops.yaml
+
+# ── Segredos por serviço de infra (qualquer subpasta) ──
+infra/*/.env
+infra/*/oauth2.env
+!infra/*/.env.example
+!infra/*/oauth2.env.example

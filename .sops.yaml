@@ -1,0 +1,5 @@
+# Regras de cifragem. A chave pública age vai aqui (C-06, doc 02).
+# Substituir o placeholder pela saída de `age-keygen` — ver infra/secrets/README.md.
+creation_rules:
+  - path_regex: infra/secrets/.*\.sops\.ya?ml$
+    age: 'PLACEHOLDER_CHAVE_PUBLICA_AGE'
