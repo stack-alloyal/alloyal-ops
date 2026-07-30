@@ -91,7 +91,11 @@ a:hover { text-decoration-color: currentColor; }
 .fila__prazo { margin-left: auto; font-family: var(--ops-font-num); font-size: 13px; color: var(--ops-fg-muted); }
 .fila__prazo[data-prazo='vencido'] { color: var(--ops-critico); font-weight: 600; }
 .fila__prazo[data-prazo='hoje']    { color: var(--ops-risco); font-weight: 600; }
-[data-prazo='vencido'] { color: var(--ops-critico); }
+/* Escopado ao <strong> do resumo de propósito. O <li> também carrega
+   `data-prazo`, e um seletor solto pinta a linha inteira de vermelho — nome da
+   conta, motivo e rodapé — deixando o item vencido mais berrante que o crítico
+   e apagando a diferença entre os dois. */
+.fila__resumo strong[data-prazo='vencido'] { color: var(--ops-critico); }
 
 /* O motivo é a linha que decide a ação: tamanho de corpo, não de legenda. */
 .fila__motivo { margin: var(--ops-space-2) 0; }
@@ -180,7 +184,17 @@ summary:hover { color: var(--ops-fg); }
 .painel__ciclos small { display: block; color: var(--ops-fg-muted); font-size: 12px; }
 .painel__nota { color: var(--ops-fg-muted); margin-top: var(--ops-space-4); }
 
+/* ┌─────────────────────────────────────────────────────────────────────────┐
+   │ O estado do DADO não é a saúde do NÚMERO.                                │
+   │                                                                          │
+   │ `data-estado="ok"` num <Metric/> significa "a fonte entregou em dia", e  │
+   │ nada mais. Pintá-lo de verde faz "adesão 13,8%" aparecer em verde — e o  │
+   │ CSM lê saúde onde só havia frescor de dado. Verde é reservado para onde  │
+   │ significa saudável de verdade: a faixa da conta e o status de um ciclo.  │
+   └─────────────────────────────────────────────────────────────────────────┘ */
 [data-estado='ok']       { color: var(--ops-saudavel); }
+.ops-metric[data-estado='ok'] { color: inherit; }
+.ops-metric[data-estado='ok'] .ops-metric__valor { color: var(--ops-fg); }
 [data-estado='falha']    { color: var(--ops-critico); }
 [data-estado='parcial']  { color: var(--ops-parcial); }
 [data-estado='pendente'] { color: var(--ops-fg-muted); }

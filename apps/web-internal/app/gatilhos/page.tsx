@@ -97,6 +97,14 @@ export default async function Calibracao() {
                       sem fonte é pipeline faltando; sem ocorrência é base boa. */}
                   {l.fonteAusente ? (
                     <span data-estado="pendente">aguardando {l.fonteAusente}</span>
+                  ) : l.promovido && l.veredito === 'acima' ? (
+                    /* Verde ao lado de "acima do estimado" na mesma linha é
+                       sinal contraditório. Gatilho já promovido e fora da faixa
+                       é exatamente o caso de recalibrar da tabela de riscos —
+                       e ninguém o revisa se a tela disser que está tudo bem. */
+                    <span data-estado="falha">
+                      na fila do time · volume acima do estimado, revisar o limiar
+                    </span>
                   ) : l.promovido ? (
                     <span data-estado="ok">na fila do time</span>
                   ) : l.itens === 0 ? (
