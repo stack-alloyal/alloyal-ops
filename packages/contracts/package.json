@@ -1,0 +1,12 @@
+{
+  "name": "@ops/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "build": "tsc -b", "typecheck": "tsc -b" },
+  "dependencies": { "zod": "^3.24.0" },
+  "devDependencies": { "typescript": "^5.7.0" }
+}
