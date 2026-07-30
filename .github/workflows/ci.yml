@@ -93,6 +93,19 @@ jobs:
             exit 1
           fi
 
+      # Invariantes de domínio: as regras que o banco impõe porque disciplina de
+      # processo não sobrevive a pressa — dedup da fila, as duas confirmações do
+      # efeito na receita, cascata que fecha, competência congelada.
+      - name: Portão 4b — invariantes de domínio (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          node --test packages/db/dist/invariantes.test.js 2>&1 | tee inv.txt
+          if grep -qE '^# skipped [1-9]' inv.txt; then
+            echo "::error::Invariantes de domínio foram PULADAS."
+            exit 1
+          fi
+
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes
