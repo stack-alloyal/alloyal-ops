@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alloyal Contratos — PRD &amp; Arquitetura v1.0</title>
+<style>html{scroll-behavior:smooth}body{margin:0}</style>
+<style>
+  /* Sistema visual da casa, herdado de docs/PRD-Alloyal-Hub-v1.0.html.
+     Acréscimo: tema escuro, porque o artefacto é lido no tema de quem abre. */
+  :root{
+    --ink:#17171F; --ink-2:#22222E; --ink-line:#33333f;
+    --indigo:#6A18E5; --indigo-2:#8E5BF0; --indigo-soft:#EFE9FC; --indigo-brd:#ddd0f7;
+    --coral:#FF7A00; --coral-soft:#FDECDA; --coral-brd:#f4d5b0;
+    --paper:#FAFAFB; --card:#FFFFFF; --thead:#f6f6fa;
+    --text:#1E1E28; --muted:#6C6C82; --faint:#9A9AAE;
+    --line:#E7E6F0;
+    --good:#17936A; --good-soft:#E3F3EC; --good-ink:#0f6f4f;
+    --warn:#B9820F; --warn-soft:#F8EFD8; --warn-ink:#8a6109;
+    --crit:#D53F45; --crit-soft:#FBE7E8; --crit-ink:#a5292e;
+    --code-ink:#5a17b8;
+    --d-emph:#17171F; --d-emph-stroke:#33333f;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Segoe UI Mono",Consolas,monospace;
+    --maxprose:74ch;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#0E0E14; --ink-2:#15151E; --ink-line:#2b2b38;
+      --indigo:#A97CF5; --indigo-2:#C4A6FA; --indigo-soft:#221A33; --indigo-brd:#3b2c58;
+      --coral:#FF9A3D; --coral-soft:#2E2013; --coral-brd:#4d3418;
+      --paper:#0B0B10; --card:#13131B; --thead:#191922;
+      --text:#E8E8F0; --muted:#9C9CB0; --faint:#6E6E82;
+      --line:#25252F;
+      --good:#3FBF90; --good-soft:#12241D; --good-ink:#5FD3A8;
+      --warn:#E0A93A; --warn-soft:#2A2113; --warn-ink:#E8BC5E;
+      --crit:#F0666C; --crit-soft:#2C1618; --crit-ink:#F58A8F;
+      --code-ink:#C4A6FA;
+      --d-emph:#2A2A3A; --d-emph-stroke:#3E3E52;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#0E0E14; --ink-2:#15151E; --ink-line:#2b2b38;
+    --indigo:#A97CF5; --indigo-2:#C4A6FA; --indigo-soft:#221A33; --indigo-brd:#3b2c58;
+    --coral:#FF9A3D; --coral-soft:#2E2013; --coral-brd:#4d3418;
+    --paper:#0B0B10; --card:#13131B; --thead:#191922;
+    --text:#E8E8F0; --muted:#9C9CB0; --faint:#6E6E82;
+    --line:#25252F;
+    --good:#3FBF90; --good-soft:#12241D; --good-ink:#5FD3A8;
+    --warn:#E0A93A; --warn-soft:#2A2113; --warn-ink:#E8BC5E;
+    --crit:#F0666C; --crit-soft:#2C1618; --crit-ink:#F58A8F;
+    --code-ink:#C4A6FA;
+    --d-emph:#2A2A3A; --d-emph-stroke:#3E3E52;
+  }
+  :root[data-theme="light"]{
+    --ink:#17171F; --ink-2:#22222E; --ink-line:#33333f;
+    --indigo:#6A18E5; --indigo-2:#8E5BF0; --indigo-soft:#EFE9FC; --indigo-brd:#ddd0f7;
+    --coral:#FF7A00; --coral-soft:#FDECDA; --coral-brd:#f4d5b0;
+    --paper:#FAFAFB; --card:#FFFFFF; --thead:#f6f6fa;
+    --text:#1E1E28; --muted:#6C6C82; --faint:#9A9AAE;
+    --line:#E7E6F0;
+    --good:#17936A; --good-soft:#E3F3EC; --good-ink:#0f6f4f;
+    --warn:#B9820F; --warn-soft:#F8EFD8; --warn-ink:#8a6109;
+    --crit:#D53F45; --crit-soft:#FBE7E8; --crit-ink:#a5292e;
+    --code-ink:#5a17b8;
+    --d-emph:#17171F; --d-emph-stroke:#33333f;
+  }
+
+  *{box-sizing:border-box}
+  .wrap{background:var(--paper);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+
+  .masthead{background:var(--ink);color:#EDEDF4;padding:56px 32px 44px}
+  .masthead .inner{max-width:1180px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo-2);margin:0 0 18px}
+  .masthead h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.02em;margin:0;font-weight:800;text-wrap:balance;color:#fff}
+  .masthead h1 span{color:var(--coral)}
+  .thesis{max-width:66ch;margin:20px 0 0;font-size:clamp(16px,2.2vw,20px);color:#C6C6D6;line-height:1.5}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 11px;border:1px solid var(--ink-line);border-radius:999px;color:#B9B9CC;background:#1d1d27}
+  .chip b{color:#fff;font-weight:600}
+
+  .doc{max-width:1180px;margin:0 auto;padding:0 32px 96px;display:grid;grid-template-columns:242px minmax(0,1fr);gap:56px;align-items:start}
+  .toc{position:sticky;top:24px;padding-top:40px;max-height:calc(100vh - 48px);overflow-y:auto}
+  .toc h4{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 14px}
+  .toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .toc a{display:flex;gap:10px;text-decoration:none;color:var(--muted);font-size:13.5px;padding:5px 8px;border-radius:7px;line-height:1.35}
+  .toc a:hover{background:var(--indigo-soft);color:var(--indigo)}
+  .toc a[aria-current="true"]{background:var(--indigo-soft);color:var(--indigo);font-weight:600}
+  .toc a .n{font-family:var(--mono);color:var(--faint);font-size:12px;min-width:18px}
+  .toc a[aria-current="true"] .n{color:var(--indigo)}
+  .content{padding-top:40px;min-width:0}
+
+  section{padding:34px 0;border-top:1px solid var(--line);scroll-margin-top:16px}
+  section:first-child{border-top:0;padding-top:8px}
+  .sec-label{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral);margin:0 0 8px}
+  h2{font-size:clamp(23px,3.4vw,30px);line-height:1.15;letter-spacing:-.015em;margin:0 0 18px;font-weight:750;text-wrap:balance}
+  h3{font-size:17px;font-weight:700;margin:30px 0 10px;letter-spacing:-.01em}
+  h3 .e{font-family:var(--mono);color:var(--indigo);font-size:13px;margin-right:8px}
+  h4{font-size:14.5px;font-weight:700;margin:22px 0 8px}
+  h4 .f{font-family:var(--mono);color:var(--coral);font-size:12px;margin-right:8px}
+  p{margin:0 0 14px;max-width:var(--maxprose)}
+  .lead{font-size:18px;color:var(--text);max-width:var(--maxprose)}
+  ul,ol.body{margin:0 0 16px;padding-left:22px;max-width:var(--maxprose)}
+  li{margin:6px 0}
+  strong{font-weight:670}
+  code{font-family:var(--mono);font-size:.86em;background:var(--indigo-soft);color:var(--code-ink);padding:1.5px 6px;border-radius:5px;word-break:break-word}
+  .pre{font-family:var(--mono);font-size:12.5px;background:var(--thead);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-width:none;white-space:pre-wrap;line-height:1.55;margin:0 0 14px}
+
+  .tbl-wrap{overflow-x:auto;margin:16px 0 8px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:540px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--thead);font-weight:600}
+  tbody tr:last-child td{border-bottom:0}
+  td.mono,th.mono{font-family:var(--mono);font-size:12.5px}
+  .num{font-variant-numeric:tabular-nums}
+
+  .callout{border-radius:12px;padding:16px 18px;margin:18px 0;border:1px solid;max-width:var(--maxprose)}
+  .callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;display:block;margin-bottom:6px}
+  .callout p{margin:0 0 10px;max-width:none;font-size:14.5px}
+  .callout p:last-child{margin-bottom:0}
+  .lesson{background:var(--coral-soft);border-color:var(--coral-brd)}
+  .lesson .k{color:var(--coral)}
+  .note{background:var(--indigo-soft);border-color:var(--indigo-brd)}
+  .note .k{color:var(--indigo)}
+  .rule{background:var(--good-soft);border-color:var(--good)}
+  .rule .k{color:var(--good-ink)}
+
+  .st{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .st::before{content:"";width:7px;height:7px;border-radius:50%;flex:none}
+  .st.good{background:var(--good-soft);color:var(--good-ink)}.st.good::before{background:var(--good)}
+  .st.warn{background:var(--warn-soft);color:var(--warn-ink)}.st.warn::before{background:var(--warn)}
+  .st.crit{background:var(--crit-soft);color:var(--crit-ink)}.st.crit::before{background:var(--crit)}
+  .st.info{background:var(--indigo-soft);color:var(--code-ink)}.st.info::before{background:var(--indigo)}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0}
+  .kard{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--card)}
+  .kard .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 6px}
+  .kard .big{font-size:26px;font-weight:750;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+  .kard .sub{font-size:13px;color:var(--muted);margin-top:4px}
+
+  .fig{margin:20px 0 8px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:8px;overflow-x:auto}
+  .fig svg{display:block;width:100%;height:auto;min-width:700px}
+  figcaption{font-size:12.5px;color:var(--muted);font-family:var(--mono);margin-top:8px;padding:0 8px 6px}
+  .d-box{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+  .d-box-ink{fill:var(--d-emph);stroke:var(--d-emph-stroke)}
+  .d-box-ind{fill:var(--indigo-soft);stroke:var(--indigo-brd)}
+  .d-box-cor{fill:var(--coral-soft);stroke:var(--coral-brd)}
+  .d-t{font-family:var(--sans);font-size:13px;font-weight:650;fill:var(--text)}
+  .d-t-w{fill:#fff}
+  .d-s{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+  .d-line{stroke:var(--faint);stroke-width:1.6;fill:none;marker-end:url(#arw)}
+  .d-line-c{stroke:var(--coral);stroke-width:1.8;fill:none;marker-end:url(#arwc);stroke-dasharray:5 4}
+
+  .phase{display:grid;grid-template-columns:auto 1fr;gap:16px;margin:10px 0}
+  .phase .p-n{font-family:var(--mono);font-weight:700;color:#fff;background:var(--indigo);min-width:52px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0 8px}
+  .phase .p-n.done{background:var(--good)}
+  .phase .p-n.gate{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
+  .phase .p-b{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--card)}
+  .phase .p-b h4{margin:0 0 4px;font-size:15px}
+  .phase .p-b p{margin:0;font-size:13.5px;color:var(--muted);max-width:none}
+
+  .footer{max-width:1180px;margin:0 auto;padding:26px 32px 60px;color:var(--faint);font-family:var(--mono);font-size:12px;border-top:1px solid var(--line)}
+
+
+  /* Esboço de tela — para que um leitor não técnico veja o produto, e não só
+     leia sobre ele. Deliberadamente sem pixel-perfeição: é especificação de
+     conteúdo e hierarquia, não entrega de design. */
+  .wf{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card);margin:16px 0 8px;font-size:13px}
+  .wf__bar{background:var(--thead);border-bottom:1px solid var(--line);padding:9px 12px;font-family:var(--mono);font-size:11.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .wf__bar b{color:var(--text);font-weight:700}
+  .wf__bar .tab{padding:2px 8px;border-radius:6px;border:1px solid transparent}
+  .wf__bar .tab.on{background:var(--indigo-soft);color:var(--indigo);border-color:var(--indigo-brd)}
+  .wf__body{padding:12px}
+  .wf__h{font-weight:700;font-size:14px;margin:0 0 10px;max-width:none;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .wf__h span{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:400}
+  .wf__row{border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:7px;display:grid;grid-template-columns:5px minmax(0,1fr) auto;gap:11px;align-items:start}
+  .wf__row:last-child{margin-bottom:0}
+  .wf__row i{width:5px;border-radius:3px;align-self:stretch;min-height:26px;background:var(--faint)}
+  .wf__row i.crit{background:var(--crit)}
+  .wf__row i.alta{background:var(--warn)}
+  .wf__row i.media{background:var(--faint)}
+  .wf__t{font-weight:650}
+  .wf__d{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .wf__a{font-family:var(--mono);font-size:11px;color:var(--indigo);white-space:nowrap;padding-top:2px}
+  .wf__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
+  .wf__stat{border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .wf__stat u{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);text-decoration:none;margin-bottom:3px}
+  .wf__stat b{font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .wf__stat s{display:block;font-size:11.5px;color:var(--muted);text-decoration:none;margin-top:2px}
+  .wf__note{font-family:var(--mono);font-size:11px;color:var(--faint);margin:8px 0 0;max-width:none}
+  /* Tabela de especificação de tela: rótulo à esquerda, sem cabeçalho. */
+  .tbl-wrap table tbody th{font-weight:650;font-size:13px;color:var(--muted);background:transparent;font-family:var(--sans);text-transform:none;letter-spacing:0}
+
+  @media(max-width:900px){
+    .doc{grid-template-columns:1fr;gap:0;padding:0 22px 72px}
+    .toc{position:static;padding-top:28px;border-bottom:1px solid var(--line);padding-bottom:22px;max-height:none}
+    .toc ol{flex-direction:row;flex-wrap:wrap}
+    .content{padding-top:26px}
+    .masthead{padding:40px 22px 34px}
+  }
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto !important}}
+  :focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:4px}
+  @media print{.toc{display:none}.doc{grid-template-columns:1fr}section{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="inner">
+      <p class="eyebrow">PRD · Ferramenta 2 do Alloyal Ops · Produto, Dados &amp; Arquitetura</p>
+      <h1>Alloyal <span>Contratos</span></h1>
+      <p class="thesis">Gestão do ciclo de vida contratual dentro do Alloyal Ops. Substitui a planilha do Jurídico por <b>cláusulas tipadas, com vigência e procedência</b> — de modo que Comercial, Financeiro, CS, Onboarding, Marketing e Produto consultem sozinhos o que hoje só o Jurídico sabe responder.</p>
+      <div class="meta">
+        <span class="chip">Versão <b>1.0</b></span>
+        <span class="chip">Jul/2026</span>
+        <span class="chip">Chassi <b>Alloyal Ops</b></span>
+        <span class="chip">Dono <b>Jurídico</b></span>
+        <span class="chip">Consumidores <b>7 áreas</b></span>
+        <span class="chip">Integra <b>Clicksign · HubSpot</b></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="doc">
+    <aside class="toc">
+      <h4>Conteúdo</h4>
+      <ol>
+        <li><a href="#s1"><span class="n">01</span> Contexto &amp; problema</a></li>
+        <li><a href="#s2"><span class="n">02</span> Objetivos &amp; métricas</a></li>
+        <li><a href="#s3"><span class="n">03</span> Personas &amp; JTBD</a></li>
+        <li><a href="#s4"><span class="n">04</span> Escopo &amp; linha de corte</a></li>
+        <li><a href="#s5"><span class="n">05</span> Modelo de dados</a></li>
+        <li><a href="#s6"><span class="n">06</span> Cláusulas &amp; sigilo</a></li>
+        <li><a href="#s7"><span class="n">07</span> Telas &amp; navegação</a></li>
+        <li><a href="#s8"><span class="n">08</span> Fluxos de operação</a></li>
+        <li><a href="#s9"><span class="n">09</span> Captação &amp; legado</a></li>
+        <li><a href="#s10"><span class="n">10</span> Requisitos funcionais</a></li>
+        <li><a href="#s11"><span class="n">11</span> O que o Ops ganha</a></li>
+        <li><a href="#s12"><span class="n">12</span> NFRs &amp; validade</a></li>
+        <li><a href="#s13"><span class="n">13</span> Roadmap</a></li>
+        <li><a href="#s14"><span class="n">14</span> Gaps &amp; em aberto</a></li>
+      </ol>
+    </aside>
+
+    <main class="content">
+
+      <!-- ══ 01 ══ -->
+      <section id="s1">
+        <p class="sec-label">01 — Contexto</p>
+        <h2>O Jurídico virou o índice da empresa</h2>
+        <p class="lead">Hoje o controle contratual é uma planilha mantida à mão. O Jurídico acompanha assinatura no Clicksign, transcreve as informações de cada cliente e registra em texto livre o histórico de aditivos, exceções e demandas relevantes.</p>
+        <p>O efeito não é a planilha estar desatualizada — é o <strong>Jurídico ter se tornado o ponto obrigatório de consulta</strong> para qualquer pergunta contratual da empresa. Marketing pergunta se pode usar a marca; CS pergunta se pode comunicar com os colaboradores; Onboarding pergunta o que foi vendido; Financeiro pergunta quando reajusta. Cada resposta é uma interrupção, e cada interrupção compete com trabalho jurídico de verdade.</p>
+
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">#</th><th>Problema</th><th>Como se manifesta hoje</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">1</td><td><strong>Base suscetível a erro</strong></td><td>Toda informação depende de transcrição manual do PDF para a planilha</td></tr>
+            <tr><td class="mono">2</td><td><strong>Informação desatualizada</strong></td><td>A atualização perde prioridade diante de demanda urgente — e é a própria equipe que aponta isso</td></tr>
+            <tr><td class="mono">3</td><td><strong>Sem fonte única</strong></td><td>Condição contratual está em três lugares: PDF no Clicksign, planilha do Jurídico e campos no HubSpot</td></tr>
+            <tr><td class="mono">4</td><td><strong>Conhecimento concentrado</strong></td><td>Sete áreas dependem de uma equipe para saber o que elas mesmas precisam operar</td></tr>
+            <tr><td class="mono">5</td><td><strong>Retrabalho entre times</strong></td><td>A mesma pergunta é feita várias vezes, por pessoas diferentes, sobre o mesmo cliente</td></tr>
+            <tr><td class="mono">6</td><td><strong>Data crítica sem vigilância</strong></td><td>Vencimento, reajuste e renovação dependem de alguém lembrar de olhar a planilha</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>O que a planilha atual revela</h3>
+        <p>As 21 colunas em uso não são só um inventário — são o diagnóstico. Três padrões saltam:</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Sintoma</th><th>O que significa no modelo</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Quatro colunas de status</strong> — status, status contrato, status aditivos, status encerramento</td><td>São máquinas de estado independentes empilhadas numa linha, porque planilha não tem filho. Status de assinatura pertence ao <em>documento</em>; status de vigência ao <em>contrato</em>; aditivo e encerramento são <strong>entidades com estado próprio</strong></td></tr>
+            <tr><td><strong>Telemedicina, comunicação com usuário e uso de marca ganharam coluna própria</strong></td><td>É o mapa do gargalo: são as exceções mais perguntadas. Viraram coluna porque alguém se cansou de procurar no PDF. <strong>São consultas a cláusulas tipadas</strong> — e é isso que tira o Jurídico do meio</td></tr>
+            <tr><td><strong>"Demais exceções"</strong> como campo livre</td><td>O balde de estouro, que só cresce. Toda exceção que vira pergunta recorrente precisa graduar para tipo próprio, com resposta consultável</td></tr>
+            <tr><td><strong>Aditivo, nº de aditivos e status de aditivos</strong> na linha do pai</td><td>Aditivo <em>altera cláusula</em>. Então cláusula precisa de <strong>vigência própria e documento de origem</strong>, e "o que vale hoje" passa a ser consulta temporal — não coluna</td></tr>
+            <tr><td><strong>Tipo: MRR ou setup</strong>, com vencimento só para setup</td><td>Receita recorrente e pontual no mesmo campo. Se isso alimentar o MRR sem separação, <strong>setup entra na cascata recorrente e o NRR quebra</strong></td></tr>
+            <tr><td><strong>Histórico jurídico</strong> em texto livre</td><td>Precisa virar timeline tipada. E histórico de conflito é a informação <strong>mais sensível do sistema</strong> — não pode ter a mesma visibilidade que "tem telemedicina"</td></tr>
+          </tbody>
+        </table></div>
+
+        <div class="callout lesson"><span class="k">Três campos que não existem em lugar nenhum</span>
+          <p>A planilha <strong>não tem coluna de aviso prévio, de multa nem de reajuste</strong> — e o briefing pede alerta de reajuste. Hoje esses três dados só existem <em>dentro do PDF</em>, em prosa.</p>
+          <p>Isso não é um detalhe do Jurídico: o fluxo de saída do Alloyal Success exige <strong>confirmar o aviso prévio</strong> antes de registrar o efeito na receita, e a validação de cancelamento exige a multa. Enquanto esses campos não forem estruturados, aquelas confirmações são feitas contra uma fonte que ninguém consegue auditar. <strong>O Contratos é pré-requisito do churn real ser confiável</strong>, não um projeto paralelo.</p>
+        </div>
+
+        <h3>Por que dentro do Ops</h3>
+        <p>A informação contratual só tem valor quando cruzada com o resto: conta, MRR, renovação, adesão, implantação, cancelamento. Um CLM isolado devolveria a resposta certa num lugar onde ninguém trabalha. Dentro do Ops, a cláusula aparece na tela onde a pergunta nasce — no Cliente 360, na validação de cancelamento, no escopo da implantação.</p>
+        <p>É também o <strong>primeiro teste real do chassi</strong>. Identidade, papéis, plataforma de dados, dicionário, linhagem, auditoria, design system, observabilidade, CI e infraestrutura vêm prontos. Pela regra de dois, esta é a segunda ferramenta que precisa de fila de trabalho e de superfície externa — então o <strong>motor de trabalho gradua para o chassi</strong> agora.</p>
+      </section>
+
+      <!-- ══ 02 ══ -->
+      <section id="s2">
+        <p class="sec-label">02 — Norte</p>
+        <h2>Objetivos &amp; métricas de sucesso</h2>
+        <p><strong>North Star.</strong> <em>Consultas contratuais respondidas sem passar pelo Jurídico.</em> Não é "planilha substituída" — substituir a planilha ajuda apenas o Jurídico, e o benefício declarado no briefing é autonomia de sete áreas.</p>
+
+        <div class="callout note"><span class="k">A linha de base que ainda não existe</span>
+          <p>Nenhuma das métricas abaixo é calculável hoje, porque ninguém conta as perguntas. <strong>Primeiro entregável, antes de qualquer código:</strong> por duas semanas, o Jurídico registra cada consulta contratual recebida — quem perguntou, sobre qual cliente, que tipo de informação, e quanto tempo levou para responder.</p>
+          <p>São dez minutos por dia de registro, e é o que transforma "reduzir o gargalo" em número. Sem isso, o projeto termina sem ninguém saber se funcionou. É a mesma disciplina aplicada ao TTFT no Success.</p>
+        </div>
+
+        <div class="cards">
+          <div class="kard"><p class="lbl">Autonomia das áreas</p><div class="big">≥ 70%</div><p class="sub">J1 · consultas autoatendidas em 90 dias</p></div>
+          <div class="kard"><p class="lbl">Cláusulas-chave confirmadas</p><div class="big">100%</div><p class="sub">J2 · dos contratos ativos</p></div>
+          <div class="kard"><p class="lbl">Data crítica vigiada</p><div class="big">100%</div><p class="sub">J4 · alerta antes do prazo</p></div>
+          <div class="kard"><p class="lbl">Elaboração de contrato</p><div class="big">−50%</div><p class="sub">J5 · dias do pedido ao envio</p></div>
+        </div>
+
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">#</th><th>Objetivo</th><th>Fórmula</th><th class="mono">Base</th><th class="mono">Alvo</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">J1</td><td><strong>Áreas consultam sozinhas</strong></td><td class="mono">consultas autoatendidas ÷ consultas contratuais totais</td><td class="mono">medir 2 sem</td><td class="mono">≥70% / 90d</td></tr>
+            <tr><td class="mono">J2</td><td>Base confiável</td><td class="mono">contratos ativos com as 6 cláusulas-chave confirmadas ÷ contratos ativos</td><td class="mono">0%</td><td class="mono">100%</td></tr>
+            <tr><td class="mono">J3</td><td>Fim da planilha</td><td class="mono">planilha desativada, com o Contratos como única fonte de consulta</td><td class="mono">—</td><td class="mono">binário</td></tr>
+            <tr><td class="mono">J4</td><td>Nenhuma data perdida</td><td class="mono">vencimentos, reajustes e renovações com alerta acionado no prazo ÷ total</td><td class="mono">—</td><td class="mono">100%</td></tr>
+            <tr><td class="mono">J5</td><td>Elaboração mais rápida</td><td class="mono">dias entre pedido do comercial e envio para assinatura</td><td class="mono">medir na J0</td><td class="mono">−50%</td></tr>
+            <tr><td class="mono">J6</td><td><strong>Alimenta o Success</strong></td><td class="mono">cancelamentos com aviso prévio confirmado a partir do Contratos ÷ cancelamentos</td><td class="mono">0%</td><td class="mono">100%</td></tr>
+            <tr><td class="mono">J7</td><td>Tempo de resposta do Jurídico</td><td class="mono">tempo médio para responder consulta que ainda chega a ele</td><td class="mono">medir 2 sem</td><td class="mono">−60%</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Não-objetivos</h3>
+        <ul>
+          <li><strong>Ser o registro legal do contrato.</strong> O documento assinado no Clicksign é. O Contratos guarda o dado estruturado derivado dele — e quando divergirem, o PDF vence.</li>
+          <li><strong>Editor colaborativo de documento.</strong> Negociação com redline em tempo real é produto inteiro e não é diferencial da Alloyal. Ver a linha de corte na seção 04.</li>
+          <li><strong>Gestão de processo judicial.</strong> O histórico de conflito é registrado como contexto contratual; acompanhamento processual permanece fora.</li>
+          <li><strong>Assinatura eletrônica própria.</strong> O Clicksign já resolve, com validade estabelecida.</li>
+          <li><strong>Substituir o HubSpot no pipeline comercial.</strong> Oportunidade, estágio e owner continuam lá.</li>
+          <li><strong>Contratos de fornecedor e trabalhistas</strong> — o escopo é contrato de cliente. Reavaliar depois.</li>
+        </ul>
+      </section>
+
+      <!-- ══ 03 ══ -->
+      <section id="s3">
+        <p class="sec-label">03 — Quem usa</p>
+        <h2>Personas &amp; jobs-to-be-done</h2>
+        <p>Uma área é dona, sete consomem. O desenho da tela é feito para as consumidoras — se a consulta não for óbvia para quem não é advogado, o gargalo continua.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Persona</th><th class="mono">Papel</th><th>Pergunta que traz à ferramenta</th><th>Cláusulas que consulta</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Jurídico</strong> <span class="st info">dono</span></td><td class="mono">ops-juridico</td><td>"O que negociamos com este cliente, e o que precisa de atenção?"</td><td>Todas</td></tr>
+            <tr><td><strong>Comercial</strong></td><td class="mono">ops-comercial</td><td>"Que condição já foi concedida, e o que posso oferecer?"</td><td>Exceção comercial, reajuste, exclusividade, vigência</td></tr>
+            <tr><td><strong>Financeiro</strong></td><td class="mono">ops-financeiro</td><td>"Como e quando fatura, e reajusta por qual índice?"</td><td>Faturamento, reajuste, multa, vencimento de setup</td></tr>
+            <tr><td><strong>Customer Success</strong></td><td class="mono">ops-csm · ops-cs-lead</td><td>"O que este cliente pode exigir, e quanto tempo de aviso ele tem?"</td><td>SLA, aviso prévio, exceção, conflito anterior, renovação</td></tr>
+            <tr><td><strong>Onboarding</strong></td><td class="mono">ops-implantacao</td><td>"O que exatamente foi vendido, e tem alguma particularidade?"</td><td>Escopo de produto, telemedicina, customização, obrigação</td></tr>
+            <tr><td><strong>Marketing</strong> <span class="st warn">papel novo</span></td><td class="mono">ops-marketing</td><td>"Posso usar a marca dele e falar com os colaboradores?"</td><td>Uso de marca, comunicação com usuário</td></tr>
+            <tr><td><strong>Produto e Operações</strong> <span class="st warn">papel novo</span></td><td class="mono">ops-produto</td><td>"Que funcionalidade foi vendida, e há customização prometida?"</td><td>Escopo, SLA, exclusividade, customização</td></tr>
+            <tr><td><strong>Diretoria</strong></td><td class="mono">ops-diretoria</td><td>"Que risco contratual a empresa carrega?"</td><td>Multa, conflito, exclusividade, indicadores</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout note"><span class="k">Dois papéis novos no chassi</span>
+          <p><strong>Marketing e Produto não existem como papel no Alloyal Ops</strong> — a matriz atual tem oito papéis e nenhum deles é dessas áreas, porque a primeira ferramenta não precisava. As duas estão entre as consumidoras declaradas no briefing, então a matriz de permissão do chassi passa de 8 para 11 papéis, com <code>ops-juridico</code>, <code>ops-marketing</code> e <code>ops-produto</code>.</p>
+          <p>É uma mudança no chassi, não nesta ferramenta — e é exatamente o tipo de extensão que a regra de dois prevê.</p>
+        </div>
+      </section>
+
+      <!-- ══ 04 ══ -->
+      <section id="s4">
+        <p class="sec-label">04 — Fronteiras</p>
+        <h2>Escopo &amp; a linha de corte</h2>
+        <p class="lead">O briefing junta duas coisas de naturezas muito diferentes, e tratá-las como um projeto é o maior risco aqui.</p>
+
+        <div class="tbl-wrap"><table>
+          <thead><tr><th></th><th>Registro contratual</th><th>Autoria de documento</th></tr></thead>
+          <tbody>
+            <tr><th>O que é</th><td>Cadastro estruturado, cláusulas tipadas, aditivos, obrigações, datas, alertas, integração com Clicksign e HubSpot</td><td>Geração de minuta, controle de versão e <strong>negociação colaborativa com redline</strong></td></tr>
+            <tr><th>Natureza técnica</th><td>Dado e fluxo — exatamente o que o Ops faz</td><td>Edição concorrente, diff jurídico, trilha com validade legal — produto inteiro</td></tr>
+            <tr><th>É diferencial?</th><td><strong>Sim</strong> — só tem valor cruzado com conta, MRR, renovação e CS, que são dados da Alloyal</td><td><strong>Não</strong> — mercado maduro, e o problema é igual em qualquer empresa</td></tr>
+            <tr><th>Decisão</th><td><span class="st good">construir no Ops</span></td><td><span class="st warn">caminho estreito</span></td></tr>
+          </tbody>
+        </table></div>
+
+        <p><strong>Caminho estreito da autoria:</strong> template com campos mesclados a partir dos dados já cadastrados → geração de PDF → envio automático ao Clicksign. <strong>Sem edição colaborativa.</strong> A negociação continua acontecendo em documento e comentário, e o Contratos guarda cada versão trocada, com autor e data. Se a negociação colaborativa se provar gargalo medido — e não presumido — aí se avalia comprar ferramenta de mercado para essa etapa específica.</p>
+
+        <h3>Dentro do escopo</h3>
+        <ul>
+          <li>Cadastro do contrato com <strong>cláusulas tipadas, com vigência e procedência</strong></li>
+          <li>Aditivos como entidade, alterando cláusulas com rastro</li>
+          <li>Obrigações das partes, com dono e prazo</li>
+          <li>Timeline jurídica tipada: negociação, exceção concedida, conflito, notificação, acordo</li>
+          <li>Integração com <strong>Clicksign</strong> (status de assinatura, documento, signatários) e <strong>HubSpot</strong> (cliente e oportunidade)</li>
+          <li>Alertas de vencimento, reajuste, renovação, obrigação a vencer e aditivo pendente</li>
+          <li><strong>Extração assistida do legado</strong> com confirmação humana</li>
+          <li>Busca por cliente e <strong>por tipo de cláusula</strong> — "quais contratos restringem comunicação com usuário?"</li>
+          <li>Geração de minuta por template e envio ao Clicksign</li>
+          <li>Fluxo interno de aprovação entre Comercial, Jurídico, Financeiro e Diretoria</li>
+          <li>Indicadores de gestão contratual</li>
+        </ul>
+
+        <h3>Fora do escopo</h3>
+        <ul>
+          <li>Edição colaborativa em tempo real e redline automático de versões</li>
+          <li>Assinatura eletrônica própria — o Clicksign permanece</li>
+          <li>Acompanhamento processual</li>
+          <li>Contrato de fornecedor, trabalhista e societário</li>
+          <li>Cobrança e faturamento — o Contratos guarda a <em>regra</em>; a execução é do Omie</li>
+        </ul>
+      </section>
+      <!-- ══ 05 ══ -->
+      <section id="s5">
+        <p class="sec-label">05 — Onde o dado mora</p>
+        <h2>Modelo de dados</h2>
+        <p class="lead">A ferramenta <strong>não cria entidade paralela</strong>. Ela assume a propriedade de <code>core.contract</code>, que já existe no chassi e já é consumido pelo Success — e acrescenta o que é específico num esquema próprio.</p>
+
+        <div class="callout rule"><span class="k">Mudança de fonte de verdade no chassi</span>
+          <p>O <strong>Contratos passa a ser a fonte de <code>core.contract</code></strong>. O ciclo que lê o HubSpot muda de natureza: o HubSpot deixa de ser fonte de condição contratual e volta a ser fonte de <em>pipeline</em> — oportunidade, estágio, owner comercial.</p>
+          <p>O HubSpot recebe espelho somente-leitura dos campos que o comercial precisa ver lá, com alarme de divergência. Uma fonte por dado, que é a regra que o Ops já aplica ao MRR.</p>
+        </div>
+
+        <h3>O que <code>core.contract</code> ganha</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">Campo</th><th>Por que existe</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">tipo_receita</td><td><code>recorrente · pontual</code>. Separa MRR de setup. Sem isso, taxa de implantação entra na cascata recorrente e o NRR fica errado de forma consistente</td></tr>
+            <tr><td class="mono">vencimento_pontual</td><td>Data de vencimento da parcela de setup — só se aplica a <code>pontual</code></td></tr>
+            <tr><td class="mono">renovacao</td><td><code>automatica · expressa</code>. Muda o sentido do aviso prévio e o calendário de renovação do Success: renovação tácita exige denúncia, expressa exige ato</td></tr>
+            <tr><td class="mono">aviso_previo_dias</td><td>Já existia no esquema e <strong>nunca tinha fonte</strong>. Agora é cláusula tipada, com procedência</td></tr>
+            <tr><td class="mono">reajuste_indice · reajuste_mes</td><td>Índice e mês de aplicação. Alimentam o alerta de reajuste que o briefing pede e que hoje não existe em nenhum campo</td></tr>
+            <tr><td class="mono">objeto</td><td>Descrição do objeto contratado, em texto — o que a planilha chama de OBJETO</td></tr>
+            <tr><td class="mono">numero_contrato</td><td>O identificador que o Jurídico usa, distinto do id interno e do id do HubSpot</td></tr>
+            <tr><td class="mono">status_vigencia</td><td><code>em_elaboracao · vigente · em_aviso · encerrado · suspenso</code>. Um só estado, não quatro colunas</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Esquema <code>contracts</code></h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Entidade</th><th>Descrição e campos que decidem comportamento</th></tr></thead>
+          <tbody>
+            <tr><td><strong>contracts.document</strong></td><td>Cada minuta, versão e PDF assinado. <code>tipo</code> ∈ <code>minuta · contrato · aditivo · distrato</code>; <code>versao</code>; <code>clicksign_document_id</code>; <code>status_assinatura</code> ∈ <code>rascunho · enviado · parcial · assinado · recusado · expirado</code>; <code>hash_arquivo</code>; <code>assinado_em</code>. É <strong>append-only</strong>: versão nova é linha nova.</td></tr>
+            <tr><td><strong>contracts.clause</strong></td><td>O coração. <code>tipo</code> de taxonomia fechada; <code>valor_estruturado jsonb</code>; <code>texto</code>; <strong><code>valido_de</code> · <code>valido_ate</code></strong>; <code>document_id</code> + <code>trecho</code> (procedência); <code>substitui_clause_id</code>; <code>estado</code> ∈ <code>proposta · confirmada · substituida</code>; <code>confirmada_por</code> · <code>confirmada_em</code>.</td></tr>
+            <tr><td><strong>contracts.amendment</strong></td><td>Aditivo com <strong>estado próprio</strong>: <code>em_negociacao · enviado · assinado · recusado</code>. Aponta o documento e as cláusulas que altera. Assinar um aditivo <em>fecha</em> as cláusulas antigas e <em>abre</em> as novas — nunca sobrescreve.</td></tr>
+            <tr><td><strong>contracts.obligation</strong></td><td>Obrigação específica de uma das partes. <code>parte</code> ∈ <code>alloyal · cliente</code>; <code>descricao</code>; <code>prazo</code> ou <code>recorrencia</code>; <code>dono_interno</code>; <code>estado</code>. Alimenta a implantação e o plano de sucesso.</td></tr>
+            <tr><td><strong>contracts.event</strong></td><td>Timeline tipada, substituindo o histórico em texto livre. <code>tipo</code> ∈ <code>negociacao · excecao_concedida · conflito · notificacao · acordo · reajuste_aplicado · renovacao</code>; <code>ocorreu_em</code>; <code>autor</code>; <code>visibilidade</code>.</td></tr>
+            <tr><td><strong>contracts.approval</strong></td><td>Fluxo interno de aprovação: <code>etapa</code>, <code>papel_aprovador</code>, <code>decisao</code>, <code>justificativa</code>, <code>decidido_por</code>, <code>decidido_em</code>. É o gate humano do chassi aplicado ao contrato.</td></tr>
+            <tr><td><strong>contracts.template</strong></td><td>Template de minuta com campos mesclados e cláusulas condicionais. Versionado como conteúdo, editável pelo Jurídico sem deploy — mesmo padrão da biblioteca de playbooks.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Vigência de cláusula — o que vale hoje é consulta, não campo</h3>
+        <p>É a decisão estrutural da ferramenta. A pergunta que a empresa faz não é "o que o contrato dizia", é <strong>"o que vale hoje"</strong> — e com aditivos, as duas respostas divergem.</p>
+        <div class="pre">CONTRATO ORIGINAL · assinado 03/2024
+  uso_marca            = com_aprovacao     valido_de 03/2024  valido_ate 08/2025
+  comunicacao_usuario  = livre             valido_de 03/2024  valido_ate NULL
+  aviso_previo_dias    = 30                valido_de 03/2024  valido_ate 08/2025
+
+ADITIVO 1 · assinado 08/2025
+  uso_marca            = vedado            valido_de 08/2025  valido_ate NULL
+                         substitui a cláusula anterior, que é FECHADA
+  aviso_previo_dias    = 90                valido_de 08/2025  valido_ate NULL
+
+O QUE VALE HOJE  ·  valido_ate IS NULL OR valido_ate > hoje
+  uso_marca            = vedado            (aditivo 1, cláusula 4.2)
+  comunicacao_usuario  = livre             (contrato original, cláusula 7.1)
+  aviso_previo_dias    = 90                (aditivo 1, cláusula 9.3)</div>
+        <p>É o mesmo padrão que o chassi já usa em <code>core.account_alias</code> para sobreviver a merge de cliente no HubSpot: <strong>fecha o antigo, abre o novo, não sobrescreve nada</strong>. Quem pergunta "por que mudou?" recebe o aditivo e a data.</p>
+
+        <div class="callout rule"><span class="k">Duas invariantes impostas pelo banco</span>
+          <p><strong>1 · Cláusula tem procedência.</strong> Toda cláusula aponta o documento e o trecho de onde saiu — é o mesmo princípio de "nenhum número sem procedência" que o chassi aplica às métricas. Cláusula sem documento de origem não pode ser confirmada.</p>
+          <p><strong>2 · Cláusula proposta não decide nada.</strong> Enquanto <code>estado = proposta</code>, a cláusula é visível mas <strong>não pode ser usada em decisão</strong>: não confirma aviso prévio, não valida cancelamento, não alimenta alerta. Aparece marcada, do mesmo modo que uma métrica em verificação.</p>
+        </div>
+      </section>
+
+      <!-- ══ 06 ══ -->
+      <section id="s6">
+        <p class="sec-label">06 — O que se consulta</p>
+        <h2>Cláusulas tipadas &amp; sigilo</h2>
+        <p class="lead">A taxonomia é o produto. Cada tipo existe porque alguém pergunta sobre ele — e cada tipo declara <strong>quem pode ler</strong>, porque desconto negociado e histórico de conflito não podem ter a mesma visibilidade que "tem telemedicina".</p>
+
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">Tipo</th><th>Pergunta que responde</th><th>Forma do valor</th><th>Audiência</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">uso_marca</td><td>Podemos usar a marca do cliente em material e no app?</td><td class="mono">livre · com_aprovacao · vedado</td><td>Marketing, Comercial, CS, Produto</td></tr>
+            <tr><td class="mono">comunicacao_usuario</td><td>Podemos falar com os colaboradores dele? Por quais canais?</td><td class="mono">livre · opt_in · restrita · vedada</td><td>Marketing, CS, Produto</td></tr>
+            <tr><td class="mono">escopo_produto</td><td>O que exatamente foi vendido?</td><td class="mono">lista de produtos e funcionalidades</td><td>Todas</td></tr>
+            <tr><td class="mono">telemedicina</td><td>Tem Telemed? Com que escopo?</td><td class="mono">bool + escopo</td><td>Todas</td></tr>
+            <tr><td class="mono">customizacao</td><td>Prometemos alguma customização?</td><td class="mono">texto + prazo</td><td>Produto, Onboarding, CS</td></tr>
+            <tr><td class="mono">sla</td><td>Que SLA foi prometido?</td><td class="mono">indicador + meta + penalidade</td><td>CS, Produto, Suporte</td></tr>
+            <tr><td class="mono">exclusividade</td><td>Há exclusividade de categoria ou região?</td><td class="mono">escopo + prazo</td><td>Comercial, Produto, Diretoria</td></tr>
+            <tr><td class="mono">faturamento</td><td>Como e quando fatura? Por vida ou valor fixo?</td><td class="mono">regra estruturada</td><td>Financeiro, Comercial</td></tr>
+            <tr><td class="mono">reajuste</td><td>Quando reajusta, e por qual índice?</td><td class="mono">índice + mês + fórmula</td><td>Financeiro, Comercial, CS</td></tr>
+            <tr><td class="mono">aviso_previo</td><td>Quantos dias de aviso para sair? Por qual forma?</td><td class="mono">dias + forma de comunicação</td><td>CS, Financeiro, Jurídico</td></tr>
+            <tr><td class="mono">renovacao</td><td>Renova automaticamente ou exige ato?</td><td class="mono">automatica · expressa + prazo</td><td>CS, Comercial, Financeiro</td></tr>
+            <tr><td class="mono">lgpd</td><td>Papéis de tratamento, DPA, subprocessadores autorizados</td><td class="mono">texto estruturado</td><td>Jurídico, Encarregado, Produto</td></tr>
+            <tr><td class="mono">multa</td><td>Há multa de rescisão? Sobre qual base?</td><td class="mono">regra + base de cálculo</td><td class="mono">restrito</td></tr>
+            <tr><td class="mono">excecao_comercial</td><td>Desconto ou condição fora do padrão</td><td class="mono">texto + valor</td><td class="mono">restrito</td></tr>
+            <tr><td class="mono">conflito</td><td>Houve litígio, notificação ou acordo?</td><td class="mono">texto + desfecho</td><td class="mono">restrito</td></tr>
+            <tr><td class="mono">foro</td><td>Foro e lei aplicável</td><td class="mono">texto</td><td>Jurídico, Diretoria</td></tr>
+            <tr><td class="mono">outra</td><td>Exceção que ainda não virou tipo</td><td class="mono">texto</td><td>Jurídico + audiência escolhida</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Visibilidade por tipo de cláusula</h3>
+        <p>É uma extensão do RBAC do chassi, que hoje é <strong>por módulo</strong> e passa a ser também <strong>por classe de dado</strong>. Três faixas:</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Faixa</th><th>Quem lê</th><th>Tipos</th></tr></thead>
+          <tbody>
+            <tr><td><span class="st good">aberta</span></td><td>Todos os papéis internos</td><td>Escopo de produto, telemedicina, uso de marca, comunicação com usuário, SLA, renovação, reajuste, aviso prévio, customização, obrigações</td></tr>
+            <tr><td><span class="st warn">reservada</span></td><td>Comercial, CS lead, Financeiro, Jurídico, Diretoria</td><td>Exceção comercial, exclusividade, faturamento, LGPD, foro</td></tr>
+            <tr><td><span class="st crit">restrita</span></td><td>Jurídico, Financeiro, Diretoria</td><td><strong>Multa, conflito, acordo</strong></td></tr>
+          </tbody>
+        </table></div>
+        <p>Cláusula fora da faixa do papel <strong>não aparece vazia nem some</strong>: aparece como <em>"restrita — solicite ao Jurídico"</em>, com o tipo visível e o valor oculto. Esconder a existência da cláusula faria a pessoa concluir que ela não existe, e agir errado por isso.</p>
+
+        <div class="callout lesson"><span class="k">Lição herdada — o custo de abrir tudo</span>
+          <p>A tentação, num projeto cujo objetivo é autonomia, é abrir tudo internamente — é mais simples e maximiza o benefício declarado. Mas desconto negociado exposto a toda a empresa vira problema na primeira renegociação em que um cliente descobre a condição de outro, e histórico de litígio circulando internamente é risco jurídico próprio.</p>
+          <p>A saída não é curadoria manual — que recriaria o gargalo em outra forma, com alguém do Jurídico decidindo o que entra no resumo de cada contrato. É <strong>audiência declarada por tipo</strong>: definida uma vez na taxonomia, aplicada automaticamente em todo contrato, auditável.</p>
+        </div>
+      </section>
+      <!-- ══ 07 ══ -->
+      <section id="s7">
+        <p class="sec-label">07 — O produto na tela</p>
+        <h2>Telas &amp; navegação</h2>
+        <p class="lead">Cinco telas novas, dentro da mesma casca do Ops. A tela que decide o projeto é a <strong>busca por tipo de cláusula</strong> — é ela que faz Marketing responder sozinho se pode usar a marca.</p>
+        <div class="pre">SUPERFÍCIE INTERNA · ops.alloyal.com.br
+│
+├─ ...  (Success: Minha fila, Cliente 360, Carteira, Contas, Executivo …)
+│
+└─ Contratos                              ← ferramenta 2
+   ├─ Consulta                  T20  ← tela inicial de Jurídico e das consumidoras
+   │   └─ Ficha do contrato     T21       o que vale hoje + histórico + procedência
+   ├─ Calendário contratual     T22       vencimento · reajuste · renovação
+   ├─ Confirmação de cláusulas  T23       fila da extração assistida
+   └─ Elaboração               T24       template → PDF → Clicksign  (fase J6)
+
+ONDE APARECE DENTRO DO SUCCESS
+   Cliente 360 → aba Contrato    resumo do que vale hoje, na faixa do papel
+   Cancelamento → validação      aviso prévio, multa e débito, com procedência
+   Implantação  → escopo         produtos, customizações e obrigações do cliente</div>
+
+        <h3><span class="e">T20</span> Consulta de contratos</h3>
+        <div class="wf">
+          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Contratos <span class="tab on">Consulta</span><span class="tab">Calendário</span><span class="tab">Confirmação (23)</span></div>
+          <div class="wf__body">
+            <p class="wf__h">Filtro por cláusula: <span>comunicação com usuário = restrita ou vedada · 14 contratos</span></p>
+            <div class="wf__row"><i class="alta"></i>
+              <div><div class="wf__t">Grupo Meridiano · vigente até 12/2026 · MRR R$ 24.800</div>
+                <div class="wf__d">comunicação com usuário <b>restrita</b> — só canais oficiais do RH · aditivo 2, cláusula 6.4 · confirmada</div></div>
+              <div class="wf__a">abrir ficha ▸</div></div>
+            <div class="wf__row"><i class="crit"></i>
+              <div><div class="wf__t">Rede Bonavita · vigente até 03/2027 · MRR R$ 35.100</div>
+                <div class="wf__d">comunicação com usuário <b>vedada</b> · contrato original, cláusula 7.1 · confirmada</div></div>
+              <div class="wf__a">abrir ficha ▸</div></div>
+            <div class="wf__row"><i class="media"></i>
+              <div><div class="wf__t">Têxtil Aurora · vigente até 09/2026 · MRR R$ 9.400</div>
+                <div class="wf__d">comunicação com usuário <b>restrita</b> · <b>proposta — não confirmada</b> · extraída do PDF em 22/07</div></div>
+              <div class="wf__a">confirmar ▸</div></div>
+            <p class="wf__note">cláusula proposta aparece, mas não vale para decisão até alguém confirmar</p>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:170px">Objetivo</th><td><strong>Fazer sete áreas pararem de perguntar ao Jurídico.</strong> Se a resposta não estiver aqui em dois cliques, o gargalo continua.</td></tr>
+            <tr><th>Quem usa</th><td>Jurídico como tela inicial; Marketing, Comercial, Financeiro, CS, Onboarding e Produto como consulta pontual.</td></tr>
+            <tr><th>O que aparece</th><td>Busca por razão social, CNPJ e número de contrato. <strong>Filtro por tipo de cláusula e por valor</strong> — "quais contratos vedam comunicação com usuário?", "quais reajustam por IGPM em janeiro?". Cada linha traz o valor, a <strong>procedência</strong> (documento e cláusula) e se está confirmada.</td></tr>
+            <tr><th>O que dá para fazer</th><td>Abrir a ficha · exportar a lista · salvar o recorte como consulta frequente · confirmar cláusula proposta, se tiver permissão.</td></tr>
+            <tr><th>Sigilo</th><td>Cláusula fora da faixa do papel aparece como <em>restrita — solicite ao Jurídico</em>: o tipo é visível, o valor não. Esconder a existência faria a pessoa concluir que a cláusula não existe.</td></tr>
+            <tr><th>Estado vazio</th><td>Nenhum resultado devolve o filtro usado e sugere o mais próximo, em vez de tela branca.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span class="e">T21</span> Ficha do contrato</h3>
+        <div class="wf">
+          <div class="wf__bar"><b>Grupo Meridiano</b> · contrato 2024-0187 <span class="tab">vigente</span><span class="tab on">o que vale hoje</span><span class="tab">histórico</span><span class="tab">documentos (4)</span></div>
+          <div class="wf__body">
+            <div class="wf__grid">
+              <div class="wf__stat"><u>vigência</u><b>12/2026</b><s>renovação automática</s></div>
+              <div class="wf__stat"><u>aviso prévio</u><b>90 dias</b><s>aditivo 1 · cláusula 9.3</s></div>
+              <div class="wf__stat"><u>reajuste</u><b>IPCA · jan</b><s>contrato · cláusula 5.2</s></div>
+              <div class="wf__stat"><u>tipo de receita</u><b>recorrente</b><s>setup quitado em 04/2024</s></div>
+            </div>
+            <div class="wf__row" style="margin-top:12px"><i class="crit"></i>
+              <div><div class="wf__t">Uso de marca · <b>vedado</b></div>
+                <div class="wf__d">alterado pelo aditivo 1 em 08/2025 · antes era "com aprovação" · cláusula 4.2</div></div>
+              <div class="wf__a">ver aditivo ▸</div></div>
+            <div class="wf__row"><i class="alta"></i>
+              <div><div class="wf__t">Comunicação com usuário · <b>restrita</b> — só canais oficiais do RH</div>
+                <div class="wf__d">contrato original · cláusula 6.4 · confirmada por Marina em 14/07</div></div>
+              <div class="wf__a">procedência ▸</div></div>
+            <div class="wf__row"><i class="media"></i>
+              <div><div class="wf__t">Multa de rescisão · <b>restrita</b></div>
+                <div class="wf__d">visível para Jurídico, Financeiro e Diretoria · solicite ao Jurídico</div></div>
+              <div class="wf__a">solicitar ▸</div></div>
+            <p class="wf__note">4 obrigações ativas · 2 aditivos assinados · 1 exceção comercial reservada</p>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:170px">Objetivo</th><td>Responder <strong>"o que vale hoje"</strong> — não "o que o contrato dizia". Com aditivo, as duas respostas divergem, e é a primeira que a operação precisa.</td></tr>
+            <tr><th>O que aparece</th><td>Cláusulas vigentes com valor, procedência e estado de confirmação. Aba de <strong>histórico</strong> mostra o que mudou, quando e por qual aditivo. Aba de <strong>documentos</strong> lista minutas, contrato e aditivos com status de assinatura do Clicksign e link para o PDF.</td></tr>
+            <tr><th>O que dá para fazer</th><td>Registrar aditivo, exceção, obrigação e evento de timeline · confirmar cláusula proposta · abrir o PDF no Clicksign · ver o Cliente 360 da conta.</td></tr>
+            <tr><th>Regra que a tela impõe</th><td>Nenhuma cláusula pode ser editada — só <strong>substituída por outra, com documento de origem</strong>. Corrigir erro de digitação é uma correção registrada, não uma sobrescrita silenciosa.</td></tr>
+            <tr><th>O PDF vence</th><td>A tela diz, em rodapé permanente, que o registro legal é o documento assinado. Divergência entre ficha e PDF é incidente, e o PDF prevalece.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>As demais telas</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">#</th><th>Tela</th><th>Objetivo</th><th>Funcionalidades</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">T22</td><td><strong>Calendário contratual</strong></td><td>Nenhuma data crítica descoberta pela data</td><td>Vencimento, reajuste, renovação, obrigação a vencer e aditivo pendente de assinatura, em calendário e lista · cada item vira <strong>item de trabalho</strong> no motor do chassi, com dono e prazo · receita afetada por mês</td></tr>
+            <tr><td class="mono">T23</td><td><strong>Confirmação de cláusulas</strong></td><td>Transformar 21 colunas e uma pilha de PDFs em dado confiável, sem parar a operação</td><td>Fila de cláusulas propostas pela extração assistida, ordenada por MRR e por vigência próxima · trecho do PDF ao lado da proposta · confirmar, corrigir ou descartar · progresso por tipo de cláusula</td></tr>
+            <tr><td class="mono">T24</td><td>Elaboração <span class="mono">J6</span></td><td>Reduzir o tempo entre o pedido do comercial e o envio para assinatura</td><td>Template com campos mesclados dos dados já cadastrados · cláusulas condicionais · fluxo de aprovação entre Comercial, Jurídico, Financeiro e Diretoria · geração de PDF · <strong>envio automático ao Clicksign</strong>, sem baixar e subir arquivo</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ══ 08 ══ -->
+      <section id="s8">
+        <p class="sec-label">08 — No dia a dia</p>
+        <h2>Fluxos de operação</h2>
+
+        <h3><span class="e">FJ-1</span> Uma área consulta sozinha</h3>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:160px">Objetivo</th><td><strong>Tirar o Jurídico do caminho da pergunta rotineira</strong> — que é o objetivo do projeto inteiro, e o único que a linha de base mede.</td></tr>
+            <tr><th>Exemplo</th><td>Marketing vai lançar campanha e precisa saber em quais clientes pode usar a marca.</td></tr>
+            <tr><th>Telas</th><td>T20 Consulta → T21 Ficha</td></tr>
+          </tbody>
+        </table></div>
+        <ol class="body">
+          <li>Filtra por <code>uso_marca</code>. Recebe as três listas: livre, com aprovação, vedado.</li>
+          <li>Cada linha mostra a <strong>procedência</strong> — aditivo 1, cláusula 4.2 — e se a cláusula está confirmada.</li>
+          <li>Exporta a lista de "livre" e segue com a campanha. <strong>Sem abrir ticket para o Jurídico.</strong></li>
+          <li>Se alguma linha estiver como <em>proposta</em>, ela aparece separada: não entra na campanha até ser confirmada.</li>
+        </ol>
+        <div class="tbl-wrap"><table><tbody>
+          <tr><th style="width:160px">Se não funcionar</th><td>Se a resposta exigir interpretar texto livre, a pessoa liga para o Jurídico e o projeto falhou — mesmo com a base migrada. É por isso que a taxonomia tipada, e não o campo de observações, é o produto.</td></tr>
+        </tbody></table></div>
+
+        <h3><span class="e">FJ-2</span> Do pedido comercial ao contrato assinado</h3>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:160px">Objetivo</th><td>Encurtar o ciclo de elaboração e <strong>fazer o dado nascer estruturado</strong> — quando o contrato é gerado a partir de parâmetros, os parâmetros já são as cláusulas.</td></tr>
+            <tr><th>Quem conduz</th><td>Comercial pede; Jurídico elabora; Financeiro e Diretoria aprovam conforme a alçada.</td></tr>
+            <tr><th>Telas</th><td>T24 Elaboração → Clicksign → T21 Ficha</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pre">1 · comercial pede a minuta a partir da oportunidade no HubSpot
+    produtos, valores e prazo vêm preenchidos
+2 · Jurídico escolhe o template e responde as cláusulas condicionais
+    cada resposta É a cláusula tipada — nada é transcrito depois
+3 · aprovação pela alçada: exceção comercial acima do limite sobe a Diretoria
+    gate humano registrado, com justificativa
+4 · geração do PDF e ENVIO AUTOMÁTICO ao Clicksign
+5 · webhook do Clicksign devolve assinado
+    → contrato vigente, cláusulas já confirmadas na origem
+    → alertas de vencimento, reajuste e renovação agendados</div>
+        <div class="tbl-wrap"><table><tbody>
+          <tr><th style="width:160px">Resultado</th><td>Contrato novo entra com <strong>cláusula confirmada de nascença</strong> — sem extração, sem transcrição, sem fila de confirmação.</td></tr>
+          <tr><th>Por que isso resolve a raiz</th><td>A planilha desatualizava porque a estruturação era um passo <em>posterior</em> à assinatura, e passo posterior perde prioridade. Aqui a estruturação é <em>anterior</em>: é como o documento é feito.</td></tr>
+        </tbody></table></div>
+
+        <h3><span class="e">FJ-3</span> Aditivo altera o que vale</h3>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:160px">Objetivo</th><td>Manter "o que vale hoje" correto sem perder o que valia antes — e sem ninguém precisar comparar dois PDFs.</td></tr>
+            <tr><th>Telas</th><td>T21 Ficha → Clicksign → T21 Ficha (histórico)</td></tr>
+          </tbody>
+        </table></div>
+        <ol class="body">
+          <li>Aditivo é criado como entidade própria, em <code>em_negociacao</code>, apontando quais cláusulas pretende alterar.</li>
+          <li>Enviado ao Clicksign. Enquanto não volta assinado, <strong>nada muda</strong> no que vale hoje — e o aditivo pendente aparece no calendário como item de trabalho.</li>
+          <li>Assinado: as cláusulas antigas recebem <code>valido_ate</code> e as novas abrem com <code>valido_de</code>. Nenhuma linha é sobrescrita.</li>
+          <li>A ficha passa a mostrar o valor novo; o histórico mostra o antigo, com o aditivo que mudou e a data.</li>
+        </ol>
+        <div class="tbl-wrap"><table><tbody>
+          <tr><th style="width:160px">Se não funcionar</th><td>Aditivo aplicado por sobrescrita apaga a razão da mudança. Seis meses depois, ninguém sabe se o aviso prévio sempre foi 90 dias ou se virou 90 num aditivo — e a diferença importa em disputa.</td></tr>
+        </tbody></table></div>
+
+        <h3><span class="e">FJ-4</span> Data crítica se aproxima</h3>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:160px">Objetivo</th><td>Nunca descobrir vencimento, reajuste ou renovação pela data. É o que a planilha não consegue fazer, porque planilha não avisa.</td></tr>
+            <tr><th>Quem recebe</th><td>Reajuste → Financeiro. Renovação e vencimento → CSM, e entram na mesma fila do Success. Obrigação a vencer → o dono declarado. Aditivo pendente → Jurídico.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pre">reajuste           90 · 30 dias antes do mês de aplicação  → Financeiro
+renovação          90 dias do fim da vigência               → CSM (mesma fila)
+vencimento setup   15 dias antes                            → Financeiro
+obrigação          conforme o prazo da obrigação            → dono declarado
+aditivo pendente   7 dias sem assinatura                    → Jurídico
+cláusula proposta  30 dias sem confirmação                  → Jurídico</div>
+        <p>Os alertas usam o <strong>motor de trabalho do chassi</strong> — o mesmo que serve o Success, com teto de carga, deduplicação por família, carência e modo sombra de 14 dias antes de chegar ao time. Alerta contratual mal calibrado tem o mesmo custo que alerta de CS mal calibrado.</p>
+
+        <h3><span class="e">FJ-5</span> Migração do legado, sem parar a operação</h3>
+        <div class="tbl-wrap"><table>
+          <tbody>
+            <tr><th style="width:160px">Objetivo</th><td>Chegar a uma base confiável <strong>sem exigir semanas de digitação</strong> de uma equipe cuja sobrecarga é a causa declarada do problema.</td></tr>
+            <tr><th>Telas</th><td>T23 Confirmação de cláusulas</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pre">1 · importar as 21 colunas da planilha como cláusulas PROPOSTAS
+    (o que já está lá vira ponto de partida, não verdade)
+2 · para cada contrato, ler o PDF do Clicksign e propor as cláusulas
+    que a planilha NÃO tem: aviso prévio, multa, reajuste, foro, LGPD
+    cada proposta vem com o TRECHO citado e um grau de confiança
+3 · fila de confirmação ordenada por MRR e por vigência próxima
+    uma pessoa confirma, corrige ou descarta — a máquina nunca decide
+4 · cláusula confirmada passa a valer e alimenta as outras ferramentas
+5 · progresso visível por tipo: "aviso prévio confirmado em 68% do MRR ativo"</div>
+        <div class="tbl-wrap"><table><tbody>
+          <tr><th style="width:160px">Resultado</th><td>Base crescendo em confiabilidade por ordem de importância, com a operação usando o que já está confirmado desde a primeira semana.</td></tr>
+          <tr><th>A regra de segurança</th><td>Proposta <strong>não decide</strong>. Não confirma aviso prévio, não valida cancelamento, não dispara alerta. Aparece marcada, e a marcação é a mesma que o chassi usa para número em verificação.</td></tr>
+          <tr><th>Se não funcionar</th><td>Se a extração propuser lixo, a fila de confirmação vira trabalho pior que digitar. Mitigação: começar por 20 contratos, medir a taxa de aceitação, e só escalar acima de 70% de propostas aproveitáveis.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <!-- ══ 09 ══ -->
+      <section id="s9">
+        <p class="sec-label">09 — Como o dado entra</p>
+        <h2>Captação &amp; legado</h2>
+        <p>Duas integrações e uma migração. As duas integrações usam o contrato de ciclo do chassi — sete campos declarados, painel de pipeline gerado da declaração.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">ID</th><th>Fonte</th><th>Método</th><th>O que traz</th><th>Em falha</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">C13</td><td><strong>Clicksign</strong></td><td>webhook + varredura de segurança 6 h</td><td>Status de assinatura, signatários, data de assinatura, documento e hash</td><td>Varredura cobre a lacuna; documento fica <code>enviado</code> com marca de defasagem</td></tr>
+            <tr><td class="mono">C14</td><td><strong>HubSpot</strong></td><td>incremental, 4 h</td><td>Cliente e oportunidade para pré-preencher a minuta. <strong>Não traz mais condição contratual</strong></td><td>Último valor com marca de defasagem</td></tr>
+            <tr><td class="mono">C15</td><td><strong>Espelho para o HubSpot</strong></td><td>escrita unidirecional, diária</td><td>Vigência, aviso prévio e reajuste como campos somente-leitura, para o comercial ver no CRM</td><td>Alarme de divergência acima de 1%</td></tr>
+            <tr><td class="mono">C16</td><td><strong>Extração assistida</strong></td><td>sob demanda, em lote</td><td>Cláusulas <em>propostas</em> a partir do PDF, com trecho citado e grau de confiança</td><td>Proposta nunca vira verdade sozinha</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>Resolução de identidade.</strong> O contrato chega com CNPJ e razão social. Isso entra na cascata de resolução que o chassi já tem: alias exato → CNPJ normalizado → par marca e filial → fila de exceção. Contrato que não resolve para uma conta <strong>não é descartado nem cria conta nova</strong> — vai para a fila com o payload guardado.</p>
+        <div class="callout note"><span class="k">Custo da extração assistida</span>
+          <p>É a única parte do projeto com custo variável por modelo de linguagem, e ele é <strong>de uma vez</strong>: cada PDF é lido uma vez, o resultado é cacheado, e reprocessar só acontece se a taxonomia mudar. Contrato novo, a partir da fase de elaboração, não passa por extração nenhuma — nasce estruturado.</p>
+        </div>
+      </section>
+
+      <!-- ══ 10 ══ -->
+      <section id="s10">
+        <p class="sec-label">10 — O que faz</p>
+        <h2>Requisitos funcionais</h2>
+
+        <h3><span class="e">EJ1</span> Registro e cláusulas</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Regra</th><th>Comportamento</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Cláusula é imutável</strong></td><td>Não se edita cláusula: substitui-se, com documento de origem. Correção de digitação é registrada como correção, com autor — nunca sobrescrita silenciosa.</td></tr>
+            <tr><td><strong>Procedência obrigatória</strong></td><td>Cláusula sem documento e trecho de origem <strong>não pode ser confirmada</strong>. É o mesmo princípio de "nenhum número sem procedência" aplicado a texto contratual.</td></tr>
+            <tr><td><strong>Proposta não decide</strong></td><td><code>estado = proposta</code> aparece, mas não confirma aviso prévio, não valida cancelamento e não dispara alerta.</td></tr>
+            <tr><td><strong>Vigência por cláusula</strong></td><td>"O que vale hoje" é consulta temporal. Aditivo fecha a antiga e abre a nova.</td></tr>
+            <tr><td><strong>Taxonomia fechada</strong></td><td>Tipo novo de cláusula é decisão de produto, com audiência declarada — não campo livre. O balde <code>outra</code> existe, e cada item recorrente nele deve graduar para tipo próprio.</td></tr>
+            <tr><td><strong>Audiência por tipo</strong></td><td>Três faixas — aberta, reservada, restrita. Cláusula fora da faixa mostra o tipo e oculta o valor, com o caminho para solicitar.</td></tr>
+            <tr><td><strong>O PDF vence</strong></td><td>O Contratos não é o registro legal. Divergência entre ficha e documento assinado abre incidente, e o PDF prevalece.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span class="e">EJ2</span> Documentos, aditivos e assinatura</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Regra</th><th>Comportamento</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Documento é append-only</strong></td><td>Versão nova é linha nova, com hash. Nenhuma versão é apagada, porque a versão que circulou na negociação importa em disputa.</td></tr>
+            <tr><td><strong>Aditivo tem estado próprio</strong></td><td><code>em_negociacao · enviado · assinado · recusado</code>. Aditivo não assinado não altera nada.</td></tr>
+            <tr><td><strong>Assinatura vem do Clicksign</strong></td><td>Status nunca é digitado à mão: chega por webhook, com varredura de segurança. Digitar status é o que a planilha faz hoje, e é a origem do erro.</td></tr>
+            <tr><td><strong>Envio sem download</strong></td><td>Geração e envio ao Clicksign acontecem dentro do fluxo — sem baixar arquivo e subir de novo, que é onde a versão errada é enviada.</td></tr>
+            <tr><td><strong>Gate humano na aprovação</strong></td><td>Alçada por valor de exceção. Aprovação registrada com autor, horário e justificativa.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span class="e">EJ3</span> Alertas e obrigações</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Regra</th><th>Comportamento</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Alerta é item de trabalho</strong></td><td>Usa o motor do chassi, com dono, prazo, playbook e desfecho obrigatório — não notificação por e-mail que ninguém fecha.</td></tr>
+            <tr><td><strong>Mesma disciplina do Success</strong></td><td>Teto de carga, deduplicação por família, carência e <strong>modo sombra de 14 dias</strong> antes de qualquer alerta novo chegar ao time.</td></tr>
+            <tr><td><strong>Obrigação tem dono interno</strong></td><td>Obrigação da Alloyal sem dono nomeado não é salva. Obrigação do cliente entra no plano de sucesso e na área de implantação do portal.</td></tr>
+            <tr><td><strong>Reajuste avisa duas vezes</strong></td><td>90 e 30 dias antes do mês de aplicação, para o Financeiro, porque reajuste perdido só se recupera com renegociação.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ══ 11 ══ -->
+      <section id="s11">
+        <p class="sec-label">11 — Efeito cruzado</p>
+        <h2>O que o Alloyal Ops ganha</h2>
+        <p class="lead">A ferramenta não vale só pelo Jurídico. Ela conserta dependências que a primeira ferramenta tinha e não podia resolver sozinha.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>No Ops hoje</th><th>Como estava</th><th>Com o Contratos</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Confirmação de aviso prévio</strong> no fluxo de saída</td><td>Exigida pelo fluxo, mas sem fonte estruturada — o número só existia dentro do PDF</td><td>Cláusula tipada, com procedência. A confirmação passa a ser <em>verificar</em>, não <em>descobrir</em></td></tr>
+            <tr><td><strong>Validação de cancelamento</strong></td><td>Multa e débito consultados ao Jurídico caso a caso</td><td>Multa como cláusula restrita, na tela de decisão, com a regra de cálculo</td></tr>
+            <tr><td><strong>Calendário de renovação</strong></td><td>Baseado só em vigência, sem saber se a renovação é automática ou expressa</td><td>Renovação tipada muda o cálculo: tácita exige denúncia, expressa exige ato</td></tr>
+            <tr><td><strong>Cascata de receita</strong></td><td>Setup e MRR misturados no mesmo campo de valor</td><td><code>tipo_receita</code> separa receita pontual de recorrente — o NRR para de contar taxa de implantação</td></tr>
+            <tr><td><strong>Escopo da implantação</strong></td><td>Handoff descrevia o que foi vendido em texto</td><td>Escopo de produto e customizações como cláusula consultável, e obrigações do cliente já com prazo</td></tr>
+            <tr><td><strong>Health score</strong></td><td>Adesão baixa era tratada como descuido do cliente</td><td><strong>Exceção contratual como contexto</strong>: cliente que negociou restrição de comunicação tem adesão menor <em>por contrato</em>. Não entra como driver — entra como explicação, do mesmo jeito que a maturidade de loyalty</td></tr>
+            <tr><td><strong>Verificação V-10</strong></td><td>Aberta: "onde vivem cláusula de multa e aviso prévio?"</td><td><span class="st good">respondida e resolvida</span></td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout lesson"><span class="k">O que isso diz sobre o chassi</span>
+          <p>Esta é a segunda ferramenta, e ela não trouxe nenhuma decisão nova de identidade, ingestão, governança de número, auditoria ou entrega — reusou todas. O que ela obrigou a estender foi pequeno e previsto: <strong>três papéis novos</strong> na matriz, <strong>visibilidade por classe de dado</strong> além de por módulo, e a <strong>graduação do motor de trabalho</strong> para o chassi.</p>
+          <p>É o resultado que a regra de dois procurava. Se a segunda ferramenta tivesse exigido reescrever a plataforma, a plataforma estaria errada.</p>
+        </div>
+      </section>
+
+      <!-- ══ 12 ══ -->
+      <section id="s12">
+        <p class="sec-label">12 — Não-funcionais</p>
+        <h2>NFRs, sigilo e validade</h2>
+        <h3>Confidencialidade</h3>
+        <ul>
+          <li><strong>Audiência por tipo de cláusula</strong>, definida na taxonomia e aplicada automaticamente — não curada contrato a contrato.</li>
+          <li><strong>Toda leitura de cláusula restrita é auditada</strong>: quem, qual contrato, quando. Multa e conflito são as duas classes em que a leitura importa tanto quanto a escrita.</li>
+          <li>Solicitação de acesso a cláusula restrita gera item de trabalho para o Jurídico, com registro do motivo — em vez de conversa fora do sistema.</li>
+          <li>Exportação de lista <strong>respeita a faixa do papel</strong> e é registrada.</li>
+        </ul>
+        <h3>Validade jurídica</h3>
+        <ul>
+          <li>O registro legal é o <strong>documento assinado no Clicksign</strong>. O Contratos guarda dado derivado e o link.</li>
+          <li><code>hash_arquivo</code> por documento, para detectar substituição.</li>
+          <li>Nenhum documento é apagado. Versão que circulou em negociação é preservada.</li>
+          <li>Divergência entre ficha e PDF é <strong>incidente</strong>, tratado pelo playbook de incidente de dado do chassi — com a métrica marcada em verificação para todos.</li>
+        </ul>
+        <h3>Herdado do chassi, sem custo adicional</h3>
+        <p>Identidade e papéis, ciclos e painel de pipeline, dicionário e linhagem, auditoria somente-inserção, cinco estados de dado, design system, os dez requisitos de design, WCAG 2.1 AA, os seis portões de CI incluindo isolamento de tenant, segredos em cofre, backup cifrado, e os SLO de disponibilidade e latência.</p>
+        <h3>LGPD</h3>
+        <p>O contrato contém dado pessoal de <strong>profissionais</strong> — signatários, representantes legais, contatos — com base legal contratual. Não contém dado de usuário final. O que muda em relação ao chassi: <strong>cláusula de LGPD como tipo próprio</strong>, guardando papéis de tratamento, existência de DPA e subprocessadores autorizados — informação que o Encarregado precisa e que hoje só existe em prosa.</p>
+      </section>
+
+      <!-- ══ 13 ══ -->
+      <section id="s13">
+        <p class="sec-label">13 — Quando</p>
+        <h2>Roadmap</h2>
+        <p><strong>Esforço, não lead time.</strong> Este roadmap só é executável em paralelo ao do Success se o squad crescer — com o time atual, as duas ferramentas competem pelas mesmas pessoas, e isso precisa ser decidido antes de começar, não descoberto na quarta semana.</p>
+        <div class="phase"><div class="p-n">J0</div><div class="p-b"><h4>Linha de base e fundação · 2 sem</h4><p><strong>Registro das consultas ao Jurídico por duas semanas</strong> — quem perguntou, sobre qual cliente, que tipo, quanto tempo levou. Em paralelo: esquema, três papéis novos no chassi, visibilidade por classe de dado, taxonomia de cláusulas acordada com o Jurídico.</p></div></div>
+        <div class="phase"><div class="p-n">J1</div><div class="p-b"><h4>Registro e Clicksign · 4 sem</h4><p>Cadastro de contrato, documentos, integração C13 com status de assinatura por webhook, migração das 21 colunas como propostas, e a busca da T20. <strong>Marco: a planilha para de ser atualizada.</strong></p></div></div>
+        <div class="phase"><div class="p-n">J2</div><div class="p-b"><h4>Cláusulas tipadas e extração assistida · 4 sem</h4><p>Taxonomia completa, vigência por cláusula, procedência, audiência, ficha da T21 e fila de confirmação da T23. <strong>Gate: taxa de aceitação da extração acima de 70% em 20 contratos antes de escalar.</strong></p></div></div>
+        <div class="phase"><div class="p-n">J3</div><div class="p-b"><h4>Alertas e calendário · 2 sem</h4><p>Seis gatilhos no motor de trabalho, calendário da T22. <strong>Gate: 14 dias de modo sombra aprovados.</strong></p></div></div>
+        <div class="phase"><div class="p-n">J4</div><div class="p-b"><h4>Aditivos, obrigações e timeline · 3 sem</h4><p>Aditivo com estado próprio alterando cláusulas, obrigações com dono e prazo, timeline jurídica tipada substituindo o histórico em texto livre.</p></div></div>
+        <div class="phase"><div class="p-n">J5</div><div class="p-b"><h4>Consumo pelas outras ferramentas · 2 sem</h4><p>Aba Contrato no Cliente 360; aviso prévio e multa na validação de cancelamento; renovação e reajuste na fila; escopo na implantação; exceção como contexto do score; espelho C15 para o HubSpot. <strong>É a fase que fecha o objetivo J6.</strong></p></div></div>
+        <div class="phase"><div class="p-n">J6</div><div class="p-b"><h4>Elaboração pelo caminho estreito · 4 sem</h4><p>Template com campos mesclados, cláusulas condicionais, geração de PDF e envio automático ao Clicksign. <strong>Sem edição colaborativa.</strong> A partir daqui, contrato novo nasce estruturado.</p></div></div>
+        <div class="phase"><div class="p-n">J7</div><div class="p-b"><h4>Aprovações internas · 3 sem</h4><p>Alçada por valor de exceção, fluxo entre Comercial, Jurídico, Financeiro e Diretoria, com gate humano registrado.</p></div></div>
+        <div class="phase"><div class="p-n">J8</div><div class="p-b"><h4>Indicadores de gestão contratual · 2 sem</h4><p>Exceções concedidas por período e por vendedor, tempo de ciclo de elaboração, contratos por tipo de cláusula, risco contratual concentrado, receita por índice de reajuste.</p></div></div>
+        <p><strong>Total: 26 semanas de esforço.</strong> O primeiro valor real chega no fim da J1 — a planilha para de ser atualizada — e a autonomia das áreas começa a ser medida no fim da J2.</p>
+      </section>
+
+      <!-- ══ 14 ══ -->
+      <section id="s14">
+        <p class="sec-label">14 — Em aberto</p>
+        <h2>Gaps &amp; pontos em aberto</h2>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th class="mono">ID</th><th>Pendência</th><th>Dono</th><th>Bloqueia</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">VJ-01</td><td><strong>Quantos contratos ativos existem</strong>, e quantos têm PDF acessível no Clicksign?</td><td>Jurídico</td><td>Dimensionar a migração e o custo da extração</td></tr>
+            <tr><td class="mono">VJ-02</td><td>A API do Clicksign expõe o <strong>arquivo assinado</strong> e emite webhook de mudança de status?</td><td>Plataforma</td><td>C13 inteiro — é a integração central do MVP</td></tr>
+            <tr><td class="mono">VJ-03</td><td>Contratos antigos estão <strong>todos no Clicksign</strong>, ou parte foi assinada em papel ou em outra ferramenta?</td><td>Jurídico</td><td>Se houver papel, entra digitalização no escopo</td></tr>
+            <tr><td class="mono">VJ-04</td><td>Existe <strong>template padrão</strong> de contrato, ou cada minuta é escrita do zero?</td><td>Jurídico</td><td>Viabilidade e prazo da J6</td></tr>
+            <tr><td class="mono">VJ-05</td><td>Qual a <strong>alçada de aprovação</strong> por valor de exceção hoje?</td><td>Diretoria</td><td>J7</td></tr>
+            <tr><td class="mono">VJ-06</td><td>O que exatamente significa cada valor da coluna STATUS hoje? E STATUS CONTRATO?</td><td>Jurídico</td><td>Mapeamento da migração — quatro colunas de status para dois estados</td></tr>
+            <tr><td class="mono">VJ-07</td><td>Há contrato com <strong>exclusividade ou não-concorrência</strong> vigente?</td><td>Jurídico</td><td>Risco que a Diretoria precisa conhecer antes de vender</td></tr>
+            <tr><td class="mono">VJ-08</td><td>Renovação é predominantemente <strong>automática ou expressa</strong>?</td><td>Jurídico</td><td>Calendário de renovação e cálculo de aviso prévio no Success</td></tr>
+            <tr><td class="mono">VJ-09</td><td>O <strong>squad cresce</strong> ou as duas ferramentas competem pelas mesmas pessoas?</td><td>Liderança</td><td>Todo o roadmap — é a decisão que define se J0 começa</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout note"><span class="k">O que este documento não resolve</span>
+          <p>Duas coisas continuam sendo julgamento humano. A <strong>taxonomia de cláusulas</strong> precisa ser acordada com quem convive com os contratos: a lista da seção 06 é uma proposta derivada das 21 colunas e do briefing, e vai errar em pelo menos um tipo — o que importa é que errar seja barato, e é por isso que existe o balde <code>outra</code> com regra de graduação.</p>
+          <p>E a <strong>decisão de alocação</strong>: com o squad atual, Contratos e Success competem. A pergunta não é qual é mais importante — é se a empresa aceita atrasar o Success para tirar o Jurídico do gargalo, e essa é uma decisão de liderança, não de produto.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="footer">
+    Alloyal Contratos · PRD, Dados &amp; Arquitetura · v1.0 · julho 2026<br>
+    Ferramenta 2 do <b>Alloyal Ops</b> · chassi e convenções em <code>docs/PRD-Alloyal-Ops-v1.0.html</code><br>
+    Repositório <b>stack-alloyal/alloyal-ops</b>
+  </div>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll('.toc a')]
+  const alvos = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean)
+  if ('IntersectionObserver' in window && alvos.length) {
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((e) => {
+          if (!e.isIntersecting) return
+          links.forEach((a) => a.removeAttribute('aria-current'))
+          const ativo = links.find((a) => a.getAttribute('href') === '#' + e.target.id)
+          if (ativo) ativo.setAttribute('aria-current', 'true')
+        })
+      },
+      { rootMargin: '-12% 0px -75% 0px' },
+    )
+    alvos.forEach((s) => obs.observe(s))
+  }
+</script>
+
+</body>
+</html>
