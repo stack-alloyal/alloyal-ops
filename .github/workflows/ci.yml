@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Portões de CI — doc 00, seção 11.
+#
+# Seis portões. Os três primeiros são higiene; os três últimos existem porque a
+# violação correspondente é uma falha de segurança ou de governança de dados que
+# revisão humana não pega de forma confiável.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualidade:
+    name: Lint, tipos e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Portão 1 — lint. Inclui as regras de FRONTEIRA de import (eslint.config.mjs):
+      # o gateway externo não alcança módulo interno; o dicionário de métricas não
+      # depende de aplicação; as superfícies não reusam tela entre si.
+      - name: Portão 1 — lint e fronteiras de import
+        run: pnpm lint
+
+      - name: Portão 2 — tipos
+        run: pnpm typecheck
+
+      - name: Portão 3 — build
+        run: pnpm build
+
+  isolamento:
+    name: Isolamento de tenant
+    runs-on: ubuntu-latest
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Portão 4 — O PORTÃO QUE MAIS IMPORTA.
+    #
+    # Roda contra Postgres real, não contra simulação. Verifica que o BANCO
+    # recusa, mesmo que a aplicação erre: RLS forçado, tenant transaction-local
+    # que não vaza no pool, papel externo com USAGE em exatamente um esquema,
+    # k-anonimato imposto por CHECK, `fact` append-only.
+    #
+    # `--test-force-exit` não é usado de propósito: se o teste for pulado por
+    # falta de banco, o passo seguinte falha explicitamente. Suíte de segurança
+    # que passa por não ter rodado é pior que suíte que falha.
+    # ─────────────────────────────────────────────────────────────────────────
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: teste
+          POSTGRES_DB: ops
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ops"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ops/db build
+
+      - name: Portão 4 — isolamento de tenant (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          node --test packages/db/dist/rls.test.js 2>&1 | tee resultado.txt
+          if grep -qE '^# skipped [1-9]' resultado.txt; then
+            echo "::error::Testes de isolamento foram PULADOS. Sem banco, este portão não protege nada."
+            exit 1
+          fi
+
+      # Portão 5 — migrations aplicam E revertem em banco limpo.
+      # Migration que sobe e não desce transforma rollback em incidente.
+      - name: Portão 5 — migrations idempotentes
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+        run: |
+          # Reaplicar não deve mudar nada nem falhar.
+          node packages/db/dist/migrate.js
+          node packages/db/dist/migrate.js
+
+  governanca:
+    name: Governança de métricas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Portão 6 — toda métrica tem dono, fórmula e explicação; nenhuma está
+      # duplicada; os pesos dos drivers somam 100. Doc 00, 6.5.
+      # Sem isto, "dicionário de definições com responsável nomeado" volta a ser
+      # uma promessa de documento.
+      - name: Portão 6 — dicionário de métricas
+        run: |
+          pnpm --filter @ops/metrics build
+          node --test packages/metrics/dist/metrics.test.js
+
+      - name: Testes das demais unidades
+        run: |
+          pnpm --filter @ops/auth build && node --test packages/auth/dist/auth.test.js
+          pnpm --filter @ops/contracts build && node --test packages/contracts/dist/contracts.test.js
+          pnpm --filter @ops/worker build && node --test apps/worker/dist/cycle.test.js
