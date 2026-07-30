@@ -1,0 +1,66 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# docs.alloyal.com.br — documentação de produto do Alloyal Ops
+#
+# Site estático servido atrás do Google SSO, no mesmo padrão de evolution e
+# radar: nginx serve os arquivos, oauth2-proxy autentica, e o Nginx Proxy
+# Manager faz o ingresso com Let's Encrypt.
+#
+# Por que atrás de SSO: os documentos contêm valores de MRR, arquitetura de
+# isolamento entre clientes e desenho de sigilo contratual. Nenhuma superfície
+# humana desta VM está aberta — só APIs com chave.
+#
+# `name:` fixado conforme a regra da casa. Sem volume nomeado (o conteúdo vem
+# de bind mount do repositório), mas o pin fica por consistência de projeto.
+# ═════════════════════════════════════════════════════════════════════════════
+
+name: alloyal-ops-docs
+
+services:
+  docs:
+    image: nginx:alpine
+    container_name: ops-docs
+    restart: always
+    volumes:
+      # Serve o diretório docs/ do próprio repositório, somente leitura.
+      # Caminho relativo ao compose: funciona em ~/alloyal-ops e em /opt/alloyal-ops.
+      - ../../docs:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    # NENHUMA porta publicada. O acesso é só pela rede do proxy.
+    networks:
+      - proxy-net
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Uma instância por domínio: redirect-url, cookie-domain e whitelist-domain
+  # são por domínio, então não dá para reaproveitar a do evolution.
+  oauth2-proxy-docs:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3
+    container_name: oauth2-proxy-docs
+    restart: always
+    env_file: oauth2.env
+    command:
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --trusted-proxy-ip=172.16.0.0/12
+      - --provider=google
+      - --email-domain=alloyal.com.br
+      - --redirect-url=https://docs.alloyal.com.br/oauth2/callback
+      - --whitelist-domain=docs.alloyal.com.br
+      - --cookie-domain=docs.alloyal.com.br
+      - --cookie-secure=true
+      - --cookie-csrf-per-request=true
+      - --cookie-csrf-expire=5m
+      - --set-xauthrequest=true
+      - --skip-provider-button=true
+      # Modo auth_request: o NPM faz o proxy, o oauth2-proxy só decide.
+      - --upstream=static://200
+    networks:
+      - proxy-net
+
+networks:
+  # Criada por `bash /opt/stack/bootstrap.sh`.
+  proxy-net:
+    external: true

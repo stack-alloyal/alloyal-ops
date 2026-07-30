@@ -1,0 +1,202 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# Alloyal Ops — stack da aplicação
+#
+# Segue as convenções da plataforma compartilhada (/opt/stack):
+#   • `name:` FIXADO — preserva os volumes independente do path de deploy.
+#     Renomear a pasta ou remover esta linha faz o Docker criar volumes NOVOS
+#     VAZIOS. Perda de banco. Não mexer.
+#   • redes externas `proxy-net` (web) e `data-net` (dados), criadas por
+#     `bash /opt/stack/bootstrap.sh`.
+#   • sem `depends_on` para serviços de outros projetos: o acoplamento é rede
+#     mais credencial.
+#   • ingresso só pelo Nginx Proxy Manager (80/443). Nenhuma porta pública aqui.
+#   • ARM64 (Oracle Cloud Ampere). Todas as imagens abaixo têm arm64.
+#
+# POR QUE POSTGRES E REDIS PRÓPRIOS, e não os compartilhados de /opt/stack:
+# o Ops roda varredura completa de base elegível e reconciliação de 90 dias toda
+# madrugada, sobre milhões de linhas. Dividir instância com Hub e Evolution é
+# convidar contenção de I/O, estouro de conexões e autovacuum competindo — e o
+# `pg_dumpall` compartilhado passaria a levar o tempo do maior banco. Precedente
+# na casa: `postgres-enable`. Decisão C-01/C-04 (doc 02).
+# ═════════════════════════════════════════════════════════════════════════════
+
+name: alloyal-ops
+
+services:
+  # ─── Banco ─────────────────────────────────────────────────────────────────
+  postgres-ops:
+    image: postgres:16
+    container_name: postgres-ops
+    restart: always
+    environment:
+      POSTGRES_DB: ops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_OPS_PASSWORD:?defina no .env}
+      # Fronteira de dia é calculada em America/Sao_Paulo nas queries; o servidor
+      # fica em UTC de propósito (ADR-008).
+      TZ: UTC
+      PGTZ: UTC
+    command:
+      - postgres
+      # Ajustes para carga de ETL noturna em VM de 4 vCPU / 23 GB.
+      # Revisar depois do spike de volumetria (doc 02, B.2) — estes são ponto de
+      # partida, não resultado de medição.
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=6GB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - work_mem=32MB
+      - -c
+      - max_connections=120
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=2000
+      - -c
+      - timezone=UTC
+    volumes:
+      - postgres_ops_data:/var/lib/postgresql/data
+    ports:
+      # Só loopback, e em 5434: 5432 e 5433 já estão ocupados na VM pelo Postgres
+      # compartilhado e pelo Supabase do Metas.
+      - '127.0.0.1:5434:5432'
+    networks:
+      - ops-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ops']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Fila ──────────────────────────────────────────────────────────────────
+  redis-ops:
+    image: redis:7
+    container_name: redis-ops
+    restart: always
+    # `noeviction` é obrigatório para BullMQ: com política de evicção, o Redis
+    # descarta job sob pressão de memória e a perda é silenciosa.
+    command: >
+      redis-server --appendonly yes
+      --requirepass ${REDIS_OPS_PASSWORD:?defina no .env}
+      --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - redis_ops_data:/data
+    networks:
+      - ops-net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Ingestão e consolidação ───────────────────────────────────────────────
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: worker
+    container_name: ops-worker
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TZ: UTC
+    networks:
+      - ops-net
+      # Sai para as APIs externas (HubSpot, CleverTap, Omie) e alcança a réplica.
+      - default
+    depends_on:
+      postgres-ops:
+        condition: service_healthy
+      redis-ops:
+        condition: service_healthy
+
+  # ─── Superfície interna ────────────────────────────────────────────────────
+  web-internal:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: web-internal
+    container_name: ops-web-internal
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # Conecta como ops_api: sem acesso a public_v (migration 0005).
+      DATABASE_URL: ${DATABASE_URL_API:?defina no .env}
+    # NENHUMA porta publicada. A aplicação confia no cabeçalho de identidade do
+    # oauth2-proxy, e esse cabeçalho é falsificável por quem falar direto com ela.
+    # A defesa é dupla: sem porta exposta, e @ops/auth só aceita o cabeçalho
+    # quando a conexão vem da faixa do proxy (ADR-016).
+    networks:
+      - ops-net
+      - proxy-net
+    depends_on:
+      postgres-ops:
+        condition: service_healthy
+
+  # ─── oauth2-proxy da superfície interna ────────────────────────────────────
+  # Uma instância por domínio: redirect-url e cookie-domain são por domínio.
+  # Mesma imagem e mesmo padrão dos outros apps da casa.
+  oauth2-proxy-ops:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3
+    container_name: oauth2-proxy-ops
+    restart: always
+    env_file: oauth2.env
+    command:
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --trusted-proxy-ip=172.16.0.0/12
+      - --provider=google
+      - --email-domain=alloyal.com.br
+      - --redirect-url=https://ops.alloyal.com.br/oauth2/callback
+      - --whitelist-domain=ops.alloyal.com.br
+      - --cookie-domain=ops.alloyal.com.br
+      - --cookie-secure=true
+      - --cookie-csrf-per-request=true
+      - --cookie-csrf-expire=5m
+      - --set-xauthrequest=true
+      - --skip-provider-button=true
+      - --upstream=static://200
+    networks:
+      - proxy-net
+
+  # ─── Superfície do cliente ─────────────────────────────────────────────────
+  # SEM oauth2-proxy: o acesso é por magic link, para gestor que não tem conta
+  # Google da Alloyal. Domínio separado para ter CSP, limite de taxa e política
+  # de cookie próprios.
+  web-portal:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: web-portal
+    container_name: ops-web-portal
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # Conecta como ops_portal: só public_v, só SELECT, sob RLS forçado.
+      DATABASE_URL: ${DATABASE_URL_PORTAL:?defina no .env}
+    networks:
+      - ops-net
+      - proxy-net
+    depends_on:
+      postgres-ops:
+        condition: service_healthy
+
+volumes:
+  postgres_ops_data:
+  redis_ops_data:
+
+networks:
+  # Rede interna do projeto: banco e fila não são alcançáveis de outros apps.
+  ops-net:
+    driver: bridge
+  # Compartilhada com o Nginx Proxy Manager (criada por /opt/stack/bootstrap.sh).
+  proxy-net:
+    external: true
