@@ -1,10 +1,10 @@
 import { chaveMestraConfigurada } from '@ops/auth'
-import { SEGREDOS, listarSegredos } from '@ops/config'
+import { INTEGRACAO_DA_CHAVE, INTEGRACOES_SONDAVEIS, SEGREDOS, listarSegredos } from '@ops/config'
 import { Aviso, Badge, Btn, Card, Field } from '@ops/ui'
-import { ArrowLeft, Lock } from 'lucide-react'
+import { ArrowLeft, Lock, PlugZap } from 'lucide-react'
 import Link from 'next/link'
 
-import { removerSegredo, salvarSegredo } from '../acoes'
+import { removerSegredo, salvarSegredo, verificarConexao } from '../acoes'
 import { Corpo, Topo } from '../../casca'
 import { pool } from '../../../../lib/db'
 import { exigir } from '../../../../lib/guarda'
@@ -106,6 +106,34 @@ export default async function Segredos({
           nem esta. Para confirmar qual valor está gravado, compare as 4 últimas letras; para trocar,
           cole o novo.
         </p>
+
+        {/* O teste por INTEGRAÇÃO e não por segredo: a credencial do CleverTap são três
+            campos, e testar um sozinho não diz nada. Quem lê a tela pensa em "o
+            CleverTap está funcionando?", não em "o passcode está certo?". */}
+        <Card title="Testar as conexões agora">
+          <div className="flex flex-wrap items-center gap-3">
+            {INTEGRACOES_SONDAVEIS.map((i) => {
+              const chaves = SEGREDOS.filter((s) => INTEGRACAO_DA_CHAVE[s.chave] === i)
+              const cadastradas = chaves.filter((s) => porChave.has(s.chave)).length
+              return (
+                <form key={i} action={verificarConexao}>
+                  <input type="hidden" name="integracao" value={i} />
+                  <Btn type="submit" variant="ghost">
+                    <PlugZap className="mr-1 inline h-[14px] w-[14px]" />
+                    {i} · {cadastradas}/{chaves.length}
+                  </Btn>
+                </form>
+              )
+            })}
+          </div>
+          <p className="mt-3 max-w-[80ch] text-[13px] leading-relaxed text-ink-2">
+            A sonda faz a menor leitura possível na API do fornecedor e diz o que ele
+            respondeu. Ela distingue <strong className="font-semibold">token recusado</strong>{' '}
+            de <strong className="font-semibold">fornecedor fora do ar</strong> — as duas
+            pedem ações opostas, e &ldquo;falhou&rdquo; sem a distinção faz alguém trocar um
+            token que estava certo.
+          </p>
+        </Card>
 
         <div className="grid gap-4">
           {SEGREDOS.map((s) => {

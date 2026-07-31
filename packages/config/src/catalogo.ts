@@ -286,6 +286,15 @@ export const SEGREDOS: readonly Segredo[] = [
       + 'de engajamento (S-ENG) fica neutro e sinalizado em toda conta.',
   },
   {
+    chave: 'clevertap.region',
+    rotulo: 'Região do CleverTap',
+    ondeConseguir: 'CleverTap → Settings → Project — é o prefixo do host da sua conta (us1, eu1, in1, sg1, aps3)',
+    semEle:
+      'A sonda e o ciclo C6 assumem us1. Com a conta em outra região, o pedido vai para '
+      + 'a conta errada e volta 401 — que se lê como passcode errado, e alguém troca um '
+      + 'passcode que estava certo.',
+  },
+  {
     chave: 'omie.app_key',
     rotulo: 'App Key do Omie',
     ondeConseguir: 'Omie → Configurações → API → Chaves de integração',

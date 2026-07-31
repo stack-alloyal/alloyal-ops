@@ -9,3 +9,4 @@
 export * from './catalogo.js'
 export * from './loja.js'
 export * from './papeis.js'
+export * from './uso.js'

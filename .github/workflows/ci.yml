@@ -246,6 +246,7 @@ jobs:
           node --test packages/success/dist/idor.test.js
           pnpm --filter @ops/config build
           node --test packages/config/dist/catalogo.test.js
+          node --test packages/config/dist/uso.test.js
           node --test packages/auth/dist/cifra.test.js
 
       - name: Portão 7 — design system (sem banco, sem build)

@@ -1,0 +1,386 @@
+import { decifrar } from '@ops/auth'
+import type pg from 'pg'
+
+/**
+ * O lado do USO dos segredos: decifrar e marcar que foi usado.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ Existe porque eu havia construído metade do fluxo. `cifrar` tinha chamador  │
+ * │ (a tela), `decifrar` não tinha nenhum, e `ops.segredo.usado_em` nunca era   │
+ * │ escrito. A consequência não era só código morto: a tela dizia "nunca usado  │
+ * │ por nenhum ciclo", o que INSINUA que um ciclo escreveria ali — e nenhum     │
+ * │ escrevia. Um campo que nunca muda de valor mente sobre o que mede.          │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Quem chama isto é o worker, com o role `ops_worker` — o único que tem `SELECT` em
+ * `ops.segredo`. A tela (`ops_api`) não tem, de propósito.
+ */
+
+export class SegredoAusenteError extends Error {
+  constructor(chave: string, oQueDeixaDeFuncionar: string) {
+    // A mensagem é escrita em log de ciclo e lida por quem está de plantão. Dizer
+    // "segredo ausente" mandaria a pessoa procurar onde; dizer a chave e a tela
+    // resolve sem ela abrir o código.
+    super(
+      `segredo "${chave}" não está cadastrado — ${oQueDeixaDeFuncionar}. ` +
+        'Cadastre em Configurações → Segredos.',
+    )
+    this.name = 'SegredoAusenteError'
+  }
+}
+
+/**
+ * Devolve o segredo em claro e marca `usado_em`.
+ *
+ * A marca é gravada ANTES de o valor ser devolvido, e fora de qualquer transação do
+ * chamador: se o ciclo falhar depois, ainda é verdade que o segredo foi lido. Registrar
+ * só em caso de sucesso faria "nunca usado" significar duas coisas — nunca lido, ou
+ * lido e a integração quebrou — e são conversas diferentes.
+ */
+export async function usarSegredo(
+  db: pg.Pool,
+  chave: string,
+  oQueDeixaDeFuncionar = 'a integração que depende dele não roda',
+): Promise<string> {
+  const { rows } = await db.query<{ valor_cifrado: string }>(
+    `UPDATE ops.segredo SET usado_em = now() WHERE chave = $1 RETURNING valor_cifrado`,
+    [chave],
+  )
+  const guardado = rows[0]?.valor_cifrado
+  if (!guardado) throw new SegredoAusenteError(chave, oQueDeixaDeFuncionar)
+  // `decifrar` lança `SegredoCorrompidoError` com mensagem que NÃO contém o valor —
+  // pode subir para o log do ciclo como está.
+  return decifrar(guardado)
+}
+
+/** Existe, sem decifrar nem marcar uso. Para o ciclo decidir se vale tentar. */
+export async function segredoExiste(db: pg.Pool, chave: string): Promise<boolean> {
+  const { rowCount } = await db.query('SELECT 1 FROM ops.segredo WHERE chave = $1', [chave])
+  return rowCount === 1
+}
+
+// ── Verificação de conexão ──────────────────────────────────────────────────
+
+/**
+ * O resultado de testar uma credencial contra a API do fornecedor.
+ *
+ * Três estados e não dois. "Falhou" junta coisas que pedem ações opostas: token errado
+ * (troque o token) e fornecedor fora do ar (espere e tente de novo). Quem recebe
+ * "falhou" sem a distinção vai trocar um token que estava certo.
+ */
+export type EstadoDaConexao = 'ok' | 'credencial_recusada' | 'indisponivel' | 'sem_credencial'
+
+export interface Conexao {
+  readonly chave: string
+  readonly estado: EstadoDaConexao
+  /** O que fazer a respeito. Aparece na tela. */
+  readonly diagnostico: string
+  readonly httpStatus?: number
+  readonly duracaoMs: number
+}
+
+/** O veredito, sem os campos que só quem chamou sabe (chave e duração). */
+export type Diagnostico = Omit<Conexao, 'chave' | 'duracaoMs'>
+
+const TEMPO_LIMITE_MS = 10_000
+
+/**
+ * Uma requisição de leitura, com tempo limite.
+ *
+ * Sem limite, uma API que aceita a conexão e não responde deixa a tela girando e o
+ * operador sem saber se o token está certo. Dez segundos é mais que qualquer resposta
+ * legítima destas três APIs e menos que a paciência de quem clicou.
+ */
+async function sondar(
+  url: string,
+  init: RequestInit,
+): Promise<{ status: number; corpo: string } | { erroDeRede: string }> {
+  const sinal = AbortSignal.timeout(TEMPO_LIMITE_MS)
+  try {
+    const r = await fetch(url, { ...init, signal: sinal })
+    // Só o começo do corpo: mensagem de erro de API costuma ser curta, e ler
+    // megabytes de uma resposta inesperada não ajuda em nada.
+    return { status: r.status, corpo: (await r.text()).slice(0, 400) }
+  } catch (err) {
+    return { erroDeRede: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * HubSpot: lista 1 deal. É a menor leitura que exercita o escopo que o C4/C5 precisa.
+ *
+ * Pedir 1 e não 100 porque o objetivo é validar credencial e escopo, não trazer dado —
+ * e uma sonda que puxa volume acaba sendo usada como sincronização por engano.
+ */
+async function sondarHubspot(token: string): Promise<Diagnostico> {
+  const r = await sondar('https://api.hubapi.com/crm/v3/objects/deals?limit=1', {
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+  })
+  if ('erroDeRede' in r) {
+    return {
+      estado: 'indisponivel',
+      diagnostico: `não foi possível falar com a api.hubapi.com (${r.erroDeRede}). ` +
+        'Pode ser rede da VM ou instabilidade do HubSpot — o token não foi testado.',
+    }
+  }
+  return classificarHubspot(r.status)
+}
+
+/**
+ * A classificação do HubSpot, separada da chamada.
+ *
+ * Separada por um motivo de teste, não de estética: com a classificação dentro da
+ * função que faz `fetch`, o único teste possível seria bater na API do fornecedor — e
+ * teste que falha quando o HubSpot tem um dia ruim é o primeiro a ser ignorado. Assim a
+ * regra é exercida de verdade, e o defeito real (400 do CleverTap tratado como
+ * indisponibilidade) tem portão.
+ */
+export function classificarHubspot(status: number): Diagnostico {
+  if (status === 200) {
+    return { estado: 'ok', diagnostico: 'token válido e com escopo de leitura de deals.', httpStatus: 200 }
+  }
+  if (status === 401) {
+    return {
+      estado: 'credencial_recusada',
+      diagnostico: 'o HubSpot recusou o token (401). Ele expirou, foi revogado, ou foi colado incompleto.',
+      httpStatus: 401,
+    }
+  }
+  if (status === 403) {
+    // 403 e não 401 é a distinção que economiza uma hora: o token é válido, falta
+    // escopo. Trocar o token não resolve; editar a Private App resolve.
+    return {
+      estado: 'credencial_recusada',
+      diagnostico:
+        'token aceito mas SEM escopo de leitura de deals (403). Não troque o token — ' +
+        'edite a Private App no HubSpot e marque crm.objects.deals.read.',
+      httpStatus: 403,
+    }
+  }
+  if (status === 429) {
+    return {
+      estado: 'indisponivel',
+      diagnostico: 'o HubSpot está limitando a taxa (429). O token pode estar certo; tente em alguns minutos.',
+      httpStatus: 429,
+    }
+  }
+  return {
+    estado: 'indisponivel',
+    diagnostico: `o HubSpot respondeu ${status}, que não é uma resposta esperada desta sonda.`,
+    httpStatus: status,
+  }
+}
+
+/** CleverTap: o par account-id + passcode vai em cabeçalho. */
+async function sondarClevertap(
+  accountId: string,
+  passcode: string,
+  regiao: string,
+): Promise<Diagnostico> {
+  // A região decide o host. `eu1` e outras têm prefixo próprio; sem ele o pedido vai
+  // para a conta errada e volta 401 — que seria lido como "passcode errado".
+  const host = regiao && regiao !== 'us1' ? `${regiao}.api.clevertap.com` : 'api.clevertap.com'
+  const r = await sondar(`https://${host}/1/counts/profiles.json`, {
+    method: 'POST',
+    headers: {
+      'X-CleverTap-Account-Id': accountId,
+      'X-CleverTap-Passcode': passcode,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ event_name: 'App Launched' }),
+  })
+  if ('erroDeRede' in r) {
+    return {
+      estado: 'indisponivel',
+      diagnostico: `não foi possível falar com ${host} (${r.erroDeRede}). A credencial não foi testada.`,
+    }
+  }
+  return classificarClevertap(r.status, regiao)
+}
+
+/**
+ * A classificação do CleverTap.
+ *
+ * O 400 entra em `credencial_recusada` e NÃO em `indisponivel`. Foi o defeito real desta
+ * sonda: o CleverTap devolve 400 para Account ID malformado, e classificar isso como
+ * problema do fornecedor manda o operador ESPERAR quando a ação é conferir o valor
+ * colado. É precisamente o erro que os três estados existem para evitar — e só apareceu
+ * rodando contra a API de verdade.
+ */
+export function classificarClevertap(status: number, regiao: string): Diagnostico {
+  if (status === 200) {
+    return { estado: 'ok', diagnostico: `credencial válida na região ${regiao || 'us1'}.`, httpStatus: 200 }
+  }
+  if (status === 400 || status === 401 || status === 403) {
+    return {
+      estado: 'credencial_recusada',
+      diagnostico:
+        `o CleverTap recusou (${status}). Confira o par Account ID + Passcode e, ` +
+        `principalmente, a REGIÃO: com a região errada o pedido vai para outra conta e o ` +
+        `erro é o mesmo de senha errada.`,
+      httpStatus: status,
+    }
+  }
+  return {
+    estado: 'indisponivel',
+    diagnostico: `o CleverTap respondeu ${status}, fora do esperado por esta sonda.`,
+    httpStatus: status,
+  }
+}
+
+/** Omie: as chaves vão no CORPO, não em cabeçalho — é a API deles. */
+async function sondarOmie(appKey: string, appSecret: string): Promise<Diagnostico> {
+  const r = await sondar('https://app.omie.com.br/api/v1/geral/clientes/', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      call: 'ListarClientesResumido',
+      app_key: appKey,
+      app_secret: appSecret,
+      param: [{ pagina: 1, registros_por_pagina: 1 }],
+    }),
+  })
+  if ('erroDeRede' in r) {
+    return {
+      estado: 'indisponivel',
+      diagnostico: `não foi possível falar com app.omie.com.br (${r.erroDeRede}). As chaves não foram testadas.`,
+    }
+  }
+  return classificarOmie(r.status, r.corpo)
+}
+
+/**
+ * A classificação do Omie.
+ *
+ * Duas coisas que a documentação não conta e a execução real contou:
+ *
+ *   O Omie devolve 200 COM erro no corpo (`faultstring`) quando a credencial é
+ *   inválida. Olhar só o status diria "ok" para uma chave errada.
+ *
+ *   E devolveu 403 na prática. A primeira versão desta função tinha "respondeu 200"
+ *   cravado no texto, então a mensagem AFIRMAVA 200 enquanto o status era 403 —
+ *   diagnóstico que mente sobre o que aconteceu é pior que diagnóstico ausente.
+ */
+export function classificarOmie(status: number, corpo: string): Diagnostico {
+  if (status === 200 && !/faultstring|faultcode/i.test(corpo)) {
+    return { estado: 'ok', diagnostico: 'App Key e App Secret válidos.', httpStatus: 200 }
+  }
+  if (/faultstring/i.test(corpo)) {
+    // O `faultstring` vem com unicode escapado (`n\u00e3o`). Mostrar o escape cru
+    // transformaria a mensagem do fornecedor — a informação mais útil aqui — em ruído.
+    const bruto = /"faultstring"\s*:\s*"([^"]{0,200})"/i.exec(corpo)?.[1]
+    const motivo = bruto?.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) =>
+      String.fromCharCode(Number.parseInt(h, 16)),
+    )
+    return {
+      estado: 'credencial_recusada',
+      diagnostico:
+        `o Omie recusou as chaves (HTTP ${status})${motivo ? `: "${motivo}"` : ''}. ` +
+        'Atenção: esta API às vezes devolve 200 mesmo recusando, então a sonda olha o ' +
+        'corpo e não só o status.',
+      httpStatus: status,
+    }
+  }
+  return {
+    estado: 'indisponivel',
+    diagnostico: `o Omie respondeu ${status}, fora do esperado por esta sonda.`,
+    httpStatus: status,
+  }
+}
+
+/**
+ * Testa uma integração com as credenciais cadastradas.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ Por que existe: sem isto, quem cola um token descobre que ele está errado   │
+ * │ quando um ciclo falha de madrugada — e o alarme diz "C4 falhou", não "o     │
+ * │ token está sem escopo". A distância entre colar e saber era de horas.       │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * O `usado_em` é marcado: testar a credencial É usá-la, e a tela deixa de dizer
+ * "nunca usado" no minuto em que alguém confere.
+ */
+export async function testarConexao(db: pg.Pool, integracao: string): Promise<Conexao> {
+  const inicio = process.hrtime.bigint()
+  const fim = (r: Omit<Conexao, 'chave' | 'duracaoMs'>): Conexao => ({
+    chave: integracao,
+    ...r,
+    duracaoMs: Number((process.hrtime.bigint() - inicio) / 1_000_000n),
+  })
+
+  const semCredencial = (quais: string): Conexao =>
+    fim({
+      estado: 'sem_credencial',
+      diagnostico: `${quais} não cadastrado(s) — não há o que testar.`,
+    })
+
+  try {
+    if (integracao === 'hubspot') {
+      if (!(await segredoExiste(db, 'hubspot.token'))) return semCredencial('token do HubSpot')
+      return fim(await sondarHubspot(await usarSegredo(db, 'hubspot.token')))
+    }
+
+    if (integracao === 'clevertap') {
+      const [temId, temPass] = await Promise.all([
+        segredoExiste(db, 'clevertap.account_id'),
+        segredoExiste(db, 'clevertap.passcode'),
+      ])
+      if (!temId || !temPass) {
+        return semCredencial(
+          !temId && !temPass ? 'Account ID e Passcode' : !temId ? 'Account ID' : 'Passcode',
+        )
+      }
+      const regiao = (await segredoExiste(db, 'clevertap.region'))
+        ? await usarSegredo(db, 'clevertap.region')
+        : 'us1'
+      return fim(
+        await sondarClevertap(
+          await usarSegredo(db, 'clevertap.account_id'),
+          await usarSegredo(db, 'clevertap.passcode'),
+          regiao,
+        ),
+      )
+    }
+
+    if (integracao === 'omie') {
+      const [temKey, temSecret] = await Promise.all([
+        segredoExiste(db, 'omie.app_key'),
+        segredoExiste(db, 'omie.app_secret'),
+      ])
+      if (!temKey || !temSecret) {
+        return semCredencial(
+          !temKey && !temSecret ? 'App Key e App Secret' : !temKey ? 'App Key' : 'App Secret',
+        )
+      }
+      return fim(
+        await sondarOmie(await usarSegredo(db, 'omie.app_key'), await usarSegredo(db, 'omie.app_secret')),
+      )
+    }
+
+    return fim({
+      estado: 'indisponivel',
+      diagnostico: `não existe sonda para "${integracao}".`,
+    })
+  } catch (err) {
+    // Erro de cifra ou de banco. A mensagem de `SegredoCorrompidoError` não contém o
+    // valor, então pode ir para a tela como está.
+    return fim({
+      estado: 'indisponivel',
+      diagnostico: err instanceof Error ? err.message : 'falha inesperada ao ler a credencial',
+    })
+  }
+}
+
+/** As integrações que têm sonda, para a tela oferecer o botão só onde faz sentido. */
+export const INTEGRACOES_SONDAVEIS = ['hubspot', 'clevertap', 'omie'] as const
+
+/** Qual integração cada chave de segredo pertence. */
+export const INTEGRACAO_DA_CHAVE: Readonly<Record<string, string>> = {
+  'hubspot.token': 'hubspot',
+  'hubspot.webhook_secret': 'hubspot',
+  'clevertap.account_id': 'clevertap',
+  'clevertap.passcode': 'clevertap',
+  'clevertap.region': 'clevertap',
+  'omie.app_key': 'omie',
+  'omie.app_secret': 'omie',
+}

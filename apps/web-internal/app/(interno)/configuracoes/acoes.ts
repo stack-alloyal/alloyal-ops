@@ -9,6 +9,7 @@ import {
   gravarAjuste,
   gravarSegredo,
   revogar,
+  testarConexao,
 } from '@ops/config'
 import { redirect } from 'next/navigation'
 
@@ -133,4 +134,27 @@ export async function tirarPapel(dados: FormData): Promise<void> {
     if (m) voltar('/configuracoes/papeis', 'erro', m)
     throw err
   }
+}
+
+/**
+ * Testa a credencial contra a API do fornecedor, agora.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ Sem isto, quem cola um token descobre que ele está errado quando um ciclo    │
+ * │ falha de madrugada — e o alarme diz "C4 falhou", não "o token está sem       │
+ * │ escopo de leitura de deals". A distância entre colar e saber era de horas.   │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * O diagnóstico volta pela URL. É informação de operação, não segredo: nenhuma sonda
+ * devolve o valor da credencial, só o que o fornecedor respondeu sobre ela.
+ */
+export async function verificarConexao(dados: FormData): Promise<void> {
+  await exigir((p) => p.configurar, 'teste de conexão')
+  const integracao = String(dados.get('integracao') ?? '')
+  const r = await testarConexao(pool(), integracao)
+  voltar(
+    '/configuracoes/segredos',
+    r.estado === 'ok' ? 'ok' : 'erro',
+    `${integracao}: ${r.diagnostico} (${r.duracaoMs} ms)`,
+  )
 }
