@@ -38,33 +38,51 @@ não só o pulse. Foi por isso que verifiquei os certificados antes de recomenda
 algum dos seis existentes usasse autoassinado, Strict o derrubaria. Todos são Origin
 CA, então a mudança é segura para o conjunto.
 
-### ⚠ Um hostname QUEBRA sob Strict, e é preciso corrigir antes
+### ⚠ DOIS hostnames quebram sob Strict, e é preciso corrigir antes
 
-Testei os sete hostnames contra o nginx local, pedindo o certificado que cada um
-apresenta de fato (`openssl s_client -servername ...`):
+Testei os sete pedindo o certificado que cada um apresenta de fato, com validação de
+hostname — que é exatamente o que o Strict faz
+(`openssl s_client -servername X -verify_hostname X`):
 
-| Hostname | Emissor | SAN apresentado | Sob Strict |
+| Hostname | Certificado | SAN apresentado | Sob Strict |
 |---|---|---|---|
-| `hub` | Cloudflare Origin CA | `hub.alloyal.com.br` | ok |
-| `publi` | Cloudflare Origin CA | `publi.alloyal.com.br` | ok |
-| `metas` | Cloudflare Origin CA | `metas.alloyal.com.br` | ok |
+| **`hub`** | npm-2 | **`hub.a.alloyal.com.br`** | **FALHA** |
+| **`enable`** | npm-3 | **`hub.alloyal.com.br`** | **FALHA** |
+| `publi` | npm-5 | `publi.alloyal.com.br` | ok |
+| `metas` | npm-6 | `metas.alloyal.com.br` | ok |
 | `evolution` | Let's Encrypt | `evolution.alloyal.com.br` | ok |
 | `supabase-metas` | Let's Encrypt | `supabase-metas.alloyal.com.br` | ok |
-| **`enable`** | Cloudflare Origin CA | **`hub.alloyal.com.br`** | **FALHA** |
 
-**`enable.alloyal.com.br` serve o certificado de `hub.alloyal.com.br`.** O proxy host
-dele aponta para `/data/custom_ssl/npm-3`, que é o certificado do hub. Hoje isso passa
-porque o modo atual não valida hostname; **sob Strict o Cloudflare valida, e o
-`enable` cai.**
+**Os dois erros vêm da mesma origem.** O `npm-2` foi emitido para
+`hub.a.alloyal.com.br` — um `a.` a mais, erro de digitação — e ficou no `hub`. O
+`npm-3`, que É o certificado correto de `hub.alloyal.com.br`, foi ligado ao `enable`.
 
-Corrigir antes: emitir um Origin Certificate para `enable.alloyal.com.br` (ou um
-wildcard `*.alloyal.com.br`, que resolveria este caso e o do pulse de uma vez) e
-apontar o proxy host dele para o novo.
+Hoje nada disso aparece porque o modo em vigor não valida hostname. Sob Strict, os dois
+respondem **526 Invalid SSL certificate**.
 
-Um wildcard `*.alloyal.com.br` é provavelmente o melhor caminho: hoje são certificados
-de hostname único, e cada produto novo repete este passo — com a chance de repetir
-também o erro de reaproveitar o certificado do vizinho, que é exatamente o que
-aconteceu com o `enable`.
+Para distinguir o erro real do ruído do teste local: `publi` e `metas` também acusam
+`unable to get local issuer certificate`, e isso é esperado — o openssl da VM não tem a
+Cloudflare Origin CA no armazém de confiança, mas o Cloudflare tem. O erro que importa é
+`num=62:hostname mismatch`, e ele aparece só em `hub` e `enable`.
+
+### O conserto
+
+**`hub`** é trivial e não precisa emitir nada: aponte o proxy host dele para o
+**npm-3**, que já tem o SAN correto. Isso conserta o `hub` e libera o `npm-2`, que não
+serve para nada (o hostname dele não existe).
+
+**`enable`** precisa de certificado próprio. Duas opções:
+
+- **Let's Encrypt pelo NPM**, como `evolution` e `supabase-metas` já usam — não exige
+  token do Cloudflare, e o mecanismo comprovadamente funciona nesta VM com o proxy
+  ativo.
+- **Origin Certificate wildcard `*.alloyal.com.br`** no Cloudflare, apontado para
+  `hub`, `enable` e `pulse` de uma vez. Resolve os três e evita que o próximo produto
+  repita o passo — e repita o erro de reaproveitar o certificado do vizinho, que é
+  literalmente o que aconteceu aqui.
+
+O wildcard é o melhor caminho: dois dos seis hosts já estão com certificado errado, e a
+causa é o processo manual de um certificado por hostname.
 
 ## 3 · O que Full (Strict) NÃO resolve, e é a lacuna maior
 
@@ -134,8 +152,11 @@ há risco de arrastar os outros produtos.
 
 ## 5 · Ordem de execução
 
-1. Emitir/instalar o Origin Certificate de `pulse.alloyal.com.br` no NPM
-   (nenhum dos quatro existentes cobre este hostname — todos são de hostname único).
+0. **Consertar `hub` e `enable`** — sem isso, virar para Strict devolve 526 nos dois.
+   O `hub` só precisa apontar para o npm-3; o `enable` precisa de certificado próprio.
+1. Emitir/instalar o certificado de `pulse.alloyal.com.br` no NPM. Um wildcard
+   `*.alloyal.com.br` cobriria `pulse`, `enable` e `hub` de uma vez — nenhum dos quatro
+   certificados existentes cobre o pulse, e dois estão no host errado.
 2. Criar o proxy host de `pulse.alloyal.com.br` apontando para `web-internal:3000`,
    com o Advanced Config de `infra/proxy-pulse.advanced.conf`.
 3. Subir o `oauth2-proxy-pulse` (o config espera esse nome de contêiner) com o client
