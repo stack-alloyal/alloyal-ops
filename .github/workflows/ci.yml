@@ -166,7 +166,7 @@ jobs:
       # revisão de tela, porque a tela fica bonita e mostra demais.
       - name: Portão 4i — recorte de carteira na ESCRITA (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:postgres@127.0.0.1:5432/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
         run: |
           pnpm --filter @ops/success build
           node --test --test-concurrency=1 packages/success/dist/recorte.test.js
