@@ -7,6 +7,7 @@ import {
   FileText,
   Inbox,
   SlidersHorizontal,
+  Users,
   Wallet,
 } from 'lucide-react'
 
@@ -26,6 +27,12 @@ export interface ItemDeMenu {
 
 export const MENU: readonly ItemDeMenu[] = [
   { href: '/', rotulo: 'Minha fila', icone: Inbox, proposito: 'O que fazer agora' },
+  {
+    href: '/carteira',
+    rotulo: 'Carteira',
+    icone: Users,
+    proposito: 'Onde eu olho — risco × receita',
+  },
   {
     href: '/renovacoes',
     rotulo: 'Renovações',
