@@ -26,6 +26,8 @@ import {
   fechar,
 } from '@ops/success'
 
+import { vencerObrigacoes } from '@ops/contratos'
+
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
 import { defineCycle } from '../cycle.js'
@@ -239,6 +241,35 @@ export const c14Renovacoes = defineCycle({
     const r = await abrirJanela(poolDoWorker(), { hoje: ctx.agora.toISOString().slice(0, 10) })
     ctx.log(`${r.abertas} janela(s) aberta(s) · ${r.jaAbertas} já estavam na janela`)
     return { linhasLidas: r.abertas + r.jaAbertas, linhasGravadas: r.abertas }
+  },
+})
+
+/**
+ * C15 — vencer obrigações contratuais.
+ *
+ * Estado gravado e não derivado da data na leitura, porque a tela precisa
+ * distinguir "venceu e ninguém viu" de "venceu e alguém decidiu deixar vencer" — e
+ * as duas só se separam se o estado for gravado por alguém, ou por este ciclo.
+ *
+ * Roda cedo, antes do snapshot: obrigação vencida é fato de ontem, e aparecer no
+ * calendário de hoje já vencida é o comportamento certo.
+ */
+export const c15Obrigacoes = defineCycle({
+  id: 'C15',
+  descricao: 'Vencimento de obrigações contratuais',
+  fonte: 'ops',
+  metodo: 'consolidacao',
+  agenda: '15 6 * * *',
+  janela: 'estado_atual',
+  chaveNatural: ['id'],
+  emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 2, degradacao: 'reprocessa' },
+  fase: 'F1',
+  executar: async (ctx) => {
+    const n = await vencerObrigacoes(poolDoWorker(), {
+      hoje: ctx.agora.toISOString().slice(0, 10),
+    })
+    ctx.log(`${n} obrigação(ões) marcada(s) como vencida(s)`)
+    return { linhasLidas: n, linhasGravadas: n }
   },
 })
 

@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarCheck,
+  CalendarDays,
   Database,
   DoorOpen,
   FileText,
@@ -38,6 +39,12 @@ export const MENU: readonly ItemDeMenu[] = [
     rotulo: 'Contratos',
     icone: FileText,
     proposito: 'O que vale hoje, com procedência',
+  },
+  {
+    href: '/contratos/calendario',
+    rotulo: 'Calendário',
+    icone: CalendarDays,
+    proposito: 'Nenhuma data crítica descoberta pela data',
   },
   {
     href: '/biblioteca',

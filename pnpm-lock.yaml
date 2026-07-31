@@ -139,6 +139,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@ops/contratos':
+        specifier: workspace:*
+        version: link:../../packages/contratos
       '@ops/db':
         specifier: workspace:*
         version: link:../../packages/db

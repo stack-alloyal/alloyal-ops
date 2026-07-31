@@ -10,3 +10,4 @@
 
 export * from './taxonomia.js'
 export * from './clausula.js'
+export * from './calendario.js'
