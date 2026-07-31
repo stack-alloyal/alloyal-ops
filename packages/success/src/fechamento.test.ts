@@ -153,8 +153,13 @@ describe('fechamento mensal', { skip: !ADMIN }, () => {
   test('resíduo negativo também aparece, e não vira contração', async () => {
     const a = await conta('some', 400_000, '2025-01-01')
     await conta('fica', 600_000, '2025-01-01')
+    // `encerrado_em` e não `status_vigencia`: a cascata lê datas, porque status é
+    // estado corrente e usá-lo num recorte passado faria o mês mudar depois de
+    // fechado. Encerrar um contrato é gravar a data em que ele parou.
     await pool.query(
-      `UPDATE core.contract SET status_vigencia='encerrado' WHERE account_id=$1`,
+      `UPDATE core.contract
+          SET status_vigencia='encerrado', encerrado_em='2026-06-30'
+        WHERE account_id=$1`,
       [a],
     )
 

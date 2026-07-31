@@ -375,16 +375,59 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
     )
   })
 
-  test('depois de encerrada, uma saída nova pode ser aberta', async () => {
-    // Cliente que volta e sai de novo é um caso real, e o bloqueio é só sobre
-    // saídas ABERTAS.
+  test('encerrar fecha o contrato na data da última cobrança', async () => {
+    // Sem isto o ledger diz que a receita saiu e a base de contratos diz que não,
+    // e a cascata publica a diferença como resíduo não atribuído todo mês.
     await ateEncerrar()
+    const { rows } = await pool.query<{
+      encerrado_em: string
+      vigencia_fim: string
+      status: string
+    }>(
+      `SELECT to_char(encerrado_em,'YYYY-MM-DD') encerrado_em,
+              to_char(vigencia_fim,'YYYY-MM-DD') vigencia_fim,
+              status_vigencia status
+         FROM core.contract WHERE account_id = $1`,
+      [acme],
+    )
+    assert.equal(rows[0]?.encerrado_em, '2026-10-31', 'último dia da última competência cobrada')
+    assert.equal(rows[0]?.status, 'encerrado')
+    // O fim CONTRATADO não é sobrescrito: a diferença entre as duas datas é o
+    // prazo restante, e é ela que caracteriza multa por rescisão antecipada.
+    assert.equal(rows[0]?.vigencia_fim, '2027-01-01', 'o fim contratado fica intacto')
+  })
+
+  test('cliente que volta precisa de contrato novo, não de saída nova', async () => {
+    // Depois de encerrada, a conta não tem contrato vigente — e é assim que deve
+    // ser: não existe "sair" de um contrato que já terminou. O caminho de volta é
+    // um contrato novo, que é o que uma reativação de fato é.
+    await ateEncerrar()
+    await assert.rejects(
+      () =>
+        anunciar(pool, CSM, {
+          accountId: acme,
+          origem: 'cliente',
+          dataLevantada: '2027-01-10',
+        }),
+      (e: Error) => {
+        assert.match(e.message, /sem contrato vigente/)
+        return true
+      },
+    )
+
+    await pool.query(
+      `INSERT INTO core.contract
+         (account_id, mrr_centavos, inicio, vigencia_fim, vidas_contratadas,
+          aviso_previo_dias, status_vigencia)
+       VALUES ($1, 3000000, '2027-01-01', '2029-01-01', 800, 30, 'vigente')`,
+      [acme],
+    )
     const outra = await anunciar(pool, CSM, {
       accountId: acme,
       origem: 'cliente',
-      dataLevantada: '2027-01-10',
+      dataLevantada: '2027-02-10',
     })
-    assert.ok(outra)
+    assert.ok(outra, 'com contrato novo, uma saída nova é possível')
   })
 
   test('conta sem contrato vigente não tem o que congelar', async () => {

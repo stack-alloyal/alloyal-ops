@@ -135,7 +135,7 @@ export async function fechar(
       `SELECT COALESCE(sum(mrr_centavos),0)::text mrr, count(*)::text contas
          FROM core.contract
         WHERE inicio <= ($1::date - 1)
-          AND (vigencia_fim IS NULL OR vigencia_fim >= ($1::date - 1))`,
+          AND COALESCE(encerrado_em, vigencia_fim, 'infinity'::date) >= ($1::date - 1)`,
       [comp],
     )
     const mrrInicial = Number(ant[0]?.mrr ?? base[0]?.mrr ?? 0)
@@ -163,13 +163,20 @@ export async function fechar(
 
     // ── MRR final OBSERVADO ──
     // Segunda fonte, independente do ledger. É o que dá sentido ao resíduo.
+    //
+    // O recorte é por DATA, nunca por `status_vigencia`. Status é estado
+    // CORRENTE: filtrar por ele aqui faria o MRR final de julho mudar no dia em
+    // que alguém encerrasse um contrato — um mês já apresentado passaria a
+    // contar outra história, que é a mesma falha corrigida no resumo de churn.
+    //
+    // `encerrado_em` vem antes de `vigencia_fim` porque saída antecipada é a
+    // regra e não a exceção: o contrato ia até 2028 e a receita parou em agosto.
     const { rows: fim } = await cliente.query<{ mrr: string }>(
       `SELECT COALESCE(sum(mrr_centavos),0)::text mrr
          FROM core.contract
-        WHERE status_vigencia = 'vigente'
-          AND inicio <= ($1::date + INTERVAL '1 month - 1 day')
-          AND (vigencia_fim IS NULL
-               OR vigencia_fim >= ($1::date + INTERVAL '1 month - 1 day'))`,
+        WHERE inicio <= ($1::date + INTERVAL '1 month - 1 day')
+          AND COALESCE(encerrado_em, vigencia_fim, 'infinity'::date)
+              >= ($1::date + INTERVAL '1 month - 1 day')`,
       [comp],
     )
     const mrrFinal = Number(fim[0]?.mrr ?? 0)

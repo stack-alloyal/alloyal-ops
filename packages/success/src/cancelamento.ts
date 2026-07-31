@@ -426,6 +426,23 @@ export async function encerrar(
       [saidaId, id.email, efeito],
     )
 
+    // O contrato para de produzir receita no ÚLTIMO DIA da última competência
+    // cobrada. Sem isto, o ledger diz que a receita saiu e a base de contratos
+    // diz que não — e a cascata publica a diferença como resíduo não atribuído
+    // todo mês, para sempre. Foi assim que este bug apareceu: o resíduo o achou.
+    //
+    // `vigencia_fim` NÃO é alterado. Ele é o fim contratado, e a diferença entre
+    // os dois é o prazo restante — o fato que caracteriza multa por rescisão
+    // antecipada, e que o Jurídico vai precisar.
+    await cliente.query(
+      `UPDATE core.contract
+          SET encerrado_em = ($2::date + INTERVAL '1 month - 1 day')::date,
+              status_vigencia = 'encerrado',
+              atualizado_em = now()
+        WHERE id = (SELECT contract_id FROM success.cancellation WHERE id = $1)`,
+      [saidaId, s.competenciaUltimaCobranca + '-01'],
+    )
+
     // `chave_natural` faz a gravação ser idempotente: dois cliques no botão de
     // aprovar não podem virar duas baixas de receita.
     await cliente.query(
