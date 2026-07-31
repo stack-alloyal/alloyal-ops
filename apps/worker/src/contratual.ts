@@ -2,6 +2,8 @@ import { datasCriticas, type DataCritica, type TipoData } from '@ops/contratos'
 import type { Prioridade } from '@ops/metrics'
 import type pg from 'pg'
 
+import { numerosConfigurados } from '@ops/auth'
+
 import { gravarCandidato, prepararContexto, type ContextoGravacao } from './fila.js'
 
 /**
@@ -153,6 +155,22 @@ export async function avaliarDatasContratuais(
   try {
     await cliente.query('BEGIN')
     const ctx: ContextoGravacao = await prepararContexto(cliente, competencia, agora)
+    // As antecedências configuradas. Substituem só as duas que o catálogo declara; as
+    // outras seguem no MAPA, porque não há caso de uso para ajustá-las pela tela.
+    const antecedencia = await numerosConfigurados(cliente, {
+      'contratos.antecedencia_vencimento': {
+        padrao: MAPA['vencimento']?.antecedenciaDias ?? 90,
+        minimo: 15,
+        maximo: 365,
+        inteiro: true,
+      },
+      'contratos.antecedencia_reajuste': {
+        padrao: MAPA['reajuste']?.antecedenciaDias ?? 45,
+        minimo: 15,
+        maximo: 180,
+        inteiro: true,
+      },
+    })
 
     // Mais urgente primeiro: se o teto cortar, tem que cortar o menos urgente.
     const ordenadas = [...datas].sort((a, b) => a.dias - b.dias)
@@ -160,7 +178,13 @@ export async function avaliarDatasContratuais(
     for (const d of ordenadas) {
       const m = MAPA[d.tipo]
       if (!m) continue
-      if (!mereceItem(d, m.antecedenciaDias)) {
+      const dias =
+          d.tipo === 'vencimento'
+            ? antecedencia['contratos.antecedencia_vencimento']
+            : d.tipo === 'reajuste'
+              ? antecedencia['contratos.antecedencia_reajuste']
+              : m.antecedenciaDias
+        if (!mereceItem(d, dias)) {
         longeDemais++
         continue
       }

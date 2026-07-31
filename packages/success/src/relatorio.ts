@@ -1,4 +1,10 @@
-import { exigirConta, recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+import {
+  exigirConta,
+  numeroConfigurado,
+  recorteDaConta,
+  veBaseDeContas,
+  type Identidade,
+} from '@ops/auth'
 
 import type pg from 'pg'
 
@@ -92,6 +98,9 @@ export interface Relatorio {
 
 /** Quantos meses de evolução o relatório mostra. */
 export const MESES_DE_EVOLUCAO = 12
+
+/** Faixa aceita para `relatorio.meses_de_evolucao`, espelhando o catálogo. */
+const FAIXA_EVOLUCAO = { padrao: MESES_DE_EVOLUCAO, minimo: 3, maximo: 24, inteiro: true }
 
 /** No máximo três ações: uma lista de oito não é um pedido, é um relatório de bugs. */
 export const MAXIMO_ACOES = 3
@@ -188,7 +197,7 @@ export async function montarConteudo(
         -- diários faria o gestor procurar tendência em ruído.
         AND competencia = date_trunc('month', competencia)::date
       ORDER BY competencia`,
-    [accountId, competencia, MESES_DE_EVOLUCAO],
+    [accountId, competencia, await numeroConfigurado(db, 'relatorio.meses_de_evolucao', FAIXA_EVOLUCAO)],
   )
 
   const comparativo = await comparativoDaConta(db, accountId, competencia)

@@ -1,3 +1,4 @@
+import { numeroConfigurado } from '@ops/auth'
 import type pg from 'pg'
 
 /**
@@ -57,16 +58,32 @@ export interface RecorteBenchmark {
 export function decidirSupressao(
   nEmpresas: number,
   nPessoas: number,
+  /**
+   * Os mínimos EFETIVOS, de `ops.configuracao` — `relatorio.k_minimo_empresas` e
+   * `relatorio.k_minimo_pessoas`.
+   *
+   * `Math.max` com a constante do código não é redundância: a tela recusa valor
+   * abaixo do piso e `numeroConfigurado` ignora quem tentar por SQL direto, mas este
+   * é o único agregado que SAI da empresa contendo dado derivado de outros clientes.
+   * Uma terceira barreira aqui custa uma linha, e o custo do furo é publicar o número
+   * de um concorrente no relatório de outro cliente.
+   */
+  minimos: { empresas: number; pessoas: number } = {
+    empresas: MINIMO_EMPRESAS,
+    pessoas: MINIMO_PESSOAS,
+  },
 ): { suprimido: boolean; motivo: string | null } {
-  const faltaEmpresa = nEmpresas < MINIMO_EMPRESAS
-  const faltaPessoa = nPessoas < MINIMO_PESSOAS
+  const minEmpresas = Math.max(minimos.empresas, MINIMO_EMPRESAS)
+  const minPessoas = Math.max(minimos.pessoas, MINIMO_PESSOAS)
+  const faltaEmpresa = nEmpresas < minEmpresas
+  const faltaPessoa = nPessoas < minPessoas
   if (!faltaEmpresa && !faltaPessoa) return { suprimido: false, motivo: null }
 
   // O motivo diz QUAL condição falhou e o número. "Recorte pequeno" sem número
   // não permite a ninguém saber quanto falta para ele deixar de ser pequeno.
   const partes: string[] = []
-  if (faltaEmpresa) partes.push(`${nEmpresas} de ${MINIMO_EMPRESAS} empresas`)
-  if (faltaPessoa) partes.push(`${nPessoas} de ${MINIMO_PESSOAS} pessoas`)
+  if (faltaEmpresa) partes.push(`${nEmpresas} de ${minEmpresas} empresas`)
+  if (faltaPessoa) partes.push(`${nPessoas} de ${minPessoas} pessoas`)
   return {
     suprimido: true,
     motivo: `recorte com ${partes.join(' e ')} — abaixo do mínimo para comparação anônima`,
@@ -87,6 +104,22 @@ export async function calcularBenchmark(
   db: pg.Pool,
   competencia: string,
 ): Promise<{ gravados: number; suprimidos: number; recortes: RecorteBenchmark[] }> {
+  // Os mínimos configurados, lidos ANTES da transação: uma leitura só por execução, e
+  // o valor não muda no meio de um cálculo que grava recorte por recorte.
+  const minimos = {
+    empresas: await numeroConfigurado(db, 'relatorio.k_minimo_empresas', {
+      padrao: MINIMO_EMPRESAS,
+      minimo: MINIMO_EMPRESAS,
+      maximo: 50,
+      inteiro: true,
+    }),
+    pessoas: await numeroConfigurado(db, 'relatorio.k_minimo_pessoas', {
+      padrao: MINIMO_PESSOAS,
+      minimo: MINIMO_PESSOAS,
+      maximo: 5000,
+      inteiro: true,
+    }),
+  }
   const cliente = await db.connect()
   try {
     await cliente.query('BEGIN')
@@ -141,7 +174,7 @@ export async function calcularBenchmark(
     const recortes: RecorteBenchmark[] = rows.map((r) => {
       const nEmpresas = Number(r.n_empresas)
       const nPessoas = Number(r.n_pessoas)
-      const { suprimido, motivo } = decidirSupressao(nEmpresas, nPessoas)
+      const { suprimido, motivo } = decidirSupressao(nEmpresas, nPessoas, minimos)
       return {
         competencia,
         porte: r.porte,
@@ -222,6 +255,23 @@ export async function comparativoDaConta(
   accountId: string,
   competencia: string,
 ): Promise<Comparativo[]> {
+  // Os mesmos mínimos que `calcularBenchmark` usou ao gravar. Ler de novo em vez de
+  // confiar no que está gravado é o que garante que o MOTIVO exibido corresponda ao
+  // critério em vigor — e não a um critério que mudou depois.
+  const minimos = {
+    empresas: await numeroConfigurado(db, 'relatorio.k_minimo_empresas', {
+      padrao: MINIMO_EMPRESAS,
+      minimo: MINIMO_EMPRESAS,
+      maximo: 50,
+      inteiro: true,
+    }),
+    pessoas: await numeroConfigurado(db, 'relatorio.k_minimo_pessoas', {
+      padrao: MINIMO_PESSOAS,
+      minimo: MINIMO_PESSOAS,
+      maximo: 5000,
+      inteiro: true,
+    }),
+  }
   const { rows } = await db.query<Record<string, string | null>>(
     `WITH minha AS (
        SELECT a.porte, a.setor,
@@ -271,7 +321,7 @@ export async function comparativoDaConta(
       // o motivo dizer "0 de 50 pessoas" mesmo quando a supressão foi só por
       // número de empresas — uma explicação errada é pior que nenhuma, porque
       // manda quem lê tentar resolver o problema que não existe.
-      motivoSupressao: suprimido ? decidirSupressao(nEmpresas, nPessoas).motivo : null,
+      motivoSupressao: suprimido ? decidirSupressao(nEmpresas, nPessoas, minimos).motivo : null,
       posicao,
     }
   })

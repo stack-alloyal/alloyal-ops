@@ -103,8 +103,22 @@ export interface Gatilho {
    */
   readonly fonteAusente: string | null
   /** `null` quando o dado necessário ainda não existe: declarado, não avaliado. */
-  readonly avaliar: (e: EstadoConta) => Candidato | null
+  readonly avaliar: (e: EstadoConta, lim?: Limiares) => Candidato | null
 }
+
+/**
+ * Os limiares configuráveis pelos gatilhos.
+ *
+ * Chegam por PARÂMETRO e não por variável de módulo. Uma variável mutável aqui faria
+ * `avaliar` deixar de ser função pura, e o valor dependeria de quem escreveu por
+ * último — o que num teste que roda em paralelo é indeterminismo silencioso.
+ */
+export interface Limiares {
+  /** `gatilhos.atraso_item_financeiro`: piso do G-01 e teto do G-07. */
+  readonly atrasoItemFinanceiro: number
+}
+
+export const LIMIARES_PADRAO: Limiares = { atrasoItemFinanceiro: 30 }
 
 // ── Formatação ──────────────────────────────────────────────────────────────
 
@@ -125,7 +139,7 @@ const reais = (centavos: number) =>
  * vezes, um dia divergiriam e a conta voltaria a receber dois itens pelo mesmo
  * atraso.
  */
-export const ATRASO_ITEM_FINANCEIRO = 30
+export const ATRASO_ITEM_FINANCEIRO = LIMIARES_PADRAO.atrasoItemFinanceiro
 
 export const GATILHOS: readonly Gatilho[] = [
   {
@@ -135,9 +149,9 @@ export const GATILHOS: readonly Gatilho[] = [
     proposito: 'Cobrança relacional enquanto ainda cabe conversa, não cobrança',
     volumeEstimado: [8, 15],
     fonteAusente: null,
-    avaliar: (e) => {
+    avaliar: (e, lim = LIMIARES_PADRAO) => {
       const d = e.diasAtrasoMax
-      if (d === null || d < ATRASO_ITEM_FINANCEIRO || d >= 60) return null
+      if (d === null || d < lim.atrasoItemFinanceiro || d >= 60) return null
       return {
         gatilho: 'G-01',
         familia: 'financeiro',
@@ -287,7 +301,7 @@ export const GATILHOS: readonly Gatilho[] = [
     proposito: 'Cliente que já parou de ser cliente e ainda não avisou',
     volumeEstimado: [5, 10],
     fonteAusente: null,
-    avaliar: (e) => {
+    avaliar: (e, lim = LIMIARES_PADRAO) => {
       const sev = e.severidadeChurnSilencioso
       if (!sev || !['risco', 'risco_alto', 'critico', 'pdd'].includes(sev)) return null
       // Quando há atraso relevante, a família financeira já é dona da conta: o
@@ -300,7 +314,7 @@ export const GATILHOS: readonly Gatilho[] = [
       // usar. A combinação dos dois vetores segue registrada em
       // `metrics.silent_churn_flag` para a métrica executiva — é a FILA que
       // precisa de um dono por fato, não a medição.
-      if (e.diasAtrasoMax !== null && e.diasAtrasoMax >= ATRASO_ITEM_FINANCEIRO) return null
+      if (e.diasAtrasoMax !== null && e.diasAtrasoMax >= lim.atrasoItemFinanceiro) return null
       const porSeveridade: Record<string, { p: Prioridade; prazo: number; dono: Candidato['donoPapel'] }> = {
         risco: { p: 'alta', prazo: 5, dono: 'csm' },
         risco_alto: { p: 'alta', prazo: 3, dono: 'csm' },
@@ -498,8 +512,15 @@ export const PESO_PRIORIDADE: Record<Prioridade, number> = {
  * está aberto. Aqui, misturar as duas responsabilidades tornaria impossível
  * testar os gatilhos isoladamente.
  */
-export function avaliarGatilhos(e: EstadoConta): readonly Candidato[] {
-  return GATILHOS.map((g) => g.avaliar(e)).filter((c): c is Candidato => c !== null)
+export function avaliarGatilhos(
+  e: EstadoConta,
+  /**
+   * Os limiares em vigor. Vêm de `ops.configuracao`
+   * (`gatilhos.atraso_item_financeiro`), lidos uma vez por rodada no worker.
+   */
+  lim: Limiares = LIMIARES_PADRAO,
+): readonly Candidato[] {
+  return GATILHOS.map((g) => g.avaliar(e, lim)).filter((c): c is Candidato => c !== null)
 }
 
 /**

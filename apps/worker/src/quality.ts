@@ -7,6 +7,8 @@
  * publica qualquer coisa.
  */
 
+import { numeroConfigurado } from '@ops/auth'
+
 export type AcaoQualidade =
   | 'nenhuma'
   /** A métrica derivada entra neutra e sinalizada. Nunca com o último valor. */
@@ -62,6 +64,21 @@ export function verificarFrescor(
 
 /** Banda padrão da carga completa: ±20% contra a execução anterior. */
 export const BANDA_COMPLETUDE = 0.2
+
+/** Faixa de `qualidade.banda_completude`, espelhando o catálogo. */
+export const FAIXA_BANDA = { padrao: BANDA_COMPLETUDE, minimo: 0.05, maximo: 0.9 }
+
+/**
+ * A banda EFETIVA, de `qualidade.banda_completude`.
+ *
+ * `verificarCompletude` continua puro e recebendo a banda por parâmetro — é o que
+ * permite testá-lo sem banco. Quem chama de dentro de um ciclo usa esta função.
+ */
+export async function bandaEfetiva(db: {
+  query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>
+}): Promise<number> {
+  return numeroConfigurado(db, 'qualidade.banda_completude', FAIXA_BANDA)
+}
 
 /**
  * Completude — a contagem está na faixa esperada?

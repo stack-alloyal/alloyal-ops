@@ -1,3 +1,4 @@
+import { numeroConfigurado } from '@ops/auth'
 import { GATILHOS } from '@ops/metrics'
 import type pg from 'pg'
 
@@ -45,6 +46,27 @@ export interface Calibracao {
 
 /** Doc 01, tabela de riscos: acima disso, recalibrar antes de promover. */
 export const TETO_FALSO_POSITIVO = 0.2
+
+/** Faixas de `qualidade.teto_falso_positivo` e `fila.dias_de_sombra`. */
+const FAIXA_FALSO_POSITIVO = { padrao: TETO_FALSO_POSITIVO, minimo: 0.05, maximo: 0.6 }
+const FAIXA_SOMBRA = { padrao: 14, minimo: 7, maximo: 90, inteiro: true }
+
+/**
+ * Os dois ajustes da calibração, lidos juntos.
+ *
+ * `qualidade.teto_falso_positivo` decide quando a tela recomenda despromover um
+ * gatilho; `fila.dias_de_sombra` decide quando ele já rodou tempo suficiente para a
+ * recomendação valer. Ler os dois separados abriria janela para a tela recomendar
+ * com base num período que ela mesma considera curto.
+ */
+export async function ajustesDaCalibracao(db: {
+  query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>
+}): Promise<{ tetoFalsoPositivo: number; diasDeSombra: number }> {
+  return {
+    tetoFalsoPositivo: await numeroConfigurado(db, 'qualidade.teto_falso_positivo', FAIXA_FALSO_POSITIVO),
+    diasDeSombra: await numeroConfigurado(db, 'fila.dias_de_sombra', FAIXA_SOMBRA),
+  }
+}
 
 /**
  * Abaixo de 10 fechamentos, a fração de falso positivo é ruído.
@@ -141,7 +163,19 @@ export async function calibracao(
  * gatilho ruidoso é o time parar de confiar na fila — e disso não se volta com
  * um ajuste de limiar.
  */
-export function prontoParaPromover(c: Calibracao): {
+export function prontoParaPromover(
+  c: Calibracao,
+  /**
+   * Os ajustes em vigor. Parâmetro com padrão, e não leitura de banco aqui: esta
+   * função é pura e testada sem banco — é o que permite exercer as sete condições de
+   * promoção sem subir Postgres. Quem chama de dentro de uma tela usa
+   * `ajustesDaCalibracao` e repassa.
+   */
+  ajustes: { tetoFalsoPositivo: number; diasDeSombra: number } = {
+    tetoFalsoPositivo: TETO_FALSO_POSITIVO,
+    diasDeSombra: FAIXA_SOMBRA.padrao,
+  },
+): {
   pronto: boolean
   porque: string
 } {
@@ -151,7 +185,7 @@ export function prontoParaPromover(c: Calibracao): {
   // ao mesmo tempo — ele nunca chegou a ser avaliado.
   if (c.fonteAusente) return { pronto: false, porque: `sem fonte: ${c.fonteAusente}` }
   if (c.itens === 0) return { pronto: false, porque: 'não produziu nenhum item ainda' }
-  if (c.diasEmSombra === null || c.diasEmSombra < 14) {
+  if (c.diasEmSombra === null || c.diasEmSombra < ajustes.diasDeSombra) {
     return {
       pronto: false,
       porque: `${c.diasEmSombra ?? 0} de 14 dias em sombra`,
@@ -163,7 +197,7 @@ export function prontoParaPromover(c: Calibracao): {
       porque: `volume ${c.porCemContas}/100 contas contra ${c.estimado?.[0]}–${c.estimado?.[1]} estimados — revisar o limiar antes`,
     }
   }
-  if (c.taxaFalsoPositivo !== null && c.taxaFalsoPositivo > TETO_FALSO_POSITIVO) {
+  if (c.taxaFalsoPositivo !== null && c.taxaFalsoPositivo > ajustes.tetoFalsoPositivo) {
     return {
       pronto: false,
       porque: `${Math.round(c.taxaFalsoPositivo * 100)}% de falso positivo, acima do teto de 20%`,

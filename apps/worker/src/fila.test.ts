@@ -77,6 +77,9 @@ describe('fila de trabalho', { skip: !ADMIN }, () => {
                 core.contract, core.account CASCADE`,
     )
     await pool.query(`DELETE FROM ops.feature_flag WHERE chave LIKE '${FLAG_GATILHO}%'`)
+    // Configuração também é estado: um teto de 5 deixado por um teste anterior faria
+    // os testes seguintes falharem por motivo que não tem nada a ver com eles.
+    await pool.query(`DELETE FROM ops.configuracao`)
   })
 
   /** Promove um gatilho para fora do modo sombra. */
@@ -211,6 +214,47 @@ describe('fila de trabalho', { skip: !ADMIN }, () => {
     )
     const abertos = rows.find((x) => x.estado === 'aberto')
     assert.equal(Number(abertos?.n), TETO_POR_PESSOA)
+  })
+
+  test('o teto CONFIGURADO substitui o padrão, e a rodada respeita na hora', async () => {
+    // O ajuste da tela de configuração só vale se mudar comportamento. Sem esta
+    // asserção, a tela poderia gravar o valor e a fila continuar em 12 — e a
+    // divergência apareceria como "o teto não funciona", não como "a configuração
+    // não é lida".
+    await pool.query(
+      `INSERT INTO ops.configuracao (chave, valor, atualizado_por)
+       VALUES ('fila.teto_por_pessoa', '5'::jsonb, 'teste@alloyal.com.br')
+       ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+    )
+    await promover('G-01')
+    for (let i = 0; i < 9; i++) await conta({ nome: `conta-t-${i}`, diasAtraso: 40 })
+
+    const r = await avaliarFila(pool, COMP, { agora: AGORA })
+    assert.equal(r.criados, 9)
+    assert.equal(r.emBacklog, 4, 'com teto 5 e 9 candidatos, 4 vão para o backlog')
+
+    const { rows } = await pool.query<{ n: string }>(
+      `SELECT count(*) n FROM success.work_item WHERE estado = 'aberto'`,
+    )
+    assert.equal(Number(rows[0]?.n), 5, 'a fila respeitou o teto configurado, não o padrão')
+  })
+
+  test('valor absurdo na tabela NÃO é obedecido — cai no padrão', async () => {
+    // A tela valida na escrita, mas um INSERT manual passa por cima. Teto 0
+    // esvaziaria a fila do time inteiro, e ninguém suspeitaria da configuração.
+    await pool.query(
+      `INSERT INTO ops.configuracao (chave, valor, atualizado_por)
+       VALUES ('fila.teto_por_pessoa', '0'::jsonb, 'sql-manual@alloyal.com.br')
+       ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+    )
+    await promover('G-01')
+    for (let i = 0; i < 3; i++) await conta({ nome: `conta-z-${i}`, diasAtraso: 40 })
+
+    await avaliarFila(pool, COMP, { agora: AGORA })
+    const { rows } = await pool.query<{ n: string }>(
+      `SELECT count(*) n FROM success.work_item WHERE estado = 'aberto'`,
+    )
+    assert.equal(Number(rows[0]?.n), 3, 'teto 0 foi ignorado; o padrão valeu')
   })
 
   test('o teto corta o menos urgente, não o que chegou por último', async () => {

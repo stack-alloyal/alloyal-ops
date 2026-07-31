@@ -1,3 +1,4 @@
+import { numeroConfigurado } from '@ops/auth'
 import { recorteDaConta, type Identidade } from '@ops/auth'
 import type pg from 'pg'
 
@@ -47,6 +48,9 @@ export interface DataCritica {
 /** Quantos meses à frente o calendário olha por padrão. */
 export const HORIZONTE_MESES = 6
 
+/** Faixa de `contratos.horizonte_calendario`, espelhando o catálogo. */
+const FAIXA_HORIZONTE = { padrao: HORIZONTE_MESES, minimo: 1, maximo: 24, inteiro: true }
+
 /**
  * As datas críticas dos próximos meses, já em uma lista ordenada.
  *
@@ -62,7 +66,9 @@ export async function datasCriticas(
 ): Promise<DataCritica[]> {
   if (id.permissoes.contas === 'nenhum') return []
   const hoje = opts.hoje ?? new Date().toISOString().slice(0, 10)
-  const meses = opts.meses ?? HORIZONTE_MESES
+  // O configurado (`contratos.horizonte_calendario`) quando quem chama não impõe.
+  // A opção explícita ganha: o teste precisa fixar o horizonte, e a tela não passa.
+  const meses = opts.meses ?? (await numeroConfigurado(db, 'contratos.horizonte_calendario', FAIXA_HORIZONTE))
   const daBase = id.permissoes.contas === 'base'
 
   const { rows } = await db.query<Record<string, unknown>>(

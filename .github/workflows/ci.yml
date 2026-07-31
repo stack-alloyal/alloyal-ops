@@ -244,6 +244,9 @@ jobs:
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
           node --test packages/success/dist/idor.test.js
+          pnpm --filter @ops/config build
+          node --test packages/config/dist/catalogo.test.js
+          node --test packages/auth/dist/cifra.test.js
 
       - name: Portão 7 — design system (sem banco, sem build)
         run: node --test packages/ui/design-system.test.mjs

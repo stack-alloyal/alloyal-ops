@@ -4,7 +4,7 @@ import { cabecalhosDeSeguranca } from '@ops/ui/cabecalhos'
 export default {
   output: 'standalone',
   // Pacotes do monorepo são compilados junto: evita publicar build intermediário.
-  transpilePackages: ['@ops/ui', '@ops/metrics', '@ops/auth', '@ops/db'],
+  transpilePackages: ['@ops/ui', '@ops/metrics', '@ops/auth', '@ops/db', '@ops/config'],
   poweredByHeader: false,
   experimental: {
     // Habilita unauthorized() e forbidden(). Sem isso, falha de autenticação vira

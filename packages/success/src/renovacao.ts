@@ -1,3 +1,4 @@
+import { numeroConfigurado } from '@ops/auth'
 import { recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
 
 import type pg from 'pg'
@@ -31,6 +32,9 @@ export type EstadoRenovacao = 'aberta' | 'em_negociacao' | 'renovada' | 'perdida
 
 /** Quantos dias antes da vigência a janela abre (doc 01, G-09). */
 export const JANELA_DIAS = 90
+
+/** Faixa de `gatilhos.janela_renovacao_dias`, espelhando o catálogo. */
+const FAIXA_JANELA = { padrao: JANELA_DIAS, minimo: 30, maximo: 180, inteiro: true }
 
 export class RenovacaoInvalidaError extends Error {
   constructor(mensagem: string) {
@@ -97,7 +101,8 @@ export async function abrirJanela(
   opts: { hoje?: string; janelaDias?: number } = {},
 ): Promise<{ abertas: number; jaAbertas: number }> {
   const hoje = opts.hoje ?? new Date().toISOString().slice(0, 10)
-  const janela = opts.janelaDias ?? JANELA_DIAS
+  // O configurado (`gatilhos.janela_renovacao_dias`) quando quem chama não impõe.
+  const janela = opts.janelaDias ?? (await numeroConfigurado(db, 'gatilhos.janela_renovacao_dias', FAIXA_JANELA))
 
   const { rowCount } = await db.query(
     `INSERT INTO success.renewal
@@ -262,7 +267,8 @@ export async function previsao(
   opts: { hoje?: string; janelaDias?: number } = {},
 ): Promise<Previsao> {
   const hoje = opts.hoje ?? new Date().toISOString().slice(0, 10)
-  const janela = opts.janelaDias ?? JANELA_DIAS
+  // O configurado (`gatilhos.janela_renovacao_dias`) quando quem chama não impõe.
+  const janela = opts.janelaDias ?? (await numeroConfigurado(db, 'gatilhos.janela_renovacao_dias', FAIXA_JANELA))
 
   const { rows } = await db.query<Record<string, string>>(
     `WITH j AS (

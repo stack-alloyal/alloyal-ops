@@ -7,6 +7,7 @@ import {
   FileBarChart,
   FileText,
   Inbox,
+  Settings,
   SlidersHorizontal,
   Users,
   Wallet,
@@ -73,6 +74,12 @@ export const MENU: readonly ItemDeMenu[] = [
     proposito: 'Calibração e modo sombra',
   },
   { href: '/dados', rotulo: 'Dados', icone: Database, proposito: 'Pipeline de captação' },
+  {
+    href: '/configuracoes',
+    rotulo: 'Configurações',
+    icone: Settings,
+    proposito: 'Ajustes, acessos e segredos',
+  },
 ]
 
 /**

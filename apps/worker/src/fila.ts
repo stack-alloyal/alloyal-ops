@@ -27,8 +27,11 @@
  * └───────────────────────────────────────────────────────────────────────────┘
  */
 
+import { numerosConfigurados } from '@ops/auth'
 import {
   avaliarGatilhos,
+  LIMIARES_PADRAO,
+  type Limiares,
   umPorFamilia,
   GATILHOS,
   PESO_PRIORIDADE,
@@ -38,7 +41,13 @@ import {
 } from '@ops/metrics'
 import type pg from 'pg'
 
-/** Doc 01, E3: fila que passa de uma tela deixa de ser fila. */
+/**
+ * Doc 01, E3: fila que passa de uma tela deixa de ser fila.
+ *
+ * É o PADRÃO. O valor efetivo vem de `ops.configuracao` (`fila.teto_por_pessoa`), lido
+ * em `prepararContexto` — e o padrão continua vivendo aqui, num lugar só, para o
+ * sistema subir com comportamento correto num banco vazio.
+ */
 export const TETO_POR_PESSOA = 12
 
 /** Prefixo da flag que promove um gatilho do modo sombra. */
@@ -72,6 +81,10 @@ export interface ContextoGravacao {
   readonly carga: Map<string, number>
   readonly playbooks: Map<string, string>
   readonly promovidos: Set<string>
+  /** O teto EFETIVO desta rodada: o configurado, ou o padrão. */
+  readonly teto: number
+  /** Os limiares EFETIVOS desta rodada. */
+  readonly limiares: Limiares
 }
 
 export interface CandidatoParaGravar {
@@ -156,7 +169,7 @@ export async function gravarCandidato(
   const sombra = !ctx.promovidos.has(c.gatilho)
   // Item em sombra não ocupa a fila de ninguém: ele existe para a liderança medir
   // o volume que ele PRODUZIRIA, e contá-lo no teto falsearia a conta.
-  const estouraTeto = !sombra && (ctx.carga.get(c.dono) ?? 0) >= TETO_POR_PESSOA
+  const estouraTeto = !sombra && (ctx.carga.get(c.dono) ?? 0) >= ctx.teto
 
   await cliente.query(
     `INSERT INTO success.work_item
@@ -189,11 +202,42 @@ export async function gravarCandidato(
 }
 
 /** A carga por pessoa e os playbooks vigentes, para montar o contexto. */
+/**
+ * O teto configurado, ou o padrão.
+ *
+ * Consulta direta e não `@ops/config`: o worker não deve depender do pacote que serve
+ * a tela de administração, e a leitura de UMA chave não justifica a aresta. Se um dia
+ * forem várias, o pacote entra — hoje seria dependência por antecipação.
+ */
+async function ajustesDaRodada(
+  db: pg.Pool | pg.PoolClient,
+): Promise<{ teto: number; limiares: Limiares }> {
+  const v = await numerosConfigurados(db, {
+    'fila.teto_por_pessoa': { padrao: TETO_POR_PESSOA, minimo: 3, maximo: 40, inteiro: true },
+    'gatilhos.atraso_item_financeiro': {
+      padrao: LIMIARES_PADRAO.atrasoItemFinanceiro,
+      minimo: 5,
+      maximo: 120,
+      inteiro: true,
+    },
+  })
+  return {
+    teto: v['fila.teto_por_pessoa'],
+    limiares: { atrasoItemFinanceiro: v['gatilhos.atraso_item_financeiro'] },
+  }
+}
+
 export async function prepararContexto(
   cliente: pg.PoolClient,
   competencia: string,
   agora: Date,
+  /**
+   * Os ajustes já lidos por quem chama, quando houver. `avaliarFila` lê uma vez e
+   * repassa; quem chama sem passar (o gerador de datas contratuais) lê aqui.
+   */
+  ajustes?: { teto: number; limiares: Limiares },
 ): Promise<ContextoGravacao> {
+  const efetivos = ajustes ?? (await ajustesDaRodada(cliente))
   return {
     cliente,
     competencia,
@@ -201,6 +245,11 @@ export async function prepararContexto(
     carga: await cargaPorPessoa(cliente),
     playbooks: await playbooksVigentes(cliente),
     promovidos: await gatilhosPromovidos(cliente),
+    // Do banco a cada rodada, nunca em cache de processo: o admin muda o teto às 10h e
+    // a rodada das 11h já respeita. Cache aqui faria a tela dizer 20 e a fila continuar
+    // em 12 até alguém reiniciar o worker — divergência que ninguém relaciona com a
+    // configuração.
+    ...efetivos,
   }
 }
 
@@ -228,8 +277,16 @@ export async function avaliarFila(
 
   const estados = await carregarEstados(pool, competencia)
 
+  // UMA leitura de configuração por rodada, antes de qualquer avaliação. Ler duas
+  // vezes abriria janela para metade da rodada usar um valor e a outra metade outro —
+  // e o resultado seria uma fila que ninguém consegue explicar.
+  const ajustes = await ajustesDaRodada(pool)
+
   // Todos os candidatos da competência, já com um por família por conta.
-  const porConta = estados.map((e) => ({ estado: e, candidatos: umPorFamilia(avaliarGatilhos(e)) }))
+  const porConta = estados.map((e) => ({
+    estado: e,
+    candidatos: umPorFamilia(avaliarGatilhos(e, ajustes.limiares)),
+  }))
 
   const total = porConta.reduce((a, c) => a + c.candidatos.length, 0)
 
