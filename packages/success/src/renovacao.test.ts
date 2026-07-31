@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -38,10 +38,10 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
-const LIDER = quem('lider@alloyal.com.br', 'ops-cs-lead')
-const COMERCIAL = quem('com@alloyal.com.br', 'ops-comercial')
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
+const LIDER = quem('lider@alloyal.com.br', 'pulse-cs-lead')
+const COMERCIAL = quem('com@alloyal.com.br', 'pulse-comercial')
 
 test('a janela é a mesma do gatilho G-09', () => {
   // Mudar aqui sem mudar lá faria a meta ser medida contra um número que ninguém
@@ -53,7 +53,7 @@ describe('renovação', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

@@ -1,5 +1,5 @@
 {
-  "name": "@ops/worker",
+  "name": "@pulse/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,13 +10,13 @@
     "test": "node --test dist/*.test.js"
   },
   "dependencies": {
-    "@ops/db": "workspace:*",
-    "@ops/metrics": "workspace:*",
+    "@pulse/db": "workspace:*",
+    "@pulse/metrics": "workspace:*",
     "bullmq": "^5.34.0",
     "pg": "^8.13.0",
-    "@ops/success": "workspace:*",
-    "@ops/contratos": "workspace:*",
-    "@ops/auth": "workspace:*"
+    "@pulse/success": "workspace:*",
+    "@pulse/contratos": "workspace:*",
+    "@pulse/auth": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

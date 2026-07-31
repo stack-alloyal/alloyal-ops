@@ -1,4 +1,4 @@
-import { exigirConta, recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+import { exigirConta, recorteDaConta, veBaseDeContas, type Identidade } from '@pulse/auth'
 
 import type pg from 'pg'
 

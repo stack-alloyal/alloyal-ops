@@ -29,7 +29,7 @@ import {
   DRIVERS,
   geraItemDeTrabalho,
   type DriverValue,
-} from '@ops/metrics'
+} from '@pulse/metrics'
 import type pg from 'pg'
 
 import { verificarFrescor, type Verificacao } from './quality.js'

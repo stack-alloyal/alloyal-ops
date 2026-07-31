@@ -4,7 +4,7 @@ import {
   recorteDaConta,
   veBaseDeContas,
   type Identidade,
-} from '@ops/auth'
+} from '@pulse/auth'
 
 import type pg from 'pg'
 
@@ -350,7 +350,7 @@ export async function criarRascunho(
 ): Promise<Relatorio> {
   // Sem grupo nenhum é problema DE ACESSO, e a mensagem tem que dizer isso: "conta
   // não encontrada na sua carteira" mandaria a pessoa procurar a conta quando o que
-  // falta é ela estar num grupo `ops-*`. As duas recusas têm soluções diferentes.
+  // falta é ela estar num grupo `pulse-*`. As duas recusas têm soluções diferentes.
   if (id.permissoes.contas === 'nenhum') {
     throw new RelatorioInvalidoError('compor relatório exige acesso a contas')
   }

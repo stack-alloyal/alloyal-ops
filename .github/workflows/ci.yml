@@ -65,10 +65,10 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: teste
-          POSTGRES_DB: ops
+          POSTGRES_DB: pulse
         ports: ['5434:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres -d ops"
+          --health-cmd "pg_isready -U postgres -d pulse"
           --health-interval 10s --health-timeout 5s --health-retries 10
 
     steps:
@@ -81,11 +81,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @ops/db build
+      - run: pnpm --filter @pulse/db build
 
       - name: Portão 4 — isolamento de tenant (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           node --test packages/db/dist/rls.test.js 2>&1 | tee resultado.txt
           if grep -qE '^# skipped [1-9]' resultado.txt; then
@@ -98,7 +98,7 @@ jobs:
       # efeito na receita, cascata que fecha, competência congelada.
       - name: Portão 4b — invariantes de domínio (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           node --test packages/db/dist/invariantes.test.js 2>&1 | tee inv.txt
           if grep -qE '^# skipped [1-9]' inv.txt; then
@@ -110,9 +110,9 @@ jobs:
       # real, porque o que importa é o efeito em watermark, cycle_run e trava.
       - name: Portão 4c — executor de ciclos (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
-          pnpm --filter @ops/worker build
+          pnpm --filter @pulse/worker build
           node --test apps/worker/dist/runner.test.js 2>&1 | tee run.txt
           if grep -qE '^# skipped [1-9]' run.txt; then
             echo "::error::Testes do executor foram PULADOS."
@@ -123,7 +123,7 @@ jobs:
       # Reexecução é a operação mais comum, e é justamente a que falha primeiro.
       - name: Portão 4d — seed contra banco real
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           node --test packages/db/dist/seed/seed-db.test.js 2>&1 | tee seed.txt
           if grep -qE '^# skipped [1-9]' seed.txt; then
@@ -135,7 +135,7 @@ jobs:
       # fatos gerados, sinais calculados, agregados publicados com supressão.
       - name: Portão 4e — consolidação (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           node --test apps/worker/dist/consolidacao.test.js 2>&1 | tee cons.txt
           if grep -qE '^# skipped [1-9]' cons.txt; then
@@ -148,7 +148,7 @@ jobs:
       # carência e modo sombra — só se testam contra banco real.
       - name: Portão 4f — fila de trabalho (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           # Os dois geradores de item no mesmo portão, e em série: o teste do teto
           # do gerador contratual conta a fila que o outro deixou.
@@ -166,19 +166,19 @@ jobs:
       # revisão de tela, porque a tela fica bonita e mostra demais.
       - name: Portão 4i — recorte de carteira na ESCRITA (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
-          pnpm --filter @ops/success build
+          pnpm --filter @pulse/success build
           node --test --test-concurrency=1 packages/success/dist/recorte.test.js
 
       - name: Portão 4h — recorte da fila e do Cliente 360 (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           # --test-concurrency=1 é obrigatório: os dois arquivos truncam as
           # MESMAS tabelas, e em paralelo um limpa o cenário do outro. A falha
           # seria intermitente — a pior classe, porque some quando se investiga.
-          pnpm --filter @ops/contratos build
+          pnpm --filter @pulse/contratos build
           node --test --test-concurrency=1 \
             packages/success/dist/fila.test.js \
             packages/success/dist/conta.test.js \
@@ -199,14 +199,14 @@ jobs:
       # mostrar o que está de fato rodando, não o que estava no código dele.
       - name: Portão 4g — declaração dos ciclos (Postgres real)
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: node --test apps/worker/dist/registro.test.js
 
       # Portão 5 — migrations aplicam E revertem em banco limpo.
       # Migration que sobe e não desce transforma rollback em incidente.
       - name: Portão 5 — migrations idempotentes
         env:
-          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
+          DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/pulse
         run: |
           # Reaplicar não deve mudar nada nem falhar.
           node packages/db/dist/migrate.js
@@ -232,19 +232,19 @@ jobs:
       # uma promessa de documento.
       - name: Portão 6 — dicionário de métricas
         run: |
-          pnpm --filter @ops/metrics build
+          pnpm --filter @pulse/metrics build
           node --test packages/metrics/dist/metrics.test.js
           node --test packages/metrics/dist/drivers.test.js
           # Verifica os ARQUIVOS de migration, sem banco — mas precisa do dist.
-          pnpm --filter @ops/db build
+          pnpm --filter @pulse/db build
           node --test packages/db/dist/migracoes.test.js
           # A lista de papéis vive no TypeScript E num CHECK do banco. Este portão
           # recusa a divergência — que já custou uma gravação quebrada.
           node --test packages/db/dist/papeis.test.js
           node --test packages/metrics/dist/gatilhos.test.js
-          pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
+          pnpm --filter @pulse/success build && node --test packages/success/dist/calibracao.test.js
           node --test packages/success/dist/idor.test.js
-          pnpm --filter @ops/config build
+          pnpm --filter @pulse/config build
           node --test packages/config/dist/catalogo.test.js
           node --test packages/config/dist/uso.test.js
           node --test packages/auth/dist/cifra.test.js
@@ -254,11 +254,11 @@ jobs:
 
       - name: Testes das demais unidades
         run: |
-          pnpm --filter @ops/auth build && node --test packages/auth/dist/auth.test.js
-          pnpm --filter @ops/contracts build && node --test packages/contracts/dist/contracts.test.js
-          pnpm --filter @ops/worker build
+          pnpm --filter @pulse/auth build && node --test packages/auth/dist/auth.test.js
+          pnpm --filter @pulse/contracts build && node --test packages/contracts/dist/contracts.test.js
+          pnpm --filter @pulse/worker build
           node --test apps/worker/dist/cycle.test.js
           node --test apps/worker/dist/quality.test.js
           node --test apps/worker/dist/alarme.test.js
-          pnpm --filter @ops/db build
+          pnpm --filter @pulse/db build
           node --test packages/db/dist/seed/seed.test.js

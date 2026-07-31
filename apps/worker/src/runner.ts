@@ -5,7 +5,7 @@
  * executa — e a maior parte do código aqui existe para o caso de FALHA, não
  * para o caso de sucesso.
  *
- * Doc do Ops, seções 09 e 10.
+ * Doc do Pulse, seções 09 e 10.
  */
 
 import type pg from 'pg'

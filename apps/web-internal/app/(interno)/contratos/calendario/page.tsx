@@ -1,5 +1,5 @@
-import { datasCriticas, HORIZONTE_MESES, resumirPorMes, type TipoData } from '@ops/contratos'
-import { Aviso, Badge, Btn, Card, Field, Table, Vazio, cn } from '@ops/ui'
+import { datasCriticas, HORIZONTE_MESES, resumirPorMes, type TipoData } from '@pulse/contratos'
+import { Aviso, Badge, Btn, Card, Field, Table, Vazio, cn } from '@pulse/ui'
 import { AlertTriangle, CalendarDays } from 'lucide-react'
 import Link from 'next/link'
 

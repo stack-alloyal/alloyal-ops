@@ -6,7 +6,7 @@
    Design tokens Alloyal — os MESMOS do alloyal-publi.
    Roxo #6A18E5 = AÇÃO · Laranja #FF7A00 = MARCA/ACENTO.
 
-   Copiado e não reescrito: o objetivo é que quem abre o Ops depois
+   Copiado e não reescrito: o objetivo é que quem abre o Pulse depois
    do Publi não perceba que trocou de produto. Dois roxos parecidos
    são piores que dois roxos diferentes — ninguém sabe qual é o certo.
    ============================================================ */
@@ -39,7 +39,7 @@
     --red-50: #fcebeb;
 
     /* ---- Superfície escura, só para o painel de marca da tela de login ----
-       Papel que o Ops não tinha: todas as telas internas são claras. O valor é o
+       Papel que o Pulse não tinha: todas as telas internas são claras. O valor é o
        do Allvoice (Hub), de onde a composição do login vem — os dois produtos
        mostram o mesmo painel escuro, e um cinza escuro "quase igual" ao do outro
        seria pior que um diferente, porque ninguém saberia qual é o certo.
@@ -100,9 +100,9 @@
 }
 
 /* ============================================================
-   Estados de dado (D10) — específicos do Ops, não existem no Publi.
+   Estados de dado (D10) — específicos do Pulse, não existem no Publi.
 
-   O Ops mostra números derivados de várias fontes, e um número
+   O Pulse mostra números derivados de várias fontes, e um número
    defasado NUNCA pode aparecer igual a um número íntegro. Os cinco
    estados usam a paleta Alloyal, e nenhum deles é verde: verde
    significa "saudável", e frescor de dado não é saúde de negócio.
@@ -143,10 +143,10 @@
 
      Roxo no canto de origem, laranja no oposto: é a leitura da marca (roxo = ação,
      laranja = acento) aplicada ao maior espaço vazio que o produto tem. */
-  .ops-marca {
+  .pulse-marca {
     background: var(--escuro);
   }
-  .ops-marca::before {
+  .pulse-marca::before {
     content: '';
     position: absolute;
     inset: 0;

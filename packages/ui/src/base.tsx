@@ -5,9 +5,9 @@ import { twMerge } from 'tailwind-merge'
 /**
  * Os componentes base do Alloyal — mesma API do `src/ui.tsx` do alloyal-publi.
  *
- * A assinatura é igual de propósito: quem já mexeu no Publi escreve tela no Ops
+ * A assinatura é igual de propósito: quem já mexeu no Publi escreve tela no Pulse
  * sem consultar nada, e uma correção visual feita num lado é portável para o
- * outro por copiar e colar. Onde o Ops precisa de algo que o Publi não tem — o
+ * outro por copiar e colar. Onde o Pulse precisa de algo que o Publi não tem — o
  * estado do dado, a faixa de saúde — o acréscimo fica em `Metric` e `Vazio`, e
  * não numa variante nova de `Card` ou `Badge`.
  */

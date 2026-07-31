@@ -1,7 +1,7 @@
 /**
  * As quatro regras da fila, contra Postgres real.
  *
- * Os gatilhos são testados sem banco em `@ops/metrics`. Aqui está o que decide
+ * Os gatilhos são testados sem banco em `@pulse/metrics`. Aqui está o que decide
  * se a ferramenta continua sendo usada no terceiro mês: teto, deduplicação,
  * carência e modo sombra.
  *
@@ -62,7 +62,7 @@ describe('fila de trabalho', { skip: !ADMIN }, () => {
   }
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

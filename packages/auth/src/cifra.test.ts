@@ -28,13 +28,13 @@ const OUTRA = Buffer.alloc(32, 9).toString('base64')
 let anterior: string | undefined
 
 beforeEach(() => {
-  anterior = process.env['OPS_CHAVE_MESTRA']
-  process.env['OPS_CHAVE_MESTRA'] = CHAVE
+  anterior = process.env['PULSE_CHAVE_MESTRA']
+  process.env['PULSE_CHAVE_MESTRA'] = CHAVE
 })
 
 afterEach(() => {
-  if (anterior === undefined) delete process.env['OPS_CHAVE_MESTRA']
-  else process.env['OPS_CHAVE_MESTRA'] = anterior
+  if (anterior === undefined) delete process.env['PULSE_CHAVE_MESTRA']
+  else process.env['PULSE_CHAVE_MESTRA'] = anterior
 })
 
 test('ida e volta preserva o valor', () => {
@@ -99,7 +99,7 @@ test('trocar o IV é recusado', () => {
 
 test('chave diferente NÃO decifra', () => {
   const guardado = cifrar('token-cifrado-com-a-chave-certa')
-  process.env['OPS_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
   assert.throws(() => decifrar(guardado), SegredoCorrompidoError)
 })
 
@@ -115,7 +115,7 @@ test('formato quebrado não derruba com erro de índice', () => {
 })
 
 test('sem chave mestra, falha fechado e com instrução', () => {
-  delete process.env['OPS_CHAVE_MESTRA']
+  delete process.env['PULSE_CHAVE_MESTRA']
   assert.equal(chaveMestraConfigurada(), false)
   assert.throws(() => cifrar('qualquer-coisa-aqui'), ChaveMestraAusenteError)
   // A mensagem tem que dizer COMO gerar: quem encontra esse erro está num deploy
@@ -124,7 +124,7 @@ test('sem chave mestra, falha fechado e com instrução', () => {
 })
 
 test('chave de tamanho errado é recusada em vez de aceita mais fraca', () => {
-  process.env['OPS_CHAVE_MESTRA'] = Buffer.alloc(16, 1).toString('base64')
+  process.env['PULSE_CHAVE_MESTRA'] = Buffer.alloc(16, 1).toString('base64')
   assert.throws(() => cifrar('qualquer-coisa-aqui'), /16 bytes.*32/s)
 })
 

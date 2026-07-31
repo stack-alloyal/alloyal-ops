@@ -1,6 +1,6 @@
-import { chaveMestraConfigurada } from '@ops/auth'
-import { INTEGRACAO_DA_CHAVE, INTEGRACOES_SONDAVEIS, SEGREDOS, listarSegredos } from '@ops/config'
-import { Aviso, Badge, Btn, Card, Field } from '@ops/ui'
+import { chaveMestraConfigurada } from '@pulse/auth'
+import { INTEGRACAO_DA_CHAVE, INTEGRACOES_SONDAVEIS, SEGREDOS, listarSegredos } from '@pulse/config'
+import { Aviso, Badge, Btn, Card, Field } from '@pulse/ui'
 import { ArrowLeft, Lock, PlugZap } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic'
  * │ precisa conferir o valor inteiro troca o valor — é mais rápido e não vaza.  │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
- * O `ops_portal` não tem GRANT nenhum nesta tabela, e o `ops_api` (que serve esta
+ * O `pulse_portal` não tem GRANT nenhum nesta tabela, e o `pulse_api` (que serve esta
  * tela) tem INSERT/UPDATE/DELETE mas NÃO tem SELECT do valor cifrado. Um defeito de
  * código aqui não consegue devolver token nem por acidente.
  */
@@ -80,7 +80,7 @@ export default async function Segredos({
           /* Sem a chave mestra nada pode ser gravado. Dizer isso ANTES de a pessoa
              colar um token é o que evita ela achar que o token foi aceito. */
           <Aviso tom="erro" papel="alert">
-            <strong className="font-semibold">OPS_CHAVE_MESTRA não está configurada</strong> nesta
+            <strong className="font-semibold">PULSE_CHAVE_MESTRA não está configurada</strong> nesta
             instância. Nenhum segredo pode ser gravado nem usado até ela existir. Gere com{' '}
             <code className="rounded bg-surface px-1 py-0.5 text-[12px]">openssl rand -base64 32</code>{' '}
             e guarde no SOPS (<code className="text-[12px]">infra/secrets</code>) — nunca no

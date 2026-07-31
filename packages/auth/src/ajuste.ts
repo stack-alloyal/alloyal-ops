@@ -2,15 +2,15 @@
  * Leitura de um ajuste configurável, com o padrão do código como rede.
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
- * │ Vive em `@ops/auth` e não em `@ops/config` por uma razão de dependência: o   │
- * │ `@ops/config` serve a TELA de administração e conhece o catálogo inteiro;    │
+ * │ Vive em `@pulse/auth` e não em `@pulse/config` por uma razão de dependência: o   │
+ * │ `@pulse/config` serve a TELA de administração e conhece o catálogo inteiro;    │
  * │ `metrics`, `success`, `contratos` e o worker só precisam LER um número. Fazer │
  * │ todos eles dependerem do pacote da tela inverteria a seta — domínio          │
  * │ conhecendo administração — e é o tipo de aresta que depois impede o mesmo    │
  * │ cálculo de rodar num contexto sem tela.                                     │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
- * A validação é repetida aqui de propósito. `@ops/config` valida na ESCRITA, mas um
+ * A validação é repetida aqui de propósito. `@pulse/config` valida na ESCRITA, mas um
  * `INSERT` manual no banco passa por cima dela — e um teto de fila igual a zero
  * esvaziaria a fila do time inteiro sem ninguém suspeitar da configuração. Valor fora
  * da faixa é ignorado e o padrão vale.

@@ -1,5 +1,5 @@
-import { calibracao, prontoParaPromover, MINIMO_PARA_TAXA } from '@ops/success'
-import { Badge, Card, Table, cn } from '@ops/ui'
+import { calibracao, prontoParaPromover, MINIMO_PARA_TAXA } from '@pulse/success'
+import { Badge, Card, Table, cn } from '@pulse/ui'
 
 import { Corpo, Topo } from '../casca'
 import { pool } from '../../../lib/db'

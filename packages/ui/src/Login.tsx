@@ -15,7 +15,7 @@ import { cn } from './base'
  * │ `#9A9AAE` já têm equivalente em `--ink`, `--surface-2` e `--ink-3` — copiá-│
  * │ los criaria cinzas concorrentes, e "dois cinzas parecidos são piores que   │
  * │ dois diferentes" é a regra do design system da casa. Só `--escuro` é novo, │
- * │ porque superfície escura é um papel que o Ops não tinha.                   │
+ * │ porque superfície escura é um papel que o Pulse não tinha.                   │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
  * Nada aqui autentica: o botão leva ao `/oauth2/start` do oauth2-proxy, e quem
@@ -40,7 +40,7 @@ export interface LoginProps {
 }
 
 export function Login({
-  titulo = 'Entrar no Alloyal Ops',
+  titulo = 'Entrar no Alloyal Pulse',
   chamada = ['O time interno opera o negócio', 'num só lugar.'],
   descricao = 'Fila de trabalho, carteira, receita, contratos e relatórios sobre uma base de dados única e governada.',
   etiquetas = ['Fila de trabalho', 'Carteira', 'Receita', 'Contratos', 'Relatórios'],
@@ -53,14 +53,14 @@ export function Login({
       {/* ── Painel de marca ──
              `hidden md:flex`: num celular ele consumiria a tela toda e empurraria o
              botão para fora do primeiro rolar. A marca reaparece do outro lado. */}
-      <aside className="ops-marca relative hidden overflow-hidden p-14 text-white md:flex md:flex-col md:justify-between">
+      <aside className="pulse-marca relative hidden overflow-hidden p-14 text-white md:flex md:flex-col md:justify-between">
         {/* Wordmark no laranja da marca + nome do produto em branco, que é a mesma
             leitura do Allvoice ("Alloyal" + "Hub" no acento). O laranja tem contraste
             de sobra sobre `--escuro`, e repintar o logotipo de branco perderia a única
             cor que identifica a casa neste painel. */}
         <div className="relative flex items-center gap-3">
           <AlloyalLogo className="h-6" />
-          <span className="text-[17px] font-bold tracking-tight">Ops</span>
+          <span className="text-[17px] font-bold tracking-tight">Pulse</span>
         </div>
 
         <div className="relative">
@@ -97,7 +97,7 @@ export function Login({
         <div className="w-full max-w-[360px]">
           <div className="mb-6 flex items-center gap-2.5 md:hidden">
             <AlloyalLogo className="h-6" />
-            <span className="text-[16px] font-bold text-ink">Ops</span>
+            <span className="text-[16px] font-bold text-ink">Pulse</span>
           </div>
 
           <h2 className="text-[25px] font-bold tracking-[-0.02em] text-ink">{titulo}</h2>
@@ -117,7 +117,7 @@ export function Login({
           {/* O papel é a SEGUNDA barreira, e a que confunde: a pessoa entra no Google
               com sucesso e ainda assim não vê nada. Dizer isso antes evita o ticket. */}
           <p className="mt-6 border-t border-line pt-4 text-[11.5px] leading-relaxed text-ink-3">
-            O acesso a cada área vem dos grupos <code className="text-[11px]">ops-*</code> do Google
+            O acesso a cada área vem dos grupos <code className="text-[11px]">pulse-*</code> do Google
             Workspace. Autenticar sem estar num grupo mostra a tela de permissão, não um erro.
           </p>
         </div>

@@ -11,7 +11,7 @@ O SOPS **não viola** essa regra — ele a estende. O que entra no Git é o arqu
 O ganho concreto: hoje, se a VM for perdida, os `.env` vão com ela. Com SOPS, eles estão no repositório privado e a única coisa que precisa de custódia separada é uma chave.
 
 ```
-infra/secrets/ops.env.sops.yaml     ← cifrado, VERSIONADO
+infra/secrets/pulse.env.sops.yaml     ← cifrado, VERSIONADO
 infra/.env                          ← claro, 600, NUNCA versionado, gerado no deploy
 ```
 

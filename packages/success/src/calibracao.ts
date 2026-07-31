@@ -1,5 +1,5 @@
-import { numeroConfigurado } from '@ops/auth'
-import { GATILHOS } from '@ops/metrics'
+import { numeroConfigurado } from '@pulse/auth'
+import { GATILHOS } from '@pulse/metrics'
 import type pg from 'pg'
 
 /**

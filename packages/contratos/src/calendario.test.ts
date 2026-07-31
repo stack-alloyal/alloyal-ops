@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -38,9 +38,9 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const JURIDICO = quem('ju@alloyal.com.br', 'ops-juridico')
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
+const JURIDICO = quem('ju@alloyal.com.br', 'pulse-juridico')
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
 
 // ── O resumo por mês, sem banco ─────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ describe('calendário contratual', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

@@ -10,7 +10,7 @@ import {
   TransicaoInvalidaError,
   type CanalAnuncio,
   type OrigemSaida,
-} from '@ops/success'
+} from '@pulse/success'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'
@@ -20,7 +20,7 @@ import { exigir, temEscopo } from '../../../lib/guarda'
  * As ações do fluxo de saída.
  *
  * Cada uma reavalia a permissão: uma Server Action é endpoint público, e a tela
- * que desenhou o botão não é prova de nada. A alçada real mora em `@ops/success`;
+ * que desenhou o botão não é prova de nada. A alçada real mora em `@pulse/success`;
  * aqui só se garante que a pessoa está autenticada e tem acesso à ferramenta.
  *
  * O desfecho volta pela URL, e não por estado de cliente, para que a tela

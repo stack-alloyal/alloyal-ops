@@ -7,7 +7,7 @@ import {
   permiteIdentidadeDeDesenvolvimento,
   type Identidade,
   type Papel,
-} from '@ops/auth'
+} from '@pulse/auth'
 import { headers } from 'next/headers'
 
 import { pool } from './db'
@@ -29,12 +29,12 @@ export async function identidade(): Promise<Identidade> {
   const dev = identidadeDeDesenvolvimento()
   if (dev) return dev
 
-  const segredo = process.env['OPS_PROXY_SECRET']
+  const segredo = process.env['PULSE_PROXY_SECRET']
   if (!segredo) {
     // Falha fechada: sem o segredo configurado, ninguém entra. O modo de falha
     // oposto — assumir que está tudo bem — transforma um esquecimento de deploy
     // em acesso irrestrito.
-    throw new NaoAutenticadoError('OPS_PROXY_SECRET não configurado nesta instância')
+    throw new NaoAutenticadoError('PULSE_PROXY_SECRET não configurado nesta instância')
   }
 
   const brutos: Record<string, string> = {}
@@ -61,11 +61,11 @@ export async function identidade(): Promise<Identidade> {
  * └───────────────────────────────────────────────────────────────────────────┘
  */
 function identidadeDeDesenvolvimento(): Identidade | null {
-  const email = process.env['OPS_DEV_EMAIL']
-  // A decisão mora em @ops/auth, onde é pura e testada — não aqui.
+  const email = process.env['PULSE_DEV_EMAIL']
+  // A decisão mora em @pulse/auth, onde é pura e testada — não aqui.
   if (!permiteIdentidadeDeDesenvolvimento(process.env['NODE_ENV'], email)) return null
 
-  const papeis = (process.env['OPS_DEV_PAPEIS'] ?? 'ops-admin').split(',') as Papel[]
+  const papeis = (process.env['PULSE_DEV_PAPEIS'] ?? 'pulse-admin').split(',') as Papel[]
   return { email: email as string, papeis, permissoes: permissoesDe(papeis) }
 }
 

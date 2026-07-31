@@ -6,7 +6,7 @@ import {
   RenovacaoInvalidaError,
   SemPermissaoRenovacao,
   type CenarioRenovacao,
-} from '@ops/success'
+} from '@pulse/success'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'

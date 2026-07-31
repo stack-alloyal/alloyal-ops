@@ -1,8 +1,8 @@
-import { datasCriticas, type DataCritica, type TipoData } from '@ops/contratos'
-import type { Prioridade } from '@ops/metrics'
+import { datasCriticas, type DataCritica, type TipoData } from '@pulse/contratos'
+import type { Prioridade } from '@pulse/metrics'
 import type pg from 'pg'
 
-import { numerosConfigurados } from '@ops/auth'
+import { numerosConfigurados } from '@pulse/auth'
 
 import { gravarCandidato, prepararContexto, type ContextoGravacao } from './fila.js'
 

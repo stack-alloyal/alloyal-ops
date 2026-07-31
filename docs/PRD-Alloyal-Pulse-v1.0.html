@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alloyal Ops — PRD &amp; Arquitetura v1.0</title>
+<title>Alloyal Pulse — PRD &amp; Arquitetura v1.0</title>
 <style>html{scroll-behavior:smooth}body{margin:0}</style>
 <style>
   /* Sistema visual da casa, herdado de docs/PRD-Alloyal-Hub-v1.0.html.
@@ -209,7 +209,7 @@
   <header class="masthead">
     <div class="inner">
       <p class="eyebrow">PRD · Produto, Dados &amp; Arquitetura</p>
-      <h1>Alloyal <span>Ops</span></h1>
+      <h1>Alloyal <span>Pulse</span></h1>
       <p class="thesis">Plataforma interna onde o time da Alloyal <b>opera o negócio</b> sobre uma base de dados única e governada. A primeira ferramenta é o <b>Success</b>: fila de trabalho por gatilho, adesão e engajamento da base final como medida de saúde, churn silencioso por inadimplência e desengajamento, e receita recorrente com fechamento congelado — o primeiro BI da empresa.</p>
       <div class="meta">
         <span class="chip">Versão <b>1.0</b></span>
@@ -251,9 +251,9 @@
       <!-- ══ 01 ══ -->
 <section id="s1">
         <p class="sec-label">01 — Contexto</p>
-        <h2>O problema que o Ops resolve</h2>
+        <h2>O problema que o Pulse resolve</h2>
         <p class="lead">O time de CS/CX da Alloyal opera sem sistema, e a empresa não tem BI. Cada implantação segue o método de quem conduz, a queda de adesão aparece na renovação, toda reunião de resultado é montada à mão, e <strong>NRR, churn e coortes não são calculados</strong>.</p>
-        <p>O Ops é a plataforma interna que resolve isso — e a primeira de várias ferramentas de operação que vão rodar sobre ela. A ferramenta&nbsp;1 é o <strong>Success</strong> (CS/CX). Ela não substitui o Alloyal Hub: o Hub continua sendo atendimento, e é <em>fonte de dados</em> para o Ops.</p>
+        <p>O Pulse é a plataforma interna que resolve isso — e a primeira de várias ferramentas de operação que vão rodar sobre ela. A ferramenta&nbsp;1 é o <strong>Success</strong> (CS/CX). Ela não substitui o Alloyal Hub: o Hub continua sendo atendimento, e é <em>fonte de dados</em> para o Pulse.</p>
 
         <div class="tbl-wrap"><table>
           <thead><tr><th class="mono">#</th><th>Problema</th><th>Como se manifesta hoje</th></tr></thead>
@@ -320,11 +320,11 @@
             <tr><td><strong>Vidas elegíveis</strong></td><td>Quantas pessoas o cliente efetivamente cadastrou na base do clube.</td><td>É o denominador oficial da adesão.</td></tr>
             <tr><td><strong>Cobertura cadastral</strong></td><td>Quanto do contrato o cliente já cadastrou.</td><td>É a única alavanca de adesão que depende inteiramente do cliente.</td></tr>
             <tr><td><strong>Adesão 30 dias</strong></td><td>Quantas pessoas da base usaram o clube no último mês, sobre as cadastradas.</td><td>É a métrica principal. "Adesão" sem qualificador é proibido.</td></tr>
-            <tr><td><strong>MRR</strong></td><td>Receita que se repete todo mês naquele contrato.</td><td>No Ops é somado a partir do histórico de eventos, não lido de um campo.</td></tr>
+            <tr><td><strong>MRR</strong></td><td>Receita que se repete todo mês naquele contrato.</td><td>No Pulse é somado a partir do histórico de eventos, não lido de um campo.</td></tr>
             <tr><td><strong>NRR e GRR</strong></td><td>Quanto da receita dos clientes que já existiam se manteve — com expansão (NRR) e sem expansão (GRR).</td><td>Cliente novo não entra na conta; se entrasse, esconderia perda.</td></tr>
             <tr><td><strong>Churn</strong></td><td>Cliente perdido. Medido em receita (quanto) e em contas (quantos).</td><td>Os dois são publicados juntos: um sem o outro esconde se perdemos muitos pequenos ou poucos grandes.</td></tr>
             <tr><td><strong>Churn silencioso</strong></td><td>Cliente que ainda não cancelou mas já parou de ser cliente.</td><td>Dois caminhos: parou de usar, ou parou de pagar.</td></tr>
-            <tr><td><strong>PDD</strong></td><td>Provisão para devedor duvidoso: aos 90 dias de atraso a empresa reconhece contabilmente que provavelmente não vai receber.</td><td>No Ops, é quando a receita sai da base ativa e o encerramento passa a ser iniciado pela Alloyal.</td></tr>
+            <tr><td><strong>PDD</strong></td><td>Provisão para devedor duvidoso: aos 90 dias de atraso a empresa reconhece contabilmente que provavelmente não vai receber.</td><td>No Pulse, é quando a receita sai da base ativa e o encerramento passa a ser iniciado pela Alloyal.</td></tr>
             <tr><td><strong>TTFT</strong></td><td>Dias entre a assinatura e a primeira compra feita pela base do cliente.</td><td>Mede se a implantação produziu valor real, não se as tarefas foram concluídas.</td></tr>
             <tr><td><strong>CSQL</strong></td><td>Oportunidade de venda identificada pelo time de CS e entregue ao comercial.</td><td>Vai com evidência anexada, não como palpite.</td></tr>
             <tr><td><strong>RFM</strong></td><td>Agrupar clientes por quando usaram a última vez, com que frequência e quanto movimentaram.</td><td>Aqui é sobre a atividade da base, não sobre o valor do contrato.</td></tr>
@@ -338,7 +338,7 @@
 <section id="s3">
         <p class="sec-label">03 — Norte</p>
         <h2>Objetivos &amp; métricas de sucesso</h2>
-        <p><strong>North Star.</strong> <em>Contas cuja adesão de 30 dias sobe depois de uma ação registrada no Ops.</em> É a métrica que une valor para o cliente — base usando o clube — com valor operacional — a ação do CSM produziu efeito medível. É deliberadamente mais dura que "itens fechados", que mede movimento e não resultado.</p>
+        <p><strong>North Star.</strong> <em>Contas cuja adesão de 30 dias sobe depois de uma ação registrada no Pulse.</em> É a métrica que une valor para o cliente — base usando o clube — com valor operacional — a ação do CSM produziu efeito medível. É deliberadamente mais dura que "itens fechados", que mede movimento e não resultado.</p>
 
         <div class="cards">
           <div class="kard"><p class="lbl">Adoção pelo time</p><div class="big">≥ 85%</div><p class="sub">O8 · uso em 5 dos últimos 7 dias, em 90 dias</p></div>
@@ -370,12 +370,12 @@
 
         <h3>Não-objetivos</h3>
         <ul>
-          <li><strong>Atendimento, ticket e base de conhecimento</strong> — permanece no Alloyal Hub, que é fonte de dados do Ops.</li>
+          <li><strong>Atendimento, ticket e base de conhecimento</strong> — permanece no Alloyal Hub, que é fonte de dados do Pulse.</li>
           <li><strong>Superfície para o usuário final B2C</strong> — o app Alloyal já cobre.</li>
-          <li><strong>Envio de campanha ao usuário final</strong> — permanece no CleverTap. O Ops envia <em>segmento</em>, nunca campanha.</li>
+          <li><strong>Envio de campanha ao usuário final</strong> — permanece no CleverTap. O Pulse envia <em>segmento</em>, nunca campanha.</li>
           <li><strong>PSA completo</strong> — timesheet, faturamento de serviços e margem por projeto estão fora.</li>
           <li><strong>Analítica de aquisição</strong> — personas de marketing, campanhas e atribuição estão fora; só o investimento agregado entra, para CAC.</li>
-          <li><strong>Escrita em sistema de origem</strong> — o Ops nunca escreve na réplica, nunca altera o Hub, e no HubSpot escreve apenas score, flag e CSQL.</li>
+          <li><strong>Escrita em sistema de origem</strong> — o Pulse nunca escreve na réplica, nunca altera o Hub, e no HubSpot escreve apenas score, flag e CSQL.</li>
           <li><strong>App móvel nativo e comunidade de clientes</strong> — reavaliar em 12 meses. O requisito é responsivo a partir de 768&nbsp;px.</li>
           <li><strong>Idioma além de pt-BR.</strong></li>
         </ul>
@@ -388,14 +388,14 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>Persona</th><th class="mono">Papel</th><th>Frequência</th><th>Pergunta que traz à ferramenta</th><th>Sucesso para ela</th></tr></thead>
           <tbody>
-            <tr><td><strong>CSM / CX</strong></td><td class="mono">ops-csm</td><td>Diária, 4–6 h</td><td>"O que eu faço hoje, e por qual cliente começo?"</td><td>Fecha a fila sem abrir planilha</td></tr>
-            <tr><td><strong>Head de CS</strong></td><td class="mono">ops-cs-lead</td><td>Semanal</td><td>"Onde está o risco e a carteira está equilibrada?"</td><td>Enxerga risco antes do CSM reportar</td></tr>
-            <tr><td><strong>Implantação</strong></td><td class="mono">ops-implantacao</td><td>Diária no projeto</td><td>"O que está travado, e por culpa de quem?"</td><td>Prevê go-live com confiança</td></tr>
-            <tr><td><strong>Diretoria</strong></td><td class="mono">ops-diretoria</td><td>Mensal</td><td>"Como está a receita recorrente e para onde vai?"</td><td>Número que não muda sozinho</td></tr>
-            <tr><td><strong>Financeiro</strong></td><td class="mono">ops-financeiro</td><td>Semanal na cobrança</td><td>"Quem está em risco de crédito, e posso liberar este distrato?"</td><td>Cobrança relacional antes da judicial</td></tr>
-            <tr><td><strong>Comercial</strong></td><td class="mono">ops-comercial</td><td>Pontual</td><td>"Onde tem expansão qualificada?"</td><td>Recebe CSQL com evidência anexada</td></tr>
-            <tr><td><strong>Eng. de Dados</strong></td><td class="mono">ops-dados</td><td>Diária</td><td>"Os ciclos rodaram, e o número fecha com a origem?"</td><td>Painel de pipeline verde e reconciliação dentro da tolerância</td></tr>
-            <tr><td><strong>Jurídico</strong></td><td class="mono">ops-juridico</td><td>Diária</td><td>"O que negociamos com este cliente, e o que precisa de atenção?"</td><td>Deixa de ser o índice contratual da empresa</td></tr>
+            <tr><td><strong>CSM / CX</strong></td><td class="mono">pulse-csm</td><td>Diária, 4–6 h</td><td>"O que eu faço hoje, e por qual cliente começo?"</td><td>Fecha a fila sem abrir planilha</td></tr>
+            <tr><td><strong>Head de CS</strong></td><td class="mono">pulse-cs-lead</td><td>Semanal</td><td>"Onde está o risco e a carteira está equilibrada?"</td><td>Enxerga risco antes do CSM reportar</td></tr>
+            <tr><td><strong>Implantação</strong></td><td class="mono">pulse-implantacao</td><td>Diária no projeto</td><td>"O que está travado, e por culpa de quem?"</td><td>Prevê go-live com confiança</td></tr>
+            <tr><td><strong>Diretoria</strong></td><td class="mono">pulse-diretoria</td><td>Mensal</td><td>"Como está a receita recorrente e para onde vai?"</td><td>Número que não muda sozinho</td></tr>
+            <tr><td><strong>Financeiro</strong></td><td class="mono">pulse-financeiro</td><td>Semanal na cobrança</td><td>"Quem está em risco de crédito, e posso liberar este distrato?"</td><td>Cobrança relacional antes da judicial</td></tr>
+            <tr><td><strong>Comercial</strong></td><td class="mono">pulse-comercial</td><td>Pontual</td><td>"Onde tem expansão qualificada?"</td><td>Recebe CSQL com evidência anexada</td></tr>
+            <tr><td><strong>Eng. de Dados</strong></td><td class="mono">pulse-dados</td><td>Diária</td><td>"Os ciclos rodaram, e o número fecha com a origem?"</td><td>Painel de pipeline verde e reconciliação dentro da tolerância</td></tr>
+            <tr><td><strong>Jurídico</strong></td><td class="mono">pulse-juridico</td><td>Diária</td><td>"O que negociamos com este cliente, e o que precisa de atenção?"</td><td>Deixa de ser o índice contratual da empresa</td></tr>
             <tr><td><strong>Gestor do cliente</strong></td><td class="mono">externo</td><td>Mensal; semanal na implantação</td><td>"Meu clube funciona? O que falta de mim?"</td><td>Sabe o próximo passo <em>dele</em></td></tr>
           </tbody>
         </table></div>
@@ -493,7 +493,7 @@ SUPERFÍCIE DO CLIENTE · cliente.alloyal.com.br    entra por link no e-mail
         <!-- T1 -->
         <h3><span class="e">T1</span> Minha fila</h3>
         <div class="wf">
-          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Success <span class="tab on">Minha fila</span><span class="tab">Carteira</span><span class="tab">Contas</span></div>
+          <div class="wf__bar"><b>Alloyal Pulse</b> ▸ Success <span class="tab on">Minha fila</span><span class="tab">Carteira</span><span class="tab">Contas</span></div>
           <div class="wf__body">
             <p class="wf__h">Minha fila · 7 itens · 2 vencem hoje <span>Backlog (14) ▸</span></p>
             <div class="wf__row"><i class="crit"></i>
@@ -560,7 +560,7 @@ SUPERFÍCIE DO CLIENTE · cliente.alloyal.com.br    entra por link no e-mail
         <!-- T7 -->
         <h3><span class="e">T7</span> Painel executivo</h3>
         <div class="wf">
-          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Executivo <span class="tab on">Receita</span><span class="tab">Retenção</span><span class="tab">Coortes</span><span class="tab">Fechamento de jun/2026 · publicado em 05/07</span></div>
+          <div class="wf__bar"><b>Alloyal Pulse</b> ▸ Executivo <span class="tab on">Receita</span><span class="tab">Retenção</span><span class="tab">Coortes</span><span class="tab">Fechamento de jun/2026 · publicado em 05/07</span></div>
           <div class="wf__body">
             <div class="wf__grid">
               <div class="wf__stat"><u>MRR</u><b>R$ 1,84 M</b><s>+2,1% no mês</s></div>
@@ -595,7 +595,7 @@ SUPERFÍCIE DO CLIENTE · cliente.alloyal.com.br    entra por link no e-mail
         <!-- T19 -->
         <h3><span class="e">T19</span> Saídas em curso</h3>
         <div class="wf">
-          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Saídas <span class="tab on">Em aviso (4)</span><span class="tab">Retidas (2)</span><span class="tab">Encerradas</span><span class="tab">R$ 71 mil comprometidos</span></div>
+          <div class="wf__bar"><b>Alloyal Pulse</b> ▸ Saídas <span class="tab on">Em aviso (4)</span><span class="tab">Retidas (2)</span><span class="tab">Encerradas</span><span class="tab">R$ 71 mil comprometidos</span></div>
           <div class="wf__body">
             <p class="wf__h">Receita comprometida por mês <span>ago R$ 12 mil · set R$ 35 mil · out R$ 24 mil</span></p>
             <div class="wf__row"><i class="crit"></i>
@@ -628,7 +628,7 @@ SUPERFÍCIE DO CLIENTE · cliente.alloyal.com.br    entra por link no e-mail
         <!-- T13 -->
         <h3><span class="e">T13</span> Painel de pipeline</h3>
         <div class="wf">
-          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Dados <span class="tab on">Pipeline</span><span class="tab">Divergências</span><span class="tab">Exceções de identidade</span></div>
+          <div class="wf__bar"><b>Alloyal Pulse</b> ▸ Dados <span class="tab on">Pipeline</span><span class="tab">Divergências</span><span class="tab">Exceções de identidade</span></div>
           <div class="wf__body">
             <p class="wf__h">Snapshot de 26/07 publicado 07:18 · <span>parcial — 1 fonte ausente</span></p>
             <div class="wf__row"><i class="media"></i>
@@ -991,7 +991,7 @@ COMPETÊNCIA DO EFEITO · o evento entra no ledger
 <section id="s8">
         <p class="sec-label">08 — De onde vem o dado</p>
         <h2>Fontes de dados</h2>
-        <p class="lead">Dez fontes, nenhuma delas escrita pelo Ops. A plataforma <strong>lê, materializa e serve</strong> — a origem permanece dona do seu dado, e nenhuma tela consulta fonte externa ao vivo.</p>
+        <p class="lead">Dez fontes, nenhuma delas escrita pelo Pulse. A plataforma <strong>lê, materializa e serve</strong> — a origem permanece dona do seu dado, e nenhuma tela consulta fonte externa ao vivo.</p>
 
         <div class="tbl-wrap"><table>
           <thead><tr><th class="mono">#</th><th>Fonte</th><th>Acesso</th><th>O que contém</th><th>Chave que traz</th><th>Criticidade</th></tr></thead>
@@ -1010,7 +1010,7 @@ COMPETÊNCIA DO EFEITO · o evento entra no ledger
         </table></div>
 
         <div class="callout rule"><span class="k">Regra de ouro da captação</span>
-          <p>O Ops <strong>nunca escreve na origem</strong>. A réplica é lida com credencial somente-leitura, distinta da credencial de escrita do Ops; o Hub não é alterado; e no HubSpot a escrita é unidirecional e limitada a <em>score, flag e CSQL</em>. Qualquer necessidade de mudar dado de origem passa pelo sistema dono dele, por pessoa.</p>
+          <p>O Pulse <strong>nunca escreve na origem</strong>. A réplica é lida com credencial somente-leitura, distinta da credencial de escrita do Pulse; o Hub não é alterado; e no HubSpot a escrita é unidirecional e limitada a <em>score, flag e CSQL</em>. Qualquer necessidade de mudar dado de origem passa pelo sistema dono dele, por pessoa.</p>
         </div>
 
         <h3>Resolução de identidade — o problema que decide tudo</h3>
@@ -1227,7 +1227,7 @@ C5 · eventos de MRR · contínuo + varredura diária · webhook + incremental
    falha permanente → dead-letter + ALARME CRÍTICO</div>
         <div class="callout lesson"><span class="k">Lição herdada — o ciclo que não pode falhar</span>
           <p><strong>C5 é o único com perda irrecuperável.</strong> Não existe como reconstruir retroativamente <em>a razão</em> pela qual um contrato mudou de valor: o campo atual mostra o novo MRR, e o motivo — expansão, contração, renegociação — desaparece. Por isso a captação de MRR entra na primeira fase, antes de qualquer tela.</p>
-          <p>Enquanto os fluxos de renovação e cancelamento não estiverem no Ops, as mudanças acontecem no HubSpot, por pessoas — e o C5 é a única testemunha. O histórico anterior à captação é parcial por natureza: o que for reconstruído fica marcado como <code>reconstruido</code> e nunca aparece na mesma série que dado capturado, sem distinção visual.</p>
+          <p>Enquanto os fluxos de renovação e cancelamento não estiverem no Pulse, as mudanças acontecem no HubSpot, por pessoas — e o C5 é a única testemunha. O histórico anterior à captação é parcial por natureza: o que for reconstruído fica marcado como <code>reconstruido</code> e nunca aparece na mesma série que dado capturado, sem distinção visual.</p>
         </div>
 
         <h4><span class="f">F3</span> CleverTap — engajamento no app</h4>
@@ -1253,7 +1253,7 @@ C5 · eventos de MRR · contínuo + varredura diária · webhook + incremental
    webhook de evento de ticket → stg_hub → agregado por conta e dia
    fallback: se o webhook falhar, o agregado diário cobre a lacuna
    → volume, motivo, CSAT, SLA de primeira resposta e de resolução
-   → em ausência da API: driver S-SUP com peso ZERO e mock no Ops</div>
+   → em ausência da API: driver S-SUP com peso ZERO e mock no Pulse</div>
         <p>Depende de API construída por outro time, com contrato OpenAPI acordado antes de a fase que consome começar. Enquanto não existir, suporte simplesmente <strong>sai do score</strong> por renormalização — o produto não fica bloqueado por dependência externa.</p>
 
         <h4><span class="f">F6 · F7 · F8</span> Lojas, WhatsApp e Calendar</h4>
@@ -1326,7 +1326,7 @@ C11 · reuniões · sob demanda + varredura diária
         <p>Roda uma vez, é pesada, e por isso acontece fora do horário comercial, em lotes, com cursor persistido para ser retomável. Duas regras que a carga inicial impõe ao <em>produto</em>, e não só à engenharia:</p>
         <ul>
           <li><strong>Gatilhos em modo sombra durante a carga.</strong> O histórico satisfaria a condição de todos os gatilhos ao mesmo tempo; sem essa regra, o dia 1 entrega uma fila de centenas de itens e o time não volta.</li>
-          <li><strong>Gatilhos de variação só depois de série própria.</strong> Queda de adesão e ausência de contato exigem 30 dias de dado capturado pelo Ops; até lá, só gatilhos de estado corrente — financeiro, cobertura cadastral, adesão sob o piso — são elegíveis.</li>
+          <li><strong>Gatilhos de variação só depois de série própria.</strong> Queda de adesão e ausência de contato exigem 30 dias de dado capturado pelo Pulse; até lá, só gatilhos de estado corrente — financeiro, cobertura cadastral, adesão sob o piso — são elegíveis.</li>
         </ul>
       </section>
 
@@ -1437,11 +1437,11 @@ EXEMPLO · aviso prévio de 90 dias
             <tr><td><strong>Autenticação interna</strong></td><td>Google Workspace pelo <strong>oauth2-proxy</strong> da casa (<code>--provider=google --email-domain=alloyal.com.br</code>, modo <code>auth_request</code> atrás do Nginx Proxy Manager). Uma instância por domínio, porque <code>redirect-url</code> e <code>cookie-domain</code> são por domínio. Mesmo padrão de Hub, Radar, Enable e Publi: um só lugar para revogar sessão.</td></tr>
             <tr><td><strong>Fronteira de confiança do cabeçalho</strong></td><td>A aplicação só aceita <code>X-Auth-Request-Email</code> quando a conexão vem de faixa confiável (<code>172.16.0.0/12</code>). Fora dela a identidade é <strong>ignorada</strong> e a requisição é anônima. Autenticação por cabeçalho sem essa fronteira é aberta a qualquer contêiner da VM que consiga falar com a aplicação — e por isso ela também não publica porta.</td></tr>
             <tr><td><strong>Segunda barreira de domínio</strong></td><td>A aplicação revalida o sufixo do e-mail, redundante com o proxy de propósito: configuração errada no proxy não deve ser suficiente para entrar.</td></tr>
-            <tr><td><strong>Papéis por grupo</strong></td><td><strong>11 papéis</strong> (<code>ops-csm</code> … <code>ops-dados</code>, mais <code>ops-juridico</code>, <code>ops-marketing</code> e <code>ops-produto</code>, trazidos pela ferramenta de contratos) derivados de grupo do Workspace, sincronizados em <code>ops.user_role</code> a cada login e por varredura diária, com escopo de leitura de diretório. Desligamento revoga acesso sem lista paralela que alguém precise lembrar de limpar.</td></tr>
-            <tr><td><strong>União de permissões</strong></td><td>Pessoa em mais de um grupo recebe a <em>união</em> — sempre o escopo mais amplo. Sem grupo nenhum: nada liberado, e o erro diz como resolver ("adicione a um grupo <code>ops-*</code>"), não um 403 sem saída.</td></tr>
+            <tr><td><strong>Papéis por grupo</strong></td><td><strong>11 papéis</strong> (<code>pulse-csm</code> … <code>pulse-dados</code>, mais <code>pulse-juridico</code>, <code>pulse-marketing</code> e <code>pulse-produto</code>, trazidos pela ferramenta de contratos) derivados de grupo do Workspace, sincronizados em <code>ops.user_role</code> a cada login e por varredura diária, com escopo de leitura de diretório. Desligamento revoga acesso sem lista paralela que alguém precise lembrar de limpar.</td></tr>
+            <tr><td><strong>União de permissões</strong></td><td>Pessoa em mais de um grupo recebe a <em>união</em> — sempre o escopo mais amplo. Sem grupo nenhum: nada liberado, e o erro diz como resolver ("adicione a um grupo <code>pulse-*</code>"), não um 403 sem saída.</td></tr>
             <tr><td><strong>Visibilidade por classe de dado</strong></td><td>Além do escopo por módulo, há classes com <strong>audiência declarada</strong>: multa de rescisão, exceção comercial e histórico de conflito ficam restritos a Jurídico, Financeiro e Diretoria. Dado fora da faixa mostra <em>que existe</em> e oculta o valor — esconder a existência faria a pessoa concluir que não há cláusula e agir errado.</td></tr>
-            <tr><td><strong>Dado individual de usuário final</strong></td><td><strong>Nenhum papel de interface acessa.</strong> Só <code>ops-admin</code>, por consulta auditada com justificativa registrada. Não há base legal para o gestor nem para o CSM verem consumo individual de colaborador.</td></tr>
-            <tr><td><strong>Aprovação de distrato</strong></td><td>A pedido do cliente: CS ou liderança. <strong>Por inadimplência: só <code>ops-financeiro</code></strong> — pedir a quem tem o relacionamento que aprove rescisão é pedir que o relacionamento decida contra si mesmo.</td></tr>
+            <tr><td><strong>Dado individual de usuário final</strong></td><td><strong>Nenhum papel de interface acessa.</strong> Só <code>pulse-admin</code>, por consulta auditada com justificativa registrada. Não há base legal para o gestor nem para o CSM verem consumo individual de colaborador.</td></tr>
+            <tr><td><strong>Aprovação de distrato</strong></td><td>A pedido do cliente: CS ou liderança. <strong>Por inadimplência: só <code>pulse-financeiro</code></strong> — pedir a quem tem o relacionamento que aprove rescisão é pedir que o relacionamento decida contra si mesmo.</td></tr>
           </tbody>
         </table></div>
 
@@ -1567,7 +1567,7 @@ EXEMPLO · aviso prévio de 90 dias
           <thead><tr><th>Regra</th><th>Comportamento</th></tr></thead>
           <tbody>
             <tr><td><strong>Calendário e forecast</strong></td><td>Item aos 90 dias da vigência; previsão em três cenários; erro medido contra o realizado.</td></tr>
-            <tr><td><strong>CSQL para o Comercial</strong></td><td>Adesão alta com produto ausente qualifica expansão; o Ops escreve <em>score, flag e CSQL</em> no HubSpot — e nada mais.</td></tr>
+            <tr><td><strong>CSQL para o Comercial</strong></td><td>Adesão alta com produto ausente qualifica expansão; o Pulse escreve <em>score, flag e CSQL</em> no HubSpot — e nada mais.</td></tr>
             <tr><td><strong>Gate humano</strong></td><td><strong>Nenhum caminho de código gera ou envia distrato sem aprovação humana registrada.</strong> Critério bloqueante de lançamento.</td></tr>
             <tr><td><strong>Validação financeira</strong></td><td>Não pode ser pulada: débito em aberto, multa e aviso prévio entram na tela de decisão.</td></tr>
             <tr><td><strong>Levantada de mão</strong></td><td>O anúncio de intenção é registrado no dia em que chega, com canal, quem comunicou, motivo e <strong>MRR congelado</strong>. A conta entra no churn de contas <em>daquele mês</em> e sai da carteira de renovação.</td></tr>
@@ -1678,7 +1678,7 @@ EXEMPLO · aviso prévio de 90 dias
 
             <rect class="d-box-ink" x="646" y="44" width="150" height="96" rx="12"/>
             <text class="d-s" x="658" y="66" style="fill:#B9B9CC">apps/web-internal</text>
-            <text class="d-t d-t-w" x="658" y="90">Casca do Ops</text>
+            <text class="d-t d-t-w" x="658" y="90">Casca do Pulse</text>
             <text class="d-s" x="658" y="110" style="fill:#8E5BF0">papel ops_api</text>
             <text class="d-s" x="658" y="126" style="fill:#B9B9CC">oauth2-proxy · RBAC</text>
 
@@ -1711,7 +1711,7 @@ EXEMPLO · aviso prévio de 90 dias
         </figure>
 
         <h3>Monorepo</h3>
-        <div class="pre">apps/     web-internal   Next.js · casca do Ops + ferramentas, papel ops_api
+        <div class="pre">apps/     web-internal   Next.js · casca do Pulse + ferramentas, papel ops_api
           web-portal     Next.js · superfície do cliente,      papel ops_portal
           worker         BullMQ  · ciclos e consolidação,      papel ops_worker
 packages/ metrics        DICIONÁRIO COMO CÓDIGO — única definição de cada número
@@ -1729,7 +1729,7 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
           <tbody>
             <tr><td class="mono">ADR-001</td><td>Um monorepo, ferramentas como módulos</td><td>Um login, uma casca, um conceito de cliente; chassi amortizado</td><td>Deploy acoplado entre ferramentas</td></tr>
             <tr><td class="mono">ADR-002</td><td>Captação por watermark, não por captura de mudança na origem</td><td>Decodificação lógica em réplica só existe a partir do Postgres 16, e a réplica atual é 15</td><td>Latência de 15 min; risco de update silencioso, coberto pela reconciliação</td></tr>
-            <tr><td class="mono">ADR-003</td><td>Banco próprio; réplica só como fonte</td><td>O Ops nunca escreve na origem e nunca consulta ao vivo do frontend</td><td>Duplicação de dado; necessidade de reconciliar</td></tr>
+            <tr><td class="mono">ADR-003</td><td>Banco próprio; réplica só como fonte</td><td>O Pulse nunca escreve na origem e nunca consulta ao vivo do frontend</td><td>Duplicação de dado; necessidade de reconciliar</td></tr>
             <tr><td class="mono">ADR-004</td><td>Snapshot diário materializado</td><td>Série histórica estável; portal barato de servir; comparação sem ambiguidade</td><td>Dado do dia corrente só aparece amanhã</td></tr>
             <tr><td class="mono">ADR-005</td><td><strong>Next.js + Prisma + BullMQ</strong></td><td>É a stack da casa — o EnableOS é Next.js com Prisma, sem servidor de API separado</td><td>Menos separação formal entre HTTP e domínio</td></tr>
             <tr><td class="mono">ADR-006</td><td>PK interna <code>uuid</code>; id do HubSpot como chave externa</td><td>Merge de company é rotina de RevOps e mudaria o id; e existe conta sem id</td><td>Uma junção a mais</td></tr>
@@ -1738,13 +1738,13 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
             <tr><td class="mono">ADR-009</td><td>RLS <strong>forçado</strong>; papel da app não é owner</td><td>Isolamento sobrevive a bug de aplicação</td><td>Toda conexão carrega o tenant</td></tr>
             <tr><td class="mono">ADR-010</td><td><strong>Dicionário de métricas como código</strong></td><td>Torna estruturalmente impossível o mesmo número divergir entre superfícies</td><td>Métrica nova exige mudança em <code>packages/metrics</code></td></tr>
             <tr><td class="mono">ADR-011</td><td>Portal em domínio próprio; magic link primário</td><td>Mantém fora do caminho crítico um épico no código de outro time</td><td>Precisamos construir e endurecer auth externo</td></tr>
-            <tr><td class="mono">ADR-012</td><td>O Ops é fonte de verdade do MRR; escrita unidirecional no HubSpot</td><td>Evita dois sistemas autoritativos sem sincronização</td><td>Campo do HubSpot passa a ser espelho, com alarme</td></tr>
+            <tr><td class="mono">ADR-012</td><td>O Pulse é fonte de verdade do MRR; escrita unidirecional no HubSpot</td><td>Evita dois sistemas autoritativos sem sincronização</td><td>Campo do HubSpot passa a ser espelho, com alarme</td></tr>
             <tr><td class="mono">ADR-013</td><td>Playbooks e jornadas como conteúdo versionado</td><td>O time de CS altera sem deploy</td><td>Necessidade de validação de conteúdo</td></tr>
             <tr><td class="mono">ADR-014</td><td>Sem busca vetorial até existir caso de uso</td><td>Componente sem uso é dívida</td><td>Migration futura para habilitar</td></tr>
             <tr><td class="mono">ADR-015</td><td>Gate humano antes de ação irreversível externa</td><td>Rescisão, envio ao cliente e escrita em sistema de terceiro nunca partem de automação</td><td>Um clique a mais</td></tr>
             <tr><td class="mono">ADR-016</td><td>Autenticação pelo <strong>oauth2-proxy</strong> da casa</td><td>Padrão em uso pelos outros apps; o Google verifica o e-mail, não a nossa aplicação</td><td>Autenticação por cabeçalho, que exige a fronteira de rede de E1</td></tr>
             <tr><td class="mono">ADR-017</td><td>Isolamento como <strong>fronteira de deploy</strong>: dois apps, dois papéis</td><td>Mais forte que dois módulos no mesmo processo</td><td>Dois builds e dois contêineres</td></tr>
-            <tr><td class="mono">ADR-018</td><td>Postgres e Redis <strong>dedicados</strong> ao Ops</td><td>Varredura completa e reconciliação de 90 dias toda madrugada; dividir instância traz contenção de I/O e um dump do tamanho do maior banco</td><td><strong>Backup próprio obrigatório</strong> — o timer compartilhado da VM não cobre a instância nova</td></tr>
+            <tr><td class="mono">ADR-018</td><td>Postgres e Redis <strong>dedicados</strong> ao Pulse</td><td>Varredura completa e reconciliação de 90 dias toda madrugada; dividir instância traz contenção de I/O e um dump do tamanho do maior banco</td><td><strong>Backup próprio obrigatório</strong> — o timer compartilhado da VM não cobre a instância nova</td></tr>
           </tbody>
         </table></div>
 
@@ -1752,7 +1752,7 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
         <ul>
           <li><strong>VM Oracle Cloud ARM64</strong>, Ubuntu 24.04 — a mesma que serve Hub, Radar, Enable, Publi e Evolution. Ingresso só pelo <strong>Nginx Proxy Manager</strong> (80/443), com certificado aplicado pela API dele.</li>
           <li><strong><code>name:</code> fixado</strong> no Compose, seguindo a regra da casa: renomear a pasta ou remover a linha faria o Docker criar volumes novos vazios — perda de banco.</li>
-          <li>Redes externas para a camada web e rede interna própria para banco e fila, inalcançáveis por outros apps. <strong>Nenhuma porta pública</strong>; o Postgres do Ops escuta só em loopback, em porta livre.</li>
+          <li>Redes externas para a camada web e rede interna própria para banco e fila, inalcançáveis por outros apps. <strong>Nenhuma porta pública</strong>; o Postgres do Pulse escuta só em loopback, em porta livre.</li>
           <li><strong>Segredos em SOPS + age</strong>: cifrado versionado no repositório, decifrado para <code>.env</code> com permissão restrita no deploy. O contrato de runtime é idêntico ao dos outros apps; o ganho é histórico, revisão e recuperação — hoje, perder a VM perde os segredos.</li>
           <li><strong>Backup próprio</strong>, cifrado, com retenção de 30 dias. Destino remoto é pendência aberta e critério de lançamento: backup local não cobre perda da VM.</li>
         </ul>
@@ -1762,7 +1762,7 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
 <section id="s13">
         <p class="sec-label">13 — O que decide o sucesso</p>
         <h2>Governança de números</h2>
-        <p class="lead">O Ops é o <strong>primeiro BI da empresa</strong>. A interface é a parte fácil; o que decide sucesso ou fracasso é se os números estão certos, chegam a tempo e são explicáveis.</p>
+        <p class="lead">O Pulse é o <strong>primeiro BI da empresa</strong>. A interface é a parte fácil; o que decide sucesso ou fracasso é se os números estão certos, chegam a tempo e são explicáveis.</p>
 
         <h3>As três métricas de adesão</h3>
         <p>"Adesão" não é um número, são três — e a palavra sem qualificador é <strong>proibida</strong> em interface, relatório e conversa. Dois denominadores razoáveis produzem resultados que diferem em dezenas de pontos percentuais, e a métrica central do produto não pode carregar essa ambiguidade.</p>
@@ -1868,7 +1868,7 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
         <h3>Segurança</h3>
         <ul>
           <li><strong>Quatro papéis de banco, nenhum com bypass de RLS</strong>, nenhum superusuário, e o papel da aplicação não é dono das tabelas.</li>
-          <li>Credencial de leitura da réplica separada da credencial de escrita do Ops, com host, usuário e senha distintos.</li>
+          <li>Credencial de leitura da réplica separada da credencial de escrita do Pulse, com host, usuário e senha distintos.</li>
           <li>Segredos com rotação semestral e <strong>imediata após desligamento</strong> de quem tinha acesso à chave — trocar a chave não basta: as credenciais das integrações precisam ser regeradas na origem, porque quem tinha a chave já as leu.</li>
           <li>Política de conteúdo com <code>frame-ancestors</code> restrito; limite de taxa por tenant no portal.</li>
           <li>Trilha de auditoria imutável, somente inserção, por trigger.</li>
@@ -1876,14 +1876,14 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
         </ul>
 
         <h3>LGPD</h3>
-        <p>O Ops trata dado pessoal de <strong>duas</strong> categorias de titular: profissionais dos clientes — gestores e contatos — e <strong>usuários finais</strong> dos clubes. A segunda é a que exige rigor, porque são titulares que não são usuários do sistema e não têm relação direta com a Alloyal.</p>
+        <p>O Pulse trata dado pessoal de <strong>duas</strong> categorias de titular: profissionais dos clientes — gestores e contatos — e <strong>usuários finais</strong> dos clubes. A segunda é a que exige rigor, porque são titulares que não são usuários do sistema e não têm relação direta com a Alloyal.</p>
         <div class="tbl-wrap"><table>
           <thead><tr><th>Controle</th><th>Implementação</th></tr></thead>
           <tbody>
-            <tr><td><strong>Minimização</strong></td><td>Camada primária de engajamento é agregada. Identificador de usuário final é <strong>pseudônimo estável</strong> — sem CPF, nome ou e-mail no Ops. Transação entra agregada por conta e dia. Atividade de WhatsApp guarda metadado, nunca conteúdo</td></tr>
+            <tr><td><strong>Minimização</strong></td><td>Camada primária de engajamento é agregada. Identificador de usuário final é <strong>pseudônimo estável</strong> — sem CPF, nome ou e-mail no Pulse. Transação entra agregada por conta e dia. Atividade de WhatsApp guarda metadado, nunca conteúdo</td></tr>
             <tr><td><strong>Finalidade e base legal</strong></td><td>Documentada por finalidade; ROPA atualizado antes da primeira carga real</td></tr>
             <tr><td><strong>Relatório de impacto</strong></td><td>Elaborado antes da primeira carga real — há tratamento em larga escala com perfilamento</td></tr>
-            <tr><td><strong>Direito do titular</strong></td><td>Fluxo de requisição (acesso, correção, exclusão, portabilidade) com prazo, dono e registro. O Ops responde ao cliente-controlador, não diretamente ao titular</td></tr>
+            <tr><td><strong>Direito do titular</strong></td><td>Fluxo de requisição (acesso, correção, exclusão, portabilidade) com prazo, dono e registro. O Pulse responde ao cliente-controlador, não diretamente ao titular</td></tr>
             <tr><td><strong>Retenção</strong></td><td>Política por tabela com expurgo automatizado; pós-cancelamento aplicada no distrato</td></tr>
             <tr><td><strong>Supressão</strong></td><td>Recorte abaixo do mínimo é <strong>suprimido com aviso</strong>, nunca zerado nem omitido em silêncio</td></tr>
             <tr><td><strong>Proibição</strong></td><td>Nenhuma superfície expõe consumo individual identificável ao gestor — não há base legal</td></tr>
@@ -1932,11 +1932,11 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
             <tr><td>Sem índice na origem</td><td>Tech Lead</td><td class="mono">plano com varredura sequencial</td><td>Índice no primary, tabela materializada de agregados, ou janela noturna ampliada</td></tr>
             <tr><td>Janela noturna não caber</td><td>Eng. Dados</td><td class="mono">spike &gt; 3 h</td><td>Particionar por conta, paralelizar por lote, snapshot em duas passadas</td></tr>
             <tr><td>Fonte de engajamento sem chave de conta</td><td>PM</td><td class="mono">verificação negativa</td><td>Driver renormalizado a zero peso; engajamento medido por transação até haver série própria</td></tr>
-            <tr><td><strong>MRR divergir entre Ops e HubSpot</strong></td><td>RevOps</td><td class="mono">divergência &gt; 1%</td><td>Alarme diário. O Ops é a fonte; o campo do HubSpot é espelho</td></tr>
+            <tr><td><strong>MRR divergir entre Pulse e HubSpot</strong></td><td>RevOps</td><td class="mono">divergência &gt; 1%</td><td>Alarme diário. O Pulse é a fonte; o campo do HubSpot é espelho</td></tr>
             <tr><td>Histórico de MRR parcial</td><td>Data Owner</td><td class="mono">início da captação</td><td>Resíduo <code>nao_atribuido</code> visível; passado marcado <code>reconstruido</code></td></tr>
             <tr><td>Identidade não resolvida em massa</td><td>Eng. Dados</td><td class="mono">fila de exceção &gt; 2% dos registros</td><td>Parar a promoção do ciclo; mapear alias em lote com RevOps antes de seguir</td></tr>
             <tr><td>Primeiro BI sem governança</td><td>Data Owner</td><td class="mono">qualquer número histórico mudar</td><td>Congelamento; ajuste só na competência corrente</td></tr>
-            <tr><td>API do Hub depende de outro time</td><td>PM</td><td class="mono">sem contrato acordado até a fase que consome</td><td>Driver de suporte com peso zero; mock no Ops; suporte sai do score</td></tr>
+            <tr><td>API do Hub depende de outro time</td><td>PM</td><td class="mono">sem contrato acordado até a fase que consome</td><td>Driver de suporte com peso zero; mock no Pulse; suporte sai do score</td></tr>
             <tr><td><strong>Número errado exposto a cliente</strong></td><td>Data Owner</td><td class="mono">incidente aberto</td><td>Marcação em 1 h, comunicação ativa em 1 dia útil</td></tr>
             <tr><td>Perda da VM</td><td>Infra</td><td class="mono">backup só local</td><td>Destino remoto é critério de lançamento</td></tr>
             <tr><td>Escopo completo tratado como MVP</td><td>PM</td><td class="mono">cobrança do prazo cheio</td><td>Os marcos das semanas 7, 13 e 14 são o contrato; o resto é incremento</td></tr>
@@ -2034,7 +2034,7 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
           <thead><tr><th class="mono">ID</th><th>Pendência</th><th>Dono</th><th>Bloqueia</th></tr></thead>
           <tbody>
             <tr><td class="mono">C-05</td><td>Rota de rede da VM até a réplica e credencial somente-leitura</td><td>Plataforma</td><td>O spike de dados inteiro</td></tr>
-            <tr><td class="mono">C-07</td><td>Client OAuth e os 8 grupos <code>ops-*</code> no Workspace</td><td>Stack</td><td>Login e papéis</td></tr>
+            <tr><td class="mono">C-07</td><td>Client OAuth e os 8 grupos <code>pulse-*</code> no Workspace</td><td>Stack</td><td>Login e papéis</td></tr>
           </tbody>
         </table></div>
 
@@ -2105,8 +2105,8 @@ infra/    docker-compose, Dockerfile multi-alvo, secrets (SOPS), backup</div>
   </div>
 
   <div class="footer">
-    Alloyal Ops · PRD, Dados &amp; Arquitetura · v1.0 · julho 2026<br>
-    Documentos-fonte no repositório <b>stack-alloyal/alloyal-ops</b>: <code>docs/00-PRD-Plataforma-Alloyal-Ops.md</code> · <code>docs/01-PRD-Alloyal-Success.md</code> · <code>docs/02-Decisoes-e-Verificacoes-Abertas.md</code>
+    Alloyal Pulse · PRD, Dados &amp; Arquitetura · v1.0 · julho 2026<br>
+    Documentos-fonte no repositório <b>stack-alloyal/alloyal-pulse</b>: <code>docs/00-PRD-Plataforma-Alloyal-Pulse.md</code> · <code>docs/01-PRD-Alloyal-Success.md</code> · <code>docs/02-Decisoes-e-Verificacoes-Abertas.md</code>
   </div>
 </div>
 

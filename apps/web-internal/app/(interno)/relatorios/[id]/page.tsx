@@ -1,5 +1,5 @@
-import { listarRelatorios, type ConteudoRelatorio } from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, RelatorioCliente, TextArea } from '@ops/ui'
+import { listarRelatorios, type ConteudoRelatorio } from '@pulse/success'
+import { Aviso, Badge, Btn, Card, Field, RelatorioCliente, TextArea } from '@pulse/ui'
 import { FileBarChart, Lock, Printer } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'

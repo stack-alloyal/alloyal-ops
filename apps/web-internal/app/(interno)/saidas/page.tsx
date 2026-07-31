@@ -4,8 +4,8 @@ import {
   resumoChurn,
   rotuloDoMotivo,
   type Saida,
-} from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, Kpi, Vazio, cn } from '@ops/ui'
+} from '@pulse/success'
+import { Aviso, Badge, Btn, Card, Field, Kpi, Vazio, cn } from '@pulse/ui'
 import { Check } from 'lucide-react'
 
 import { acaoConfirmarAviso, acaoConfirmarCobranca, acaoEncerrar, acaoReter } from './acoes'

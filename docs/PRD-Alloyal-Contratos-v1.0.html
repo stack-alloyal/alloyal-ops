@@ -208,13 +208,13 @@
 <div class="wrap">
   <header class="masthead">
     <div class="inner">
-      <p class="eyebrow">PRD · Ferramenta 2 do Alloyal Ops · Produto, Dados &amp; Arquitetura</p>
+      <p class="eyebrow">PRD · Ferramenta 2 do Alloyal Pulse · Produto, Dados &amp; Arquitetura</p>
       <h1>Alloyal <span>Contratos</span></h1>
-      <p class="thesis">Gestão do ciclo de vida contratual dentro do Alloyal Ops. Substitui a planilha do Jurídico por <b>cláusulas tipadas, com vigência e procedência</b> — de modo que Comercial, Financeiro, CS, Onboarding, Marketing e Produto consultem sozinhos o que hoje só o Jurídico sabe responder.</p>
+      <p class="thesis">Gestão do ciclo de vida contratual dentro do Alloyal Pulse. Substitui a planilha do Jurídico por <b>cláusulas tipadas, com vigência e procedência</b> — de modo que Comercial, Financeiro, CS, Onboarding, Marketing e Produto consultem sozinhos o que hoje só o Jurídico sabe responder.</p>
       <div class="meta">
         <span class="chip">Versão <b>1.0</b></span>
         <span class="chip">Jul/2026</span>
-        <span class="chip">Chassi <b>Alloyal Ops</b></span>
+        <span class="chip">Chassi <b>Alloyal Pulse</b></span>
         <span class="chip">Dono <b>Jurídico</b></span>
         <span class="chip">Consumidores <b>7 áreas</b></span>
         <span class="chip">Integra <b>Clicksign · HubSpot</b></span>
@@ -236,7 +236,7 @@
         <li><a href="#s8"><span class="n">08</span> Fluxos de operação</a></li>
         <li><a href="#s9"><span class="n">09</span> Captação &amp; legado</a></li>
         <li><a href="#s10"><span class="n">10</span> Requisitos funcionais</a></li>
-        <li><a href="#s11"><span class="n">11</span> O que o Ops ganha</a></li>
+        <li><a href="#s11"><span class="n">11</span> O que o Pulse ganha</a></li>
         <li><a href="#s12"><span class="n">12</span> NFRs &amp; validade</a></li>
         <li><a href="#s13"><span class="n">13</span> Roadmap</a></li>
         <li><a href="#s14"><span class="n">14</span> Gaps &amp; em aberto</a></li>
@@ -283,8 +283,8 @@
           <p>Isso não é um detalhe do Jurídico: o fluxo de saída do Alloyal Success exige <strong>confirmar o aviso prévio</strong> antes de registrar o efeito na receita, e a validação de cancelamento exige a multa. Enquanto esses campos não forem estruturados, aquelas confirmações são feitas contra uma fonte que ninguém consegue auditar. <strong>O Contratos é pré-requisito do churn real ser confiável</strong>, não um projeto paralelo.</p>
         </div>
 
-        <h3>Por que dentro do Ops</h3>
-        <p>A informação contratual só tem valor quando cruzada com o resto: conta, MRR, renovação, adesão, implantação, cancelamento. Um CLM isolado devolveria a resposta certa num lugar onde ninguém trabalha. Dentro do Ops, a cláusula aparece na tela onde a pergunta nasce — no Cliente 360, na validação de cancelamento, no escopo da implantação.</p>
+        <h3>Por que dentro do Pulse</h3>
+        <p>A informação contratual só tem valor quando cruzada com o resto: conta, MRR, renovação, adesão, implantação, cancelamento. Um CLM isolado devolveria a resposta certa num lugar onde ninguém trabalha. Dentro do Pulse, a cláusula aparece na tela onde a pergunta nasce — no Cliente 360, na validação de cancelamento, no escopo da implantação.</p>
         <p>É também o <strong>primeiro teste real do chassi</strong>. Identidade, papéis, plataforma de dados, dicionário, linhagem, auditoria, design system, observabilidade, CI e infraestrutura vêm prontos. Pela regra de dois, esta é a segunda ferramenta que precisa de fila de trabalho e de superfície externa — então o <strong>motor de trabalho gradua para o chassi</strong> agora.</p>
       </section>
 
@@ -338,18 +338,18 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>Persona</th><th class="mono">Papel</th><th>Pergunta que traz à ferramenta</th><th>Cláusulas que consulta</th></tr></thead>
           <tbody>
-            <tr><td><strong>Jurídico</strong> <span class="st info">dono</span></td><td class="mono">ops-juridico</td><td>"O que negociamos com este cliente, e o que precisa de atenção?"</td><td>Todas</td></tr>
-            <tr><td><strong>Comercial</strong></td><td class="mono">ops-comercial</td><td>"Que condição já foi concedida, e o que posso oferecer?"</td><td>Exceção comercial, reajuste, exclusividade, vigência</td></tr>
-            <tr><td><strong>Financeiro</strong></td><td class="mono">ops-financeiro</td><td>"Como e quando fatura, e reajusta por qual índice?"</td><td>Faturamento, reajuste, multa, vencimento de setup</td></tr>
-            <tr><td><strong>Customer Success</strong></td><td class="mono">ops-csm · ops-cs-lead</td><td>"O que este cliente pode exigir, e quanto tempo de aviso ele tem?"</td><td>SLA, aviso prévio, exceção, conflito anterior, renovação</td></tr>
-            <tr><td><strong>Onboarding</strong></td><td class="mono">ops-implantacao</td><td>"O que exatamente foi vendido, e tem alguma particularidade?"</td><td>Escopo de produto, telemedicina, customização, obrigação</td></tr>
-            <tr><td><strong>Marketing</strong> <span class="st warn">papel novo</span></td><td class="mono">ops-marketing</td><td>"Posso usar a marca dele e falar com os colaboradores?"</td><td>Uso de marca, comunicação com usuário</td></tr>
-            <tr><td><strong>Produto e Operações</strong> <span class="st warn">papel novo</span></td><td class="mono">ops-produto</td><td>"Que funcionalidade foi vendida, e há customização prometida?"</td><td>Escopo, SLA, exclusividade, customização</td></tr>
-            <tr><td><strong>Diretoria</strong></td><td class="mono">ops-diretoria</td><td>"Que risco contratual a empresa carrega?"</td><td>Multa, conflito, exclusividade, indicadores</td></tr>
+            <tr><td><strong>Jurídico</strong> <span class="st info">dono</span></td><td class="mono">pulse-juridico</td><td>"O que negociamos com este cliente, e o que precisa de atenção?"</td><td>Todas</td></tr>
+            <tr><td><strong>Comercial</strong></td><td class="mono">pulse-comercial</td><td>"Que condição já foi concedida, e o que posso oferecer?"</td><td>Exceção comercial, reajuste, exclusividade, vigência</td></tr>
+            <tr><td><strong>Financeiro</strong></td><td class="mono">pulse-financeiro</td><td>"Como e quando fatura, e reajusta por qual índice?"</td><td>Faturamento, reajuste, multa, vencimento de setup</td></tr>
+            <tr><td><strong>Customer Success</strong></td><td class="mono">pulse-csm · pulse-cs-lead</td><td>"O que este cliente pode exigir, e quanto tempo de aviso ele tem?"</td><td>SLA, aviso prévio, exceção, conflito anterior, renovação</td></tr>
+            <tr><td><strong>Onboarding</strong></td><td class="mono">pulse-implantacao</td><td>"O que exatamente foi vendido, e tem alguma particularidade?"</td><td>Escopo de produto, telemedicina, customização, obrigação</td></tr>
+            <tr><td><strong>Marketing</strong> <span class="st warn">papel novo</span></td><td class="mono">pulse-marketing</td><td>"Posso usar a marca dele e falar com os colaboradores?"</td><td>Uso de marca, comunicação com usuário</td></tr>
+            <tr><td><strong>Produto e Operações</strong> <span class="st warn">papel novo</span></td><td class="mono">pulse-produto</td><td>"Que funcionalidade foi vendida, e há customização prometida?"</td><td>Escopo, SLA, exclusividade, customização</td></tr>
+            <tr><td><strong>Diretoria</strong></td><td class="mono">pulse-diretoria</td><td>"Que risco contratual a empresa carrega?"</td><td>Multa, conflito, exclusividade, indicadores</td></tr>
           </tbody>
         </table></div>
         <div class="callout note"><span class="k">Dois papéis novos no chassi</span>
-          <p><strong>Marketing e Produto não existem como papel no Alloyal Ops</strong> — a matriz atual tem oito papéis e nenhum deles é dessas áreas, porque a primeira ferramenta não precisava. As duas estão entre as consumidoras declaradas no briefing, então a matriz de permissão do chassi passa de 8 para 11 papéis, com <code>ops-juridico</code>, <code>ops-marketing</code> e <code>ops-produto</code>.</p>
+          <p><strong>Marketing e Produto não existem como papel no Alloyal Pulse</strong> — a matriz atual tem oito papéis e nenhum deles é dessas áreas, porque a primeira ferramenta não precisava. As duas estão entre as consumidoras declaradas no briefing, então a matriz de permissão do chassi passa de 8 para 11 papéis, com <code>pulse-juridico</code>, <code>pulse-marketing</code> e <code>pulse-produto</code>.</p>
           <p>É uma mudança no chassi, não nesta ferramenta — e é exatamente o tipo de extensão que a regra de dois prevê.</p>
         </div>
       </section>
@@ -364,9 +364,9 @@
           <thead><tr><th></th><th>Registro contratual</th><th>Autoria de documento</th></tr></thead>
           <tbody>
             <tr><th>O que é</th><td>Cadastro estruturado, cláusulas tipadas, aditivos, obrigações, datas, alertas, integração com Clicksign e HubSpot</td><td>Geração de minuta, controle de versão e <strong>negociação colaborativa com redline</strong></td></tr>
-            <tr><th>Natureza técnica</th><td>Dado e fluxo — exatamente o que o Ops faz</td><td>Edição concorrente, diff jurídico, trilha com validade legal — produto inteiro</td></tr>
+            <tr><th>Natureza técnica</th><td>Dado e fluxo — exatamente o que o Pulse faz</td><td>Edição concorrente, diff jurídico, trilha com validade legal — produto inteiro</td></tr>
             <tr><th>É diferencial?</th><td><strong>Sim</strong> — só tem valor cruzado com conta, MRR, renovação e CS, que são dados da Alloyal</td><td><strong>Não</strong> — mercado maduro, e o problema é igual em qualquer empresa</td></tr>
-            <tr><th>Decisão</th><td><span class="st good">construir no Ops</span></td><td><span class="st warn">caminho estreito</span></td></tr>
+            <tr><th>Decisão</th><td><span class="st good">construir no Pulse</span></td><td><span class="st warn">caminho estreito</span></td></tr>
           </tbody>
         </table></div>
 
@@ -404,7 +404,7 @@
 
         <div class="callout rule"><span class="k">Mudança de fonte de verdade no chassi</span>
           <p>O <strong>Contratos passa a ser a fonte de <code>core.contract</code></strong>. O ciclo que lê o HubSpot muda de natureza: o HubSpot deixa de ser fonte de condição contratual e volta a ser fonte de <em>pipeline</em> — oportunidade, estágio, owner comercial.</p>
-          <p>O HubSpot recebe espelho somente-leitura dos campos que o comercial precisa ver lá, com alarme de divergência. Uma fonte por dado, que é a regra que o Ops já aplica ao MRR.</p>
+          <p>O HubSpot recebe espelho somente-leitura dos campos que o comercial precisa ver lá, com alarme de divergência. Uma fonte por dado, que é a regra que o Pulse já aplica ao MRR.</p>
         </div>
 
         <h3>O que <code>core.contract</code> ganha</h3>
@@ -510,7 +510,7 @@ O QUE VALE HOJE  ·  valido_ate IS NULL OR valido_ate > hoje
       <section id="s7">
         <p class="sec-label">07 — O produto na tela</p>
         <h2>Telas &amp; navegação</h2>
-        <p class="lead">Cinco telas novas, dentro da mesma casca do Ops. A tela que decide o projeto é a <strong>busca por tipo de cláusula</strong> — é ela que faz Marketing responder sozinho se pode usar a marca.</p>
+        <p class="lead">Cinco telas novas, dentro da mesma casca do Pulse. A tela que decide o projeto é a <strong>busca por tipo de cláusula</strong> — é ela que faz Marketing responder sozinho se pode usar a marca.</p>
         <div class="pre">SUPERFÍCIE INTERNA · ops.alloyal.com.br
 │
 ├─ ...  (Success: Minha fila, Cliente 360, Carteira, Contas, Executivo …)
@@ -529,7 +529,7 @@ ONDE APARECE DENTRO DO SUCCESS
 
         <h3><span class="e">T20</span> Consulta de contratos</h3>
         <div class="wf">
-          <div class="wf__bar"><b>Alloyal Ops</b> ▸ Contratos <span class="tab on">Consulta</span><span class="tab">Calendário</span><span class="tab">Confirmação (23)</span></div>
+          <div class="wf__bar"><b>Alloyal Pulse</b> ▸ Contratos <span class="tab on">Consulta</span><span class="tab">Calendário</span><span class="tab">Confirmação (23)</span></div>
           <div class="wf__body">
             <p class="wf__h">Filtro por cláusula: <span>comunicação com usuário = restrita ou vedada · 14 contratos</span></p>
             <div class="wf__row"><i class="alta"></i>
@@ -771,10 +771,10 @@ cláusula proposta  30 dias sem confirmação                  → Jurídico</di
       <!-- ══ 11 ══ -->
       <section id="s11">
         <p class="sec-label">11 — Efeito cruzado</p>
-        <h2>O que o Alloyal Ops ganha</h2>
+        <h2>O que o Alloyal Pulse ganha</h2>
         <p class="lead">A ferramenta não vale só pelo Jurídico. Ela conserta dependências que a primeira ferramenta tinha e não podia resolver sozinha.</p>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>No Ops hoje</th><th>Como estava</th><th>Com o Contratos</th></tr></thead>
+          <thead><tr><th>No Pulse hoje</th><th>Como estava</th><th>Com o Contratos</th></tr></thead>
           <tbody>
             <tr><td><strong>Confirmação de aviso prévio</strong> no fluxo de saída</td><td>Exigida pelo fluxo, mas sem fonte estruturada — o número só existia dentro do PDF</td><td>Cláusula tipada, com procedência. A confirmação passa a ser <em>verificar</em>, não <em>descobrir</em></td></tr>
             <tr><td><strong>Validação de cancelamento</strong></td><td>Multa e débito consultados ao Jurídico caso a caso</td><td>Multa como cláusula restrita, na tela de decisão, com a regra de cálculo</td></tr>
@@ -861,8 +861,8 @@ cláusula proposta  30 dias sem confirmação                  → Jurídico</di
 
   <div class="footer">
     Alloyal Contratos · PRD, Dados &amp; Arquitetura · v1.0 · julho 2026<br>
-    Ferramenta 2 do <b>Alloyal Ops</b> · chassi e convenções em <code>docs/PRD-Alloyal-Ops-v1.0.html</code><br>
-    Repositório <b>stack-alloyal/alloyal-ops</b>
+    Ferramenta 2 do <b>Alloyal Pulse</b> · chassi e convenções em <code>docs/PRD-Alloyal-Pulse-v1.0.html</code><br>
+    Repositório <b>stack-alloyal/alloyal-pulse</b>
   </div>
 </div>
 

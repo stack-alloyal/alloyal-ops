@@ -10,12 +10,21 @@ import { defineMetric } from '../define.js'
  * │ nunca lido do campo do HubSpot.                                         │
  * │                                                                          │
  * │ ADR-012. O PRD v1.0 dizia simultaneamente que o HubSpot é a fonte de     │
- * │ MRR e que o Ops passa a ser a fonte de verdade dos eventos de MRR —      │
+ * │ MRR e que o Pulse passa a ser a fonte de verdade dos eventos de MRR —      │
  * │ dois sistemas autoritativos, sem sincronização e sem alarme. O campo do  │
  * │ HubSpot é espelho, e divergência acima de 1% é alarme diário.            │
  * └─────────────────────────────────────────────────────────────────────────┘
  */
 
+/**
+ * `fonte: 'ops'` NÃO é resquício do nome antigo do produto.
+ *
+ * As fontes são `replica`, `hubspot`, `omie`, `clevertap` e `ops` — sistemas de onde o
+ * dado vem. `ops` significa "produzido pela camada de consolidação", que é o mesmo
+ * sentido do esquema `ops` (nomeado por função, como `core`, `fact` e `metrics`, e não
+ * pelo produto). O renome para Pulse não tocou nisto de propósito: trocar aqui faria
+ * `pulse` conviver com nomes de sistema como se também fosse um.
+ */
 const LEDGER = { ciclo: 'C5', fonte: 'ops' } as const
 
 /**
@@ -53,7 +62,7 @@ export const mrr = defineMetric({
   dono: 'Data Owner',
   versao: 1,
   explicacao:
-    'Receita recorrente mensal, somada a partir do histórico de eventos de contrato. Não é lida do campo do HubSpot: o Ops é a fonte de verdade e o HubSpot é espelho.',
+    'Receita recorrente mensal, somada a partir do histórico de eventos de contrato. Não é lida do campo do HubSpot: o Pulse é a fonte de verdade e o HubSpot é espelho.',
   sensivel: true,
 })
 

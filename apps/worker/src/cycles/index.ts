@@ -24,11 +24,11 @@ import {
   competenciaAnterior,
   CompetenciaCongeladaError,
   fechar,
-} from '@ops/success'
+} from '@pulse/success'
 
-import { vencerObrigacoes } from '@ops/contratos'
+import { vencerObrigacoes } from '@pulse/contratos'
 
-import { calcularBenchmark } from '@ops/success'
+import { calcularBenchmark } from '@pulse/success'
 
 import { avaliarDatasContratuais } from '../contratual.js'
 import { consolidar } from '../consolidacao.js'

@@ -1,5 +1,5 @@
-import { buscarPorTipo, CLAUSULAS, especificacao, tiposLegiveis, type TipoClausula } from '@ops/contratos'
-import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio, cn } from '@ops/ui'
+import { buscarPorTipo, CLAUSULAS, especificacao, tiposLegiveis, type TipoClausula } from '@pulse/contratos'
+import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio, cn } from '@pulse/ui'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
 

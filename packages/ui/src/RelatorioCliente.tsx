@@ -8,7 +8,7 @@ import { cn, Table } from './base'
  * com um número que a tela não mostrava — e a divergência só aparece quando o
  * cliente aponta.
  *
- * As props são declaradas ESTRUTURALMENTE, e não importadas de `@ops/success`: assim
+ * As props são declaradas ESTRUTURALMENTE, e não importadas de `@pulse/success`: assim
  * o pacote de interface não passa a depender de domínio, e o compilador continua
  * verificando porque `ConteudoRelatorio` satisfaz a forma. A dependência na direção
  * inversa — domínio conhecendo interface — é a que impede o mesmo cálculo de servir a

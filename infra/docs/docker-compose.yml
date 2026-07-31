@@ -1,5 +1,5 @@
 # ═════════════════════════════════════════════════════════════════════════════
-# docs.alloyal.com.br — documentação de produto do Alloyal Ops
+# docs.alloyal.com.br — documentação de produto do Alloyal Pulse
 #
 # Site estático servido atrás do Google SSO, no mesmo padrão de evolution e
 # radar: nginx serve os arquivos, oauth2-proxy autentica, e o Nginx Proxy
@@ -13,7 +13,7 @@
 # de bind mount do repositório), mas o pin fica por consistência de projeto.
 # ═════════════════════════════════════════════════════════════════════════════
 
-name: alloyal-ops-docs
+name: alloyal-pulse-docs
 
 services:
   docs:
@@ -22,7 +22,7 @@ services:
     restart: always
     volumes:
       # Serve o diretório docs/ do próprio repositório, somente leitura.
-      # Caminho relativo ao compose: funciona em ~/alloyal-ops e em /opt/alloyal-ops.
+      # Caminho relativo ao compose: funciona em ~/alloyal-pulse e em /opt/alloyal-pulse.
       - ../../docs:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     # NENHUMA porta publicada. O acesso é só pela rede do proxy.

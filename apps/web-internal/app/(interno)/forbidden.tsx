@@ -1,4 +1,4 @@
-import { AlloyalLogo, Card } from '@ops/ui'
+import { AlloyalLogo, Card } from '@pulse/ui'
 import Link from 'next/link'
 
 /**
@@ -15,7 +15,7 @@ export default function SemPermissao() {
       <Card title="Sem permissão para esta área">
         <p className="text-[13.5px] leading-relaxed text-ink-2">
           Você está autenticado, mas o seu papel não dá acesso a esta tela. Os papéis vêm dos
-          grupos <code className="rounded bg-surface-2 px-1 py-0.5 text-[12px]">ops-*</code> do
+          grupos <code className="rounded bg-surface-2 px-1 py-0.5 text-[12px]">pulse-*</code> do
           Google Workspace — peça a inclusão no grupo certo a quem administra o Workspace.
         </p>
         <Link

@@ -1,5 +1,5 @@
 # ═════════════════════════════════════════════════════════════════════════════
-# Alloyal Ops — stack da aplicação
+# Alloyal Pulse — stack da aplicação
 #
 # Segue as convenções da plataforma compartilhada (/opt/stack):
 #   • `name:` FIXADO — preserva os volumes independente do path de deploy.
@@ -13,25 +13,25 @@
 #   • ARM64 (Oracle Cloud Ampere). Todas as imagens abaixo têm arm64.
 #
 # POR QUE POSTGRES E REDIS PRÓPRIOS, e não os compartilhados de /opt/stack:
-# o Ops roda varredura completa de base elegível e reconciliação de 90 dias toda
+# o Pulse roda varredura completa de base elegível e reconciliação de 90 dias toda
 # madrugada, sobre milhões de linhas. Dividir instância com Hub e Evolution é
 # convidar contenção de I/O, estouro de conexões e autovacuum competindo — e o
 # `pg_dumpall` compartilhado passaria a levar o tempo do maior banco. Precedente
 # na casa: `postgres-enable`. Decisão C-01/C-04 (doc 02).
 # ═════════════════════════════════════════════════════════════════════════════
 
-name: alloyal-ops
+name: alloyal-pulse
 
 services:
   # ─── Banco ─────────────────────────────────────────────────────────────────
-  postgres-ops:
+  postgres-pulse:
     image: postgres:16
-    container_name: postgres-ops
+    container_name: postgres-pulse
     restart: always
     environment:
-      POSTGRES_DB: ops
+      POSTGRES_DB: pulse
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_OPS_PASSWORD:?defina no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PULSE_PASSWORD:?defina no .env}
       # Fronteira de dia é calculada em America/Sao_Paulo nas queries; o servidor
       # fica em UTC de propósito (ADR-008).
       TZ: UTC
@@ -64,7 +64,7 @@ services:
       # compartilhado e pelo Supabase do Metas.
       - '127.0.0.1:5434:5432'
     networks:
-      - ops-net
+      - pulse-net
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d ops']
       interval: 10s
@@ -72,20 +72,20 @@ services:
       retries: 5
 
   # ─── Fila ──────────────────────────────────────────────────────────────────
-  redis-ops:
+  redis-pulse:
     image: redis:7
-    container_name: redis-ops
+    container_name: redis-pulse
     restart: always
     # `noeviction` é obrigatório para BullMQ: com política de evicção, o Redis
     # descarta job sob pressão de memória e a perda é silenciosa.
     command: >
       redis-server --appendonly yes
-      --requirepass ${REDIS_OPS_PASSWORD:?defina no .env}
+      --requirepass ${REDIS_PULSE_PASSWORD:?defina no .env}
       --maxmemory 512mb --maxmemory-policy noeviction
     volumes:
       - redis_ops_data:/data
     networks:
-      - ops-net
+      - pulse-net
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -105,13 +105,13 @@ services:
       NODE_ENV: production
       TZ: UTC
     networks:
-      - ops-net
+      - pulse-net
       # Sai para as APIs externas (HubSpot, CleverTap, Omie) e alcança a réplica.
       - default
     depends_on:
-      postgres-ops:
+      postgres-pulse:
         condition: service_healthy
-      redis-ops:
+      redis-pulse:
         condition: service_healthy
 
   # ─── Superfície interna ────────────────────────────────────────────────────
@@ -126,11 +126,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3000'
-      # Conecta como ops_api: sem acesso a public_v (migration 0005).
+      # Conecta como pulse_api: sem acesso a public_v (migration 0005).
       DATABASE_URL: ${DATABASE_URL_API:?defina no .env}
       # Prova de que a requisição passou pelo proxy. Sem isto a aplicação
       # recusa autenticar — e é assim que se quer que ela falhe.
-      OPS_PROXY_SECRET: ${OPS_PROXY_SECRET:?defina no .env}
+      PULSE_PROXY_SECRET: ${PULSE_PROXY_SECRET:?defina no .env}
       AUTH_DOMINIO: ${AUTH_DOMINIO:-alloyal.com.br}
     # NENHUMA porta publicada. A identidade chega por cabeçalho, e cabeçalho é
     # falsificável por quem fala direto com a aplicação. Defesa em duas camadas:
@@ -139,10 +139,10 @@ services:
     # Component não há acesso ao endereço de rede de quem chamou — por isso a
     # prova é um segredo, e não uma faixa de IP.
     networks:
-      - ops-net
+      - pulse-net
       - proxy-net
     depends_on:
-      postgres-ops:
+      postgres-pulse:
         condition: service_healthy
 
   # ─── oauth2-proxy da superfície interna ────────────────────────────────────
@@ -159,9 +159,9 @@ services:
       - --trusted-proxy-ip=172.16.0.0/12
       - --provider=google
       - --email-domain=alloyal.com.br
-      - --redirect-url=https://ops.alloyal.com.br/oauth2/callback
-      - --whitelist-domain=ops.alloyal.com.br
-      - --cookie-domain=ops.alloyal.com.br
+      - --redirect-url=https://pulse.alloyal.com.br/oauth2/callback
+      - --whitelist-domain=pulse.alloyal.com.br
+      - --cookie-domain=pulse.alloyal.com.br
       - --cookie-secure=true
       - --cookie-csrf-per-request=true
       - --cookie-csrf-expire=5m
@@ -186,13 +186,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3000'
-      # Conecta como ops_portal: só public_v, só SELECT, sob RLS forçado.
+      # Conecta como pulse_portal: só public_v, só SELECT, sob RLS forçado.
       DATABASE_URL: ${DATABASE_URL_PORTAL:?defina no .env}
     networks:
-      - ops-net
+      - pulse-net
       - proxy-net
     depends_on:
-      postgres-ops:
+      postgres-pulse:
         condition: service_healthy
 
 volumes:
@@ -201,7 +201,7 @@ volumes:
 
 networks:
   # Rede interna do projeto: banco e fila não são alcançáveis de outros apps.
-  ops-net:
+  pulse-net:
     driver: bridge
   # Compartilhada com o Nginx Proxy Manager (criada por /opt/stack/bootstrap.sh).
   proxy-net:

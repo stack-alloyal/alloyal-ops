@@ -43,7 +43,7 @@ export function recorteDaConta(colunaAccountId: string, pBase: number, pEmail: n
  * alguém, e item tem `dono_email` próprio — recortar conta por `fila` mistura as duas
  * coisas.
  *
- * A diferença não é teórica: `ops-financeiro` tem `contas: 'base'` e
+ * A diferença não é teórica: `pulse-financeiro` tem `contas: 'base'` e
  * `fila: 'carteira'`. Recortar a confirmação de última cobrança por `fila` impedia o
  * Financeiro de confirmar cobrança de conta de qualquer CSM — que é justamente o
  * trabalho dele. Foi assim que a suíte existente pegou a primeira versão disto.

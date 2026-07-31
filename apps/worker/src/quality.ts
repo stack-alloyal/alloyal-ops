@@ -1,13 +1,13 @@
 /**
  * As cinco verificações de qualidade.
  *
- * Doc do Ops, seção 09. Cada uma tem uma AÇÃO declarada, e as ações são
+ * Doc do Pulse, seção 09. Cada uma tem uma AÇÃO declarada, e as ações são
  * deliberadamente diferentes entre si — tratar toda falha de qualidade do mesmo
  * jeito é o que produz ou um sistema que trava por qualquer coisa, ou um que
  * publica qualquer coisa.
  */
 
-import { numeroConfigurado } from '@ops/auth'
+import { numeroConfigurado } from '@pulse/auth'
 
 export type AcaoQualidade =
   | 'nenhuma'

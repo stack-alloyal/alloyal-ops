@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 
 /**
- * O menu do Ops.
+ * O menu do Pulse.
  *
  * Fica em módulo próprio porque é lido pela casca (servidor) e pela nav
  * (cliente). Cada item declara o que a tela RESPONDE, e não só como se chama:

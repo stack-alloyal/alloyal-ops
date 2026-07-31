@@ -1,4 +1,4 @@
-import { decifrar } from '@ops/auth'
+import { decifrar } from '@pulse/auth'
 import type pg from 'pg'
 
 /**
@@ -12,8 +12,8 @@ import type pg from 'pg'
  * │ escrevia. Um campo que nunca muda de valor mente sobre o que mede.          │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
- * Quem chama isto é o worker, com o role `ops_worker` — o único que tem `SELECT` em
- * `ops.segredo`. A tela (`ops_api`) não tem, de propósito.
+ * Quem chama isto é o worker, com o role `pulse_worker` — o único que tem `SELECT` em
+ * `ops.segredo`. A tela (`pulse_api`) não tem, de propósito.
  */
 
 export class SegredoAusenteError extends Error {

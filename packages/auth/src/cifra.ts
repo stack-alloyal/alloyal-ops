@@ -16,7 +16,7 @@ import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from '
  * acesso de escrita ao banco mas não à chave não consegue TROCAR um token por outro —
  * o que num token de API significaria redirecionar a integração para um servidor dele.
  *
- * A chave NUNCA está no repositório: vem de `OPS_CHAVE_MESTRA`, que vive no SOPS. É
+ * A chave NUNCA está no repositório: vem de `PULSE_CHAVE_MESTRA`, que vive no SOPS. É
  * cifra em duas camadas de propósito — a do repo protege o arquivo, esta protege a
  * linha do banco, e o comprometimento de uma não entrega a outra.
  */
@@ -30,7 +30,7 @@ const TAMANHO_TAG = 16
 export class ChaveMestraAusenteError extends Error {
   constructor() {
     super(
-      'OPS_CHAVE_MESTRA não configurada. Gere com `openssl rand -base64 32` e guarde ' +
+      'PULSE_CHAVE_MESTRA não configurada. Gere com `openssl rand -base64 32` e guarde ' +
         'no SOPS — sem ela nenhum segredo pode ser gravado nem lido.',
     )
     this.name = 'ChaveMestraAusenteError'
@@ -53,12 +53,12 @@ export class SegredoCorrompidoError extends Error {
  * `createCipheriv` de algumas versões e daria cifra mais fraca em silêncio.
  */
 function chaveMestra(): Buffer {
-  const bruta = process.env['OPS_CHAVE_MESTRA']
+  const bruta = process.env['PULSE_CHAVE_MESTRA']
   if (!bruta) throw new ChaveMestraAusenteError()
   const chave = Buffer.from(bruta, 'base64')
   if (chave.length !== 32) {
     throw new Error(
-      `OPS_CHAVE_MESTRA tem ${chave.length} bytes depois do base64; AES-256 exige 32. ` +
+      `PULSE_CHAVE_MESTRA tem ${chave.length} bytes depois do base64; AES-256 exige 32. ` +
         'Gere com `openssl rand -base64 32`.',
     )
   }

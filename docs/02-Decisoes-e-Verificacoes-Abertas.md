@@ -5,7 +5,7 @@
 | Documento | 02 — Pendências |
 | Versão | 2.0 |
 | Data | 26 de julho de 2026 |
-| Irmãos | `00-PRD-Plataforma-Alloyal-Ops.md` · `01-PRD-Alloyal-Success.md` |
+| Irmãos | `00-PRD-Plataforma-Alloyal-Pulse.md` · `01-PRD-Alloyal-Success.md` |
 
 Este é o documento de trabalho. Tudo que impede o projeto de andar está aqui, com **dono, o que bloqueia e um default proposto**. Onde há default, o silêncio é uma resposta válida: seguimos com ele e registramos.
 
@@ -140,14 +140,14 @@ Estas oito estavam travando o bootstrap. Resolvidas, e a fundação já foi cons
 
 | # | Dúvida | Decisão | Onde ficou |
 |---|---|---|---|
-**C-01** | Onde roda? | ✅ **VM Oracle existente** (ARM64, 4 vCPU, 23 GB, 148 GB livres), projeto Compose próprio `alloyal-ops`, redes `ops-net` + `proxy-net`. **Postgres e Redis dedicados**, não os compartilhados de `/opt/stack` — ADR-018 explica por quê | `infra/docker-compose.yml` |
+**C-01** | Onde roda? | ✅ **VM Oracle existente** (ARM64, 4 vCPU, 23 GB, 148 GB livres), projeto Compose próprio `alloyal-pulse`, redes `ops-net` + `proxy-net`. **Postgres e Redis dedicados**, não os compartilhados de `/opt/stack` — ADR-018 explica por quê | `infra/docker-compose.yml` |
 **C-02** | Domínios | ✅ `ops.alloyal.com.br` (interno) e `cliente.alloyal.com.br` (portal). Separados para o portal ter CSP, limite de taxa e política de cookie próprios | compose + `infra/proxy` |
 **C-03** | TLS | ✅ **Nginx Proxy Manager** já no 80/443 da VM, com Let's Encrypt. Não é nginx com certbot: a configuração vive no volume do NPM e se aplica pela API dele (ver `/opt/stack/infra/proxy/PROXY-HOSTS.md`) | — |
 **C-04** | Postgres | ✅ **16** em Docker, volume dedicado, `shared_buffers=2GB`, backup próprio. A versão da nossa instância não afeta CDC — quem decide isso é a réplica de origem (V-03) | `infra/docker-compose.yml` |
 **C-05** | Rede até a réplica | ⚠️ **Ainda pendente.** É o único item de C.1 sem resposta, e sem ele o spike de dados não roda | `REPLICA_URL` em `.env.example` |
 **C-06** | Cofre de segredos | ✅ **SOPS + age.** Cifrado versionado no repo; decifrado para `infra/.env` (600) no deploy — mesmo contrato de runtime dos outros apps da casa, com histórico e recuperação a mais | `infra/secrets/README.md` |
-**C-07** | Google Workspace | ⚠️ Falta quem cria o client OAuth e os 8 grupos `ops-*`. A **arquitetura mudou**: usamos o oauth2-proxy da casa (ADR-016), não OIDC na aplicação | `infra/oauth2.env.example` |
-**C-08** | Repositório e CI | ✅ GitHub Actions no `stack-alloyal/alloyal-ops`, runner hospedado para lint/tipos/build/testes; deploy por chave na VM | `.github/workflows/ci.yml` |
+**C-07** | Google Workspace | ⚠️ Falta quem cria o client OAuth e os 8 grupos `pulse-*`. A **arquitetura mudou**: usamos o oauth2-proxy da casa (ADR-016), não OIDC na aplicação | `infra/oauth2.env.example` |
+**C-08** | Repositório e CI | ✅ GitHub Actions no `stack-alloyal/alloyal-pulse`, runner hospedado para lint/tipos/build/testes; deploy por chave na VM | `.github/workflows/ci.yml` |
 
 **Novas pendências que só apareceram ao olhar a VM:**
 
@@ -168,7 +168,7 @@ Estas oito estavam travando o bootstrap. Resolvidas, e a fundação já foi cons
 **C-13** | **Backup.** Destino, retenção, quem guarda a chave de restore? | `pg_dump` diário cifrado para Oracle Object Storage, retenção 30 dias diários + 12 mensais, restauração ensaiada por trimestre |
 **C-14** | **Node e gerenciador de pacotes.** | Node 22 LTS, pnpm com workspaces, Turborepo para cache de build |
 **C-15** | **Design system.** Existe biblioteca ou tokens do Hub / `dashboard.cliente` para herdar? Existe Figma? | Se existir, herdamos os tokens; se não, `packages/ui` nasce com tokens próprios derivados da marca |
-**C-16** | **WhatsApp / Evolution.** Instância, credencial e número que o Ops usa | Instância existente, com número dedicado ao relacionamento de CS |
+**C-16** | **WhatsApp / Evolution.** Instância, credencial e número que o Pulse usa | Instância existente, com número dedicado ao relacionamento de CS |
 **C-17** | **Credenciais das integrações.** Quem administra HubSpot, CleverTap e Omie, e quem pode criar app/token com escopo de leitura? | Um responsável por integração, nomeado |
 
 ### C.3 De produto — travam a validação, não o código
@@ -177,7 +177,7 @@ Estas oito estavam travando o bootstrap. Resolvidas, e a fundação já foi cons
 |---|---|---|
 **C-18** | **Piloto.** Quais 2 ou 3 CSMs, e quem é o Head de CS que aprova a saída do modo sombra? | 3 CSMs com carteiras de perfil diferente |
 **C-19** | **Pesquisa prévia.** Quando podemos fazer as 5 entrevistas e a sessão de observação? | Semana 1 da Fase 0. É bloqueante do desenho da fila |
-**C-20** | **Nome e rota.** "Alloyal Success" é o nome final da ferramenta? | `ops.alloyal.com.br/success`, com a casca do Ops por cima |
+**C-20** | **Nome e rota.** "Alloyal Success" é o nome final da ferramenta? | `ops.alloyal.com.br/success`, com a casca do Pulse por cima |
 **C-21** | **Quantos clientes e quantos CSMs hoje?** | Necessário para dimensionar o orçamento de fila (seção 9 do doc 01). Também é V-05 |
 **C-22** | **Base de clientes tem contratos vencidos ou em aberto no HubSpot?** Qual a qualidade do cadastro? | Auditoria de 50 registros na Fase 0 |
 **C-23** | **Existe planilha em uso hoje** que precise migrar (carteira, controle de implantação, acompanhamento)? | Inventariar na Fase 0, definir corte na F4 |
@@ -207,7 +207,7 @@ Cinco mudanças revertem decisões registradas no Anexo B da v1.0. Nenhuma pode 
 |---|---|---|
 **Hoje** | Rodar V-01 e V-02 na réplica; perguntar V-11 ao admin do HubSpot | Plataforma / RevOps |
 **Hoje** | **C-05** — rota de rede e credencial somente-leitura da réplica | Plataforma |
-**Hoje** | **C-07** — client OAuth e os 8 grupos `ops-*` no Workspace | Stack / Workspace |
+**Hoje** | **C-07** — client OAuth e os 8 grupos `pulse-*` no Workspace | Stack / Workspace |
 ~~Hoje~~ | ~~Responder C-01 a C-08~~ — respondidas em 26/07; fundação construída | ✅ |
 **Semana 1** | Aprovar D-01 a D-05 | Liderança |
 **Semana 1** | Marcar as 5 entrevistas com CSMs | PM |

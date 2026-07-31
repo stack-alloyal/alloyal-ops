@@ -1,11 +1,11 @@
-import '@ops/ui/estilo.css'
+import '@pulse/ui/estilo.css'
 
 import type { ReactNode } from 'react'
 
 import { Casca } from './casca'
 import { autenticado } from '../../lib/guarda'
 
-export const metadata = { title: 'Alloyal Ops', description: 'Ferramentas de operação' }
+export const metadata = { title: 'Alloyal Pulse', description: 'Ferramentas de operação' }
 
 /**
  * Layout raiz da superfície interna.

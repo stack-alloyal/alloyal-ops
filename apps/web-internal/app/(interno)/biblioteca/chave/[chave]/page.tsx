@@ -1,5 +1,5 @@
-import { historico } from '@ops/success'
-import { Aviso, Badge, Btn, Card } from '@ops/ui'
+import { historico } from '@pulse/success'
+import { Aviso, Badge, Btn, Card } from '@pulse/ui'
 import { notFound } from 'next/navigation'
 
 import { acaoDespublicar, acaoPublicar } from '../../acoes'

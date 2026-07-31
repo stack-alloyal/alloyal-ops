@@ -1,4 +1,4 @@
-import { AlloyalLogo, cn } from '@ops/ui'
+import { AlloyalLogo, cn } from '@pulse/ui'
 import { BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -12,7 +12,7 @@ import { Nav } from './nav'
  * Duas diferenças deliberadas em relação ao alloyal-publi:
  *
  *  1. Não há colapso nem drawer mobile. Aquilo depende de estado de cliente, e
- *     esta casca é Server Component inteira. O menu do Ops tem seis itens; o do
+ *     esta casca é Server Component inteira. O menu do Pulse tem seis itens; o do
  *     Publi tem projetos aninhados, que é o que torna o colapso necessário lá.
  *
  *  2. A nav é o único componente de cliente (`nav.tsx`), porque precisa do
@@ -33,7 +33,7 @@ export function Casca({ children }: { children: ReactNode }) {
         </div>
         <Nav />
         <div className="mt-auto px-2 pt-4 text-[11px] leading-relaxed text-ink-4">
-          Alloyal Ops · ferramentas de operação
+          Alloyal Pulse · ferramentas de operação
         </div>
       </aside>
 

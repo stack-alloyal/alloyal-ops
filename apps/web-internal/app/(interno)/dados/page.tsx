@@ -1,5 +1,5 @@
-import { decidirAlarme, type PoliticaFalha } from '@ops/metrics'
-import { Aviso, Badge, Card, Kpi, Table, cn } from '@ops/ui'
+import { decidirAlarme, type PoliticaFalha } from '@pulse/metrics'
+import { Aviso, Badge, Card, Kpi, Table, cn } from '@pulse/ui'
 
 import { Corpo, Topo } from '../casca'
 import { pool } from '../../../lib/db'
@@ -156,7 +156,7 @@ export default async function Painel() {
   await exigir((p) => p.configurar || p.contas === 'base', 'acesso à plataforma de dados')
 
   const { ciclos, estado, lacunas } = await carregar()
-  // A decisão vem de `@ops/metrics`, não de uma comparação escrita aqui: é a regra
+  // A decisão vem de `@pulse/metrics`, não de uma comparação escrita aqui: é a regra
   // que decide se alguém é avisado de que o dado parou de entrar, e regra dentro do
   // componente não tem teste. Ver `apps/worker/src/alarme.test.ts`.
   const alertas = ciclos

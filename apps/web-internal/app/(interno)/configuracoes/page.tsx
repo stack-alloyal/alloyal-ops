@@ -1,5 +1,5 @@
-import { CATALOGO, POR_GRUPO, chavesOrfas, gravados, lerConfiguracao } from '@ops/config'
-import { Aviso, Badge, Btn, Card, Field } from '@ops/ui'
+import { CATALOGO, POR_GRUPO, chavesOrfas, gravados, lerConfiguracao } from '@pulse/config'
+import { Aviso, Badge, Btn, Card, Field } from '@pulse/ui'
 import { KeyRound, ScrollText, Users } from 'lucide-react'
 import Link from 'next/link'
 

@@ -1,7 +1,7 @@
 /**
  * A lista de papéis existe em dois lugares, e eles não podem divergir.
  *
- * `PAPEIS` em `@ops/auth` é o que o código conhece; o CHECK de `ops.user_role` é o
+ * `PAPEIS` em `@pulse/auth` é o que o código conhece; o CHECK de `ops.user_role` é o
  * que o banco aceita. Manter os dois é deliberado — o CHECK impede papel inventado
  * por SQL solto, o tipo impede papel inventado por código.
  *
@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { PAPEIS } from '@ops/auth'
+import { PAPEIS } from '@pulse/auth'
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
 
@@ -50,7 +50,7 @@ test('o CHECK do banco aceita exatamente os papéis que o código declara', () =
   assert.deepEqual(
     doBanco,
     doCodigo,
-    'papel declarado em @ops/auth e não aceito pelo banco (ou o inverso) — falta uma migration',
+    'papel declarado em @pulse/auth e não aceito pelo banco (ou o inverso) — falta uma migration',
   )
 })
 
@@ -58,8 +58,8 @@ test('nenhum papel é declarado duas vezes', () => {
   assert.equal(new Set(PAPEIS).size, PAPEIS.length)
 })
 
-test('todo papel segue a convenção ops-*', () => {
+test('todo papel segue a convenção pulse-*', () => {
   // O prefixo não é enfeite: os papéis vêm de GRUPOS do Workspace, e o prefixo é
   // o que permite listar os grupos relevantes sem enumerar nomes à mão.
-  for (const p of PAPEIS) assert.match(p, /^ops-[a-z-]+$/)
+  for (const p of PAPEIS) assert.match(p, /^pulse-[a-z-]+$/)
 })

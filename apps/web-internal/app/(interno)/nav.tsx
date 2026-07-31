@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@ops/ui'
+import { cn } from '@pulse/ui'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 

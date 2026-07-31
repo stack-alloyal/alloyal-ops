@@ -1,5 +1,5 @@
-import { especificacao, historicoDoTipo, valeHoje, type TipoClausula } from '@ops/contratos'
-import { Aviso, Badge, Card, Kpi, cn } from '@ops/ui'
+import { especificacao, historicoDoTipo, valeHoje, type TipoClausula } from '@pulse/contratos'
+import { Aviso, Badge, Card, Kpi, cn } from '@pulse/ui'
 import { FileText, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'

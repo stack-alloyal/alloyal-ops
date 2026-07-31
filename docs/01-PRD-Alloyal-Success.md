@@ -1,6 +1,6 @@
 # Alloyal Success — PRD
 
-*Primeira ferramenta do Alloyal Ops*
+*Primeira ferramenta do Alloyal Pulse*
 
 | | |
 |---|---|
@@ -8,7 +8,7 @@
 | Versão | 2.0 |
 | Data | 26 de julho de 2026 |
 | Substitui | PRD Alloyal Success v1.0 (23/07/2026) |
-| Chassi | `00-PRD-Plataforma-Alloyal-Ops.md` |
+| Chassi | `00-PRD-Plataforma-Alloyal-Pulse.md` |
 | Pendências | `02-Decisoes-e-Verificacoes-Abertas.md` |
 | Status | **Pronto para iniciar a Fase 0.** 2 verificações destravam a Fase 1; 6 decisões destravam a Fase 2 |
 
@@ -20,7 +20,7 @@ A v1.0 era um documento forte em governança de dados e segurança. Onze mudanç
 
 | # | Mudança | Por quê | Aval |
 |---|---|---|---|
-| 1 | Success passa a ser **ferramenta dentro do Alloyal Ops**, não sistema isolado | Outras ferramentas de ops virão; chassi amortizado, um login, um conceito de cliente | — |
+| 1 | Success passa a ser **ferramenta dentro do Alloyal Pulse**, não sistema isolado | Outras ferramentas de ops virão; chassi amortizado, um login, um conceito de cliente | — |
 | 2 | **Portal do cliente em domínio próprio, magic link primário**; iframe no `dashboard.cliente` vira evolução | A v1.0 colocava na semana 9 um épico no código de outro time (emissão e assinatura de JWT, CSP, sessão via magic link) sem dono, prazo ou contrato — e o chamava de dependência interna | **Sim** — reverte decisão do Anexo B |
 | 3 | **"Fim do PowerPoint" sai do portal e entra no relatório gerado pelo CSM** | O valor de O5 é o relatório, não o self-service. Entregar pelo CSM remove a dependência externa do caminho crítico e antecipa 6 meses | **Sim** |
 | 4 | **Detecção de churn silencioso migra da Fase 4c para a Fase 2** | Era o "módulo de maior valor" atrás do gate mais longo do roadmap. Só precisa de Omie + atividade transacional: zero dependências bloqueadas | **Sim** |
@@ -57,10 +57,10 @@ Esse dado já pertence à Alloyal e nenhuma plataforma de prateleira chega nele 
 
 ### 1.2 Duas superfícies, uma base
 
-| | **Interna** (Ops/Success) | **Do cliente** (portal) |
+| | **Interna** (Pulse/Success) | **Do cliente** (portal) |
 |---|---|---|
 | Público | Time Alloyal | Gestor do cliente |
-| Onde | Casca do Alloyal Ops | Domínio próprio, magic link (ADR-011) |
+| Onde | Casca do Alloyal Pulse | Domínio próprio, magic link (ADR-011) |
 | Risco de erro | Ruído interno | Ligação do comercial |
 | Acesso a dados | Esquemas internos, por papel | **Somente `public_v`**, com supressão e RLS |
 
@@ -92,7 +92,7 @@ Cada objetivo tem fórmula, linha de base, alvo e instrumento. Onde a linha de b
 
 - Ticket, atendimento e base de conhecimento — permanece no Alloyal Hub
 - Superfície para o usuário final B2C — o app Alloyal já cobre
-- Envio de campanha ao usuário final — permanece no CleverTap; o Ops envia **segmento**
+- Envio de campanha ao usuário final — permanece no CleverTap; o Pulse envia **segmento**
 - PSA completo: timesheet, faturamento de serviços, margem por projeto
 - Provisionamento técnico da implantação — handoff ao time responsável
 - Analítica de aquisição: personas, campanhas, atribuição
@@ -115,7 +115,7 @@ Cada objetivo tem fórmula, linha de base, alvo e instrumento. Onde a linha de b
 
 ### 3.1 Jornada crítica — o CSM na segunda-feira
 
-1. Entra na casca do Ops, cai em **Minha fila**. Vê 7 itens, não 30 — o teto é 12 e a dedup já agiu
+1. Entra na casca do Pulse, cai em **Minha fila**. Vê 7 itens, não 30 — o teto é 12 e a dedup já agiu
 2. Item 1: *"Adesão caiu 22% em 30 dias"*, com o gráfico de 90 dias já na linha e o playbook anexado
 3. Abre a conta. A queda coincide com uma janela de indisponibilidade do app — a plataforma já correlacionou e escreveu isso
 4. Registra o desfecho, dispara a mensagem ao gestor pelo canal da ferramenta (texto preparado, envio dele)
@@ -417,7 +417,7 @@ Academia | Trilha curta: divulgar, usar banners, ler indicadores, campanha sazon
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Alloyal Ops  ▸ Success            [Minha fila] Carteira  Contas  ⚙ │
+│ Alloyal Pulse  ▸ Success            [Minha fila] Carteira  Contas  ⚙ │
 ├─────────────────────────────────────────────────────────────────────┤
 │ Minha fila · 7 itens · 2 vencem hoje              Backlog (14) ▸    │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -732,12 +732,12 @@ Com dono, gatilho de acionamento e resposta — a v1.0 tinha impacto e mitigaç�
 Sem índice no primary | Tech Lead | V-02 negativo | Índice, ou tabela materializada de agregados na origem, ou janela noturna ampliada |
 Janela noturna não caber | Eng. Dados | Spike > 3 h | Particionamento por conta, paralelismo por lote, snapshot em duas passadas |
 CleverTap sem `hubspot_id` | PM | V-08 negativo | `S-ENG` renormalizado a zero peso; engajamento medido por transação até haver série |
-Histórico de MRR parcial | Data Owner | V-06 | Resíduo `nao_atribuido` visível; passado marcado `reconstruido`; Ops é fonte a partir da F0 |
-**MRR divergir entre Ops e HubSpot** | RevOps | divergência > 1% | Alarme diário; o Ops é a fonte (ADR-012) e o campo do HubSpot é espelho |
+Histórico de MRR parcial | Data Owner | V-06 | Resíduo `nao_atribuido` visível; passado marcado `reconstruido`; Pulse é fonte a partir da F0 |
+**MRR divergir entre Pulse e HubSpot** | RevOps | divergência > 1% | Alarme diário; o Pulse é a fonte (ADR-012) e o campo do HubSpot é espelho |
 Fadiga de alerta mata a fila | Head de CS | > 12 itens abertos por CSM por 2 semanas, ou > 20% de falso positivo | Recalibrar limiares; segmentar tech-touch antes de aumentar fila |
 Abandono pelo time de CS | Head de CS | O8 < 60% em 60 dias | Parar o roadmap e fazer pesquisa; nenhuma fase nova antes de recuperar |
 Primeiro BI sem governança | Data Owner | qualquer número histórico mudar | Congelamento; ajuste só na competência corrente |
-API do Hub depende de outro time | PM | sem OpenAPI acordado até a F1 | `S-SUP` renormalizado a zero; mock no Ops; suporte sai do score |
+API do Hub depende de outro time | PM | sem OpenAPI acordado até a F1 | `S-SUP` renormalizado a zero; mock no Pulse; suporte sai do score |
 Dependência do `dashboard.cliente` | PM | contrato não assinado | ADR-011 já removeu do caminho crítico; iframe fica como evolução |
 Número errado exposto a cliente | Data Owner | incidente aberto | Playbook de incidente de dado (chassi, 6.8) |
 DEF-01 definida errada | Diretoria | — | Três métricas nomeadas em vez de uma; a decisão passa a ser de piso por segmento, não de definição |

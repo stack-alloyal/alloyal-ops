@@ -1,4 +1,4 @@
-import { PAPEIS, permissoesDe, type Identidade, type Papel, type Permissoes } from '@ops/auth'
+import { PAPEIS, permissoesDe, type Identidade, type Papel, type Permissoes } from '@pulse/auth'
 import type pg from 'pg'
 
 import { MotivoObrigatorioError, ValorInvalidoError } from './loja.js'
@@ -15,7 +15,7 @@ import { MotivoObrigatorioError, ValorInvalidoError } from './loja.js'
  * │ lembrança de terceiro é acesso que não sai.                                │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
- * O papel aqui é a fonte para a APLICAÇÃO. Os grupos `ops-*` do Google Workspace
+ * O papel aqui é a fonte para a APLICAÇÃO. Os grupos `pulse-*` do Google Workspace
  * continuam sendo quem autoriza a entrada; esta tabela decide o que a pessoa vê
  * DEPOIS de entrar. Manter as duas coisas separadas é o que permite tirar acesso a
  * uma tela sem tirar a pessoa do grupo (e vice-versa).

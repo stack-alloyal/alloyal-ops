@@ -1,4 +1,4 @@
-import type { Papel } from '@ops/auth'
+import type { Papel } from '@pulse/auth'
 
 /**
  * A taxonomia de cláusulas — e ela É o produto.
@@ -52,27 +52,27 @@ export type TipoClausula =
 
 /** Quem lê cada faixa. Definido uma vez, aplicado em todo contrato. */
 export const PAPEIS_POR_FAIXA: Readonly<Record<FaixaSigilo, readonly Papel[]>> = {
-  // Todos os papéis internos. `ops-dados` incluído: ele opera o pipeline e
+  // Todos os papéis internos. `pulse-dados` incluído: ele opera o pipeline e
   // precisa conseguir verificar de onde um valor veio.
   aberta: [
-    'ops-csm',
-    'ops-cs-lead',
-    'ops-implantacao',
-    'ops-comercial',
-    'ops-financeiro',
-    'ops-diretoria',
-    'ops-admin',
-    'ops-dados',
-    'ops-juridico',
-    'ops-marketing',
-    'ops-produto',
+    'pulse-csm',
+    'pulse-cs-lead',
+    'pulse-implantacao',
+    'pulse-comercial',
+    'pulse-financeiro',
+    'pulse-diretoria',
+    'pulse-admin',
+    'pulse-dados',
+    'pulse-juridico',
+    'pulse-marketing',
+    'pulse-produto',
   ],
   // CSM comum fica fora: condição comercial de uma conta vista por quem atende
   // outra é o caminho mais curto para um cliente descobrir o desconto do vizinho.
-  reservada: ['ops-comercial', 'ops-cs-lead', 'ops-financeiro', 'ops-juridico', 'ops-diretoria'],
-  // Litígio e acordo. `ops-admin` NÃO está aqui de propósito: administrar a
+  reservada: ['pulse-comercial', 'pulse-cs-lead', 'pulse-financeiro', 'pulse-juridico', 'pulse-diretoria'],
+  // Litígio e acordo. `pulse-admin` NÃO está aqui de propósito: administrar a
   // plataforma não é o mesmo que ter alçada sobre conflito jurídico.
-  restrita: ['ops-juridico', 'ops-financeiro', 'ops-diretoria'],
+  restrita: ['pulse-juridico', 'pulse-financeiro', 'pulse-diretoria'],
 }
 
 export interface EspecificacaoClausula {
@@ -285,8 +285,8 @@ export function textoRestrito(tipo: string): string {
   const nomes = PAPEIS_POR_FAIXA[faixa]
     // Admin e dados operam a plataforma; listá-los como destinatários mandaria
     // alguém pedir cláusula de contrato para quem cuida do pipeline.
-    .filter((p) => p !== 'ops-admin' && p !== 'ops-dados')
-    .map((p) => p.replace('ops-', ''))
+    .filter((p) => p !== 'pulse-admin' && p !== 'pulse-dados')
+    .map((p) => p.replace('pulse-', ''))
     .join(', ')
   return `${faixa} — visível para ${nomes}. Solicite ao Jurídico.`
 }

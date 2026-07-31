@@ -1,5 +1,5 @@
 /**
- * @ops/auth — identidade, papéis e acesso.
+ * @pulse/auth — identidade, papéis e acesso.
  *
  * Doc 00, seção 5.
  */

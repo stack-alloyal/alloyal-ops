@@ -1,4 +1,4 @@
-import { cifrar, dica, type Identidade } from '@ops/auth'
+import { cifrar, dica, type Identidade } from '@pulse/auth'
 import type pg from 'pg'
 
 import { AJUSTE_POR_CHAVE, CATALOGO, SEGREDOS, type Ajuste } from './catalogo.js'
