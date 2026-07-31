@@ -6,6 +6,8 @@
 -- leituras sem reclamar. Comentário no banco em vez de só no código porque
 -- quem escreve a próxima consulta abre o `\d+`, não o repositório.
 
+BEGIN;
+
 COMMENT ON COLUMN metrics.signal_driver.peso_efetivo IS
   'Pontos percentuais (0–100), já renormalizados: driver ausente sai da conta e '
   'distribui o próprio peso entre os que ficaram. A soma por (competencia, '
@@ -23,3 +25,5 @@ COMMENT ON COLUMN metrics.daily_snapshot.qualidade_por_fonte IS
   'Objeto {fonte: {atualizado_em, status}} com status em (ok|defasado|ausente). '
   'É o que alimenta o envelope de linhagem na tela — sem ele, número defasado '
   'apareceria igual a número íntegro.';
+
+COMMIT;

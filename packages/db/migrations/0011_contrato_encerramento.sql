@@ -15,6 +15,8 @@
 -- houver encerramento por outro caminho — aquisição, fusão, migração de contrato
 -- — ele grava aqui do mesmo jeito, e a receita continua certa.
 
+BEGIN;
+
 ALTER TABLE core.contract
   ADD COLUMN encerrado_em date;
 
@@ -52,3 +54,5 @@ UPDATE core.contract
 
 CREATE INDEX contract_encerrado_idx ON core.contract (encerrado_em)
   WHERE encerrado_em IS NOT NULL;
+
+COMMIT;

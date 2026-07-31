@@ -171,7 +171,8 @@ jobs:
             packages/success/dist/fila.test.js \
             packages/success/dist/conta.test.js \
             packages/success/dist/cancelamento.test.js \
-            packages/success/dist/fechamento.test.js 2>&1 | tee sup.txt
+            packages/success/dist/fechamento.test.js \
+            packages/success/dist/biblioteca.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1
@@ -217,6 +218,7 @@ jobs:
           pnpm --filter @ops/metrics build
           node --test packages/metrics/dist/metrics.test.js
           node --test packages/metrics/dist/drivers.test.js
+          node --test packages/db/dist/migracoes.test.js
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
 

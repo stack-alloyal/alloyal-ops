@@ -32,6 +32,9 @@ export interface ItemDaFila {
   diasParaPrazo: number
   diasAberto: number
   mrrCentavos: string | null
+  /** O playbook que valia quando o item foi criado. `null` se o gatilho não tem. */
+  playbookId: string | null
+  playbookTitulo: string | null
 }
 
 export interface Fila {
@@ -85,9 +88,14 @@ export async function carregarFila(
             w.modo_sombra                         AS "modoSombra",
             (w.prazo - $2::date)                  AS dias_para_prazo,
             ($2::date - w.criado_em::date)        AS dias_aberto,
-            ct.mrr_centavos::text                 AS "mrrCentavos"
+            ct.mrr_centavos::text                 AS "mrrCentavos",
+            w.playbook_id                         AS "playbookId",
+            pb.titulo                             AS "playbookTitulo"
        FROM success.work_item w
        JOIN core.account a ON a.id = w.account_id
+       -- Por id gravado no item, não por gatilho: o CSM tem que ver o processo
+       -- que valia quando o item nasceu, e não o que foi publicado depois.
+       LEFT JOIN success.playbook pb ON pb.id = w.playbook_id
        LEFT JOIN LATERAL (
          SELECT mrr_centavos FROM core.contract
           WHERE account_id = w.account_id AND status_vigencia = 'vigente'

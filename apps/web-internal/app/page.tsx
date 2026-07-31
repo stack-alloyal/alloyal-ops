@@ -1,6 +1,6 @@
 import { carregarFila, DESFECHOS, vePelaSombra, type ItemDaFila } from '@ops/success'
 import { Badge, Btn, Field, TOM_POR_FAIXA, Vazio, cn } from '@ops/ui'
-import { CalendarClock, ChevronRight } from 'lucide-react'
+import { BookOpen, CalendarClock, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
 import { fechar } from './acoes'
@@ -104,6 +104,17 @@ function Linha({ item, podeFechar }: { item: ItemDaFila; podeFechar: boolean }) 
         >
           Abrir conta <ChevronRight className="h-[14px] w-[14px]" />
         </Link>
+        {/* O playbook é o que transforma "há um problema" em "faça isto". Sem
+            ele o item informa e não instrui, e cada CSM improvisa do seu jeito. */}
+        {item.playbookId && (
+          <Link
+            href={`/biblioteca/${item.playbookId}`}
+            className="inline-flex items-center gap-1 text-[13px] font-semibold text-purple-700 hover:text-purple-500"
+          >
+            <BookOpen className="h-[14px] w-[14px]" />
+            {item.playbookTitulo}
+          </Link>
+        )}
         <span className="tabular-nums text-[11.5px] text-ink-4">
           {item.gatilho}
           {/* "aberto há 0 d" é ruído: só diz algo quando o item está encalhando. */}

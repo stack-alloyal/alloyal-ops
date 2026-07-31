@@ -89,7 +89,9 @@ describe('recorte da fila', { skip: !ADMIN }, () => {
   })
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE success.work_item, core.contract, core.account CASCADE')
+    await pool.query(
+      'TRUNCATE success.work_item, success.playbook, core.contract, core.account CASCADE',
+    )
   })
 
   // ── O recorte por carteira ────────────────────────────────────────────────
@@ -276,5 +278,40 @@ describe('recorte da fila', { skip: !ADMIN }, () => {
 
     const f = await carregarFila(pool, comercial, { hoje: HOJE })
     assert.deepEqual(f.abertos, [])
+  })
+
+  test('a linha da fila traz o playbook que valia quando o item nasceu', async () => {
+    // Publicar a versão 2 depois não pode mudar o que este item mostra: a
+    // pergunta "o CSM seguiu o processo?" só tem resposta se o processo exibido
+    // for o daquele momento.
+    const c = await conta('acme')
+    const { rows: v1 } = await pool.query<{ id: string }>(
+      `INSERT INTO success.playbook (chave, versao, titulo, conteudo, gatilhos, ativo,
+                                     publicado_por, publicado_em)
+       VALUES ('cobranca-30d', 1, 'Processo da versão 1',
+               'Texto suficientemente longo para passar pela validação do módulo de biblioteca.',
+               ARRAY['G-01'], true, 'lead@alloyal.com.br', now())
+       RETURNING id`,
+    )
+    await pool.query(
+      `INSERT INTO success.work_item
+         (account_id, gatilho, familia, prioridade, motivo, dono_email, prazo,
+          modo_sombra, competencia, playbook_id)
+       VALUES ($1,'G-01','financeiro','alta','atraso de 40 dias',$2,$3::date + 3,false,$3,$4)`,
+      [c, ANA.email, COMP, v1[0]!.id],
+    )
+
+    // A versão 2 entra e aposenta a 1.
+    await pool.query(`UPDATE success.playbook SET ativo = false, substituido_em = now()`)
+    await pool.query(
+      `INSERT INTO success.playbook (chave, versao, titulo, conteudo, gatilhos, ativo,
+                                     publicado_por, publicado_em)
+       VALUES ('cobranca-30d', 2, 'Processo da versão 2',
+               'Outro texto suficientemente longo para passar pela validação do módulo.',
+               ARRAY['G-01'], true, 'lead@alloyal.com.br', now())`,
+    )
+
+    const f = await carregarFila(pool, ANA, { hoje: HOJE })
+    assert.equal(f.abertos[0]?.playbookTitulo, 'Processo da versão 1')
   })
 })

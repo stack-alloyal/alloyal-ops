@@ -1,4 +1,4 @@
-import { Database, DoorOpen, Inbox, SlidersHorizontal, Wallet } from 'lucide-react'
+import { BookOpen, Database, DoorOpen, Inbox, SlidersHorizontal, Wallet } from 'lucide-react'
 
 /**
  * O menu do Ops.
@@ -18,6 +18,12 @@ export const MENU: readonly ItemDeMenu[] = [
   { href: '/', rotulo: 'Minha fila', icone: Inbox, proposito: 'O que fazer agora' },
   { href: '/saidas', rotulo: 'Saídas', icone: DoorOpen, proposito: 'Churn real, com as quatro datas' },
   { href: '/receita', rotulo: 'Receita', icone: Wallet, proposito: 'Cascata e fechamento mensal' },
+  {
+    href: '/biblioteca',
+    rotulo: 'Biblioteca',
+    icone: BookOpen,
+    proposito: 'Playbooks versionados, publicados sem deploy',
+  },
   {
     href: '/gatilhos',
     rotulo: 'Gatilhos',

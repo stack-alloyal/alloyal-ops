@@ -97,6 +97,10 @@ export async function avaliarFila(
     // Carga atual por pessoa, para o teto. Contada uma vez e mantida em memória:
     // o teto é sobre a fila que a pessoa vê, e ela não muda no meio da avaliação.
     const carga = await cargaPorPessoa(cliente)
+    // Um SELECT só para todos os gatilhos, em vez de um por item: com 27 itens
+    // gerados seriam 27 idas ao banco por uma informação que não muda no meio da
+    // avaliação.
+    const playbooks = await playbooksVigentes(cliente)
 
     // Prioridade primeiro: se o teto cortar, tem que cortar o menos urgente.
     const fila = porConta
@@ -158,8 +162,12 @@ export async function avaliarFila(
       await cliente.query(
         `INSERT INTO success.work_item
            (account_id, gatilho, familia, prioridade, motivo, evidencia,
-            dono_email, prazo, estado, modo_sombra, competencia)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,($8::date + $9::int),$10,$11,$8)`,
+            dono_email, prazo, estado, modo_sombra, competencia, playbook_id)
+         -- O playbook é resolvido na CRIAÇÃO e gravado por id, não consultado na
+         -- leitura. Assim a auditoria de um item fechado em março mostra o
+         -- processo de março: publicar a versão 3 em agosto não reescreve o que o
+         -- CSM tinha em mãos quando agiu.
+         VALUES ($1,$2,$3,$4,$5,$6,$7,($8::date + $9::int),$10,$11,$8,$12)`,
         [
           estado.accountId,
           c.gatilho,
@@ -172,6 +180,7 @@ export async function avaliarFila(
           c.prazoDias,
           estadoItem,
           sombra,
+          playbooks.get(c.gatilho) ?? null,
         ],
       )
 
@@ -231,6 +240,24 @@ async function gatilhosPromovidos(pool: pg.Pool): Promise<Set<string>> {
     [`${FLAG_GATILHO}%`],
   )
   return new Set(rows.map((r) => r.chave.slice(FLAG_GATILHO.length)))
+}
+
+/**
+ * O playbook vigente de cada gatilho, num mapa.
+ *
+ * Gatilho sem playbook fica de fora e o item nasce sem anexo — travar a fila por
+ * falta de documentação seria trocar trabalho por burocracia. Gatilho com mais de
+ * um vigente usa o publicado mais recentemente; a ambiguidade aparece na tela da
+ * biblioteca, que é onde quem configurou pode resolvê-la.
+ */
+async function playbooksVigentes(c: pg.PoolClient): Promise<Map<string, string>> {
+  const { rows } = await c.query<{ gatilho: string; id: string }>(
+    `SELECT DISTINCT ON (g) g AS gatilho, p.id
+       FROM success.playbook p, unnest(p.gatilhos) g
+      WHERE p.ativo
+      ORDER BY g, p.publicado_em DESC`,
+  )
+  return new Map(rows.map((r) => [r.gatilho, r.id]))
 }
 
 async function cargaPorPessoa(c: pg.PoolClient): Promise<Map<string, number>> {

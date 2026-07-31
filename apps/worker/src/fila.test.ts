@@ -73,7 +73,8 @@ describe('fila de trabalho', { skip: !ADMIN }, () => {
 
   beforeEach(async () => {
     await pool.query(
-      'TRUNCATE success.work_item, metrics.daily_snapshot, core.contract, core.account CASCADE',
+      `TRUNCATE success.work_item, success.playbook, metrics.daily_snapshot,
+                core.contract, core.account CASCADE`,
     )
     await pool.query(`DELETE FROM ops.feature_flag WHERE chave LIKE '${FLAG_GATILHO}%'`)
   })
@@ -299,5 +300,56 @@ describe('fila de trabalho', { skip: !ADMIN }, () => {
     await avaliarFila(pool, COMP, { agora: AGORA })
     const depois = await pool.query<{ n: string }>('SELECT count(*) n FROM success.work_item')
     assert.equal(depois.rows[0]?.n, antes.rows[0]?.n)
+  })
+
+  // ── Playbook anexado ──────────────────────────────────────────────────────
+
+  test('o item nasce com o playbook vigente do gatilho anexado', async () => {
+    // É o que transforma "há um problema" em "faça isto". Sem o anexo, o item
+    // informa e não instrui, e o CSM improvisa — cada um do seu jeito.
+    await promover('G-01')
+    const { rows: pb } = await pool.query<{ id: string }>(
+      `INSERT INTO success.playbook (chave, versao, titulo, conteudo, gatilhos, ativo,
+                                     publicado_por, publicado_em)
+       VALUES ('cobranca-30d', 1, 'Cobrança relacional aos 30 dias',
+               'Ligar para o contato financeiro no mesmo dia e registrar a resposta antes de fechar o item.',
+               ARRAY['G-01'], true, 'lead@alloyal.com.br', now())
+       RETURNING id`,
+    )
+    await conta({ nome: 'a', diasAtraso: 40 })
+    await avaliarFila(pool, COMP, { agora: AGORA })
+
+    const { rows } = await pool.query<{ playbook_id: string }>(
+      'SELECT playbook_id FROM success.work_item',
+    )
+    assert.equal(rows[0]?.playbook_id, pb[0]!.id)
+  })
+
+  test('gatilho sem playbook gera item sem anexo, e não falha', async () => {
+    // Travar a fila por falta de documentação seria trocar trabalho por burocracia.
+    await promover('G-01')
+    await conta({ nome: 'a', diasAtraso: 40 })
+    const r = await avaliarFila(pool, COMP, { agora: AGORA })
+    assert.equal(r.criados, 1)
+    const { rows } = await pool.query<{ playbook_id: string | null }>(
+      'SELECT playbook_id FROM success.work_item',
+    )
+    assert.equal(rows[0]?.playbook_id, null)
+  })
+
+  test('rascunho não é anexado — só versão publicada vira processo', async () => {
+    await promover('G-01')
+    await pool.query(
+      `INSERT INTO success.playbook (chave, versao, titulo, conteudo, gatilhos, ativo)
+       VALUES ('rascunho-x', 1, 'Ainda escrevendo isto',
+               'Texto em elaboração que ainda não deveria chegar a ninguém do time de CS.',
+               ARRAY['G-01'], false)`,
+    )
+    await conta({ nome: 'a', diasAtraso: 40 })
+    await avaliarFila(pool, COMP, { agora: AGORA })
+    const { rows } = await pool.query<{ playbook_id: string | null }>(
+      'SELECT playbook_id FROM success.work_item',
+    )
+    assert.equal(rows[0]?.playbook_id, null)
   })
 })
