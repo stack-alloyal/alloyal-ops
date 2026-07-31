@@ -28,6 +28,7 @@ import {
 
 import { vencerObrigacoes } from '@ops/contratos'
 
+import { avaliarDatasContratuais } from '../contratual.js'
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
 import { defineCycle } from '../cycle.js'
@@ -270,6 +271,40 @@ export const c15Obrigacoes = defineCycle({
     })
     ctx.log(`${n} obrigação(ões) marcada(s) como vencida(s)`)
     return { linhasLidas: n, linhasGravadas: n }
+  },
+})
+
+/**
+ * C16 — datas contratuais viram item de trabalho.
+ *
+ * Depois do C15 (que vence obrigações) e do C14 (que abre janelas de renovação),
+ * porque as duas mudam o que este ciclo vai encontrar. Antes do C12 não seria
+ * possível: o teto por pessoa é contado no momento da gravação, e as duas rodadas
+ * precisam ver a mesma fila para o teto valer sobre o total.
+ *
+ * O calendário sozinho é uma tela que alguém precisa lembrar de abrir. Este ciclo
+ * é o que faz a data crítica virar trabalho de alguém, com dono e prazo.
+ */
+export const c16DatasContratuais = defineCycle({
+  id: 'C16',
+  descricao: 'Datas contratuais viram item de trabalho',
+  fonte: 'ops',
+  metodo: 'consolidacao',
+  agenda: '45 6 * * *',
+  janela: 'estado_atual',
+  chaveNatural: ['account_id', 'familia'],
+  emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'reprocessa' },
+  fase: 'F1',
+  executar: async (ctx) => {
+    const competencia = ctx.agora.toISOString().slice(0, 10)
+    const r = await avaliarDatasContratuais(poolDoWorker(), competencia, { agora: ctx.agora })
+    ctx.log(
+      `${r.datasAvaliadas} data(s) · ${r.criados} criados (${r.emSombra} em sombra, ` +
+        `${r.emBacklog} no backlog) · ${r.atualizados} atualizados · ` +
+        `${r.bloqueadosPorCarencia} em carência` +
+        (r.semDono > 0 ? ` · ${r.semDono} sem dono (carteira a corrigir)` : ''),
+    )
+    return { linhasLidas: r.datasAvaliadas, linhasGravadas: r.criados, detalhe: { contratual: r } }
   },
 })
 

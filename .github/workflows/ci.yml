@@ -150,7 +150,11 @@ jobs:
         env:
           DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
         run: |
-          node --test apps/worker/dist/fila.test.js 2>&1 | tee fila.txt
+          # Os dois geradores de item no mesmo portão, e em série: o teste do teto
+          # do gerador contratual conta a fila que o outro deixou.
+          node --test --test-concurrency=1 \
+            apps/worker/dist/fila.test.js \
+            apps/worker/dist/contratual.test.js 2>&1 | tee fila.txt
           if grep -qE '^# skipped [1-9]' fila.txt; then
             echo "::error::Testes da fila foram PULADOS."
             exit 1

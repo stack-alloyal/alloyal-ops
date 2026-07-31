@@ -34,6 +34,7 @@ import {
   PESO_PRIORIDADE,
   type Candidato,
   type EstadoConta,
+  type Prioridade,
 } from '@ops/metrics'
 import type pg from 'pg'
 
@@ -52,6 +53,155 @@ export interface ResumoFila {
   readonly emBacklog: number
   readonly emSombra: number
   readonly bloqueadosPorCarencia: number
+}
+
+/**
+ * O contexto de uma rodada de gravação de itens.
+ *
+ * Existe para que `avaliarFila` (sinais da conta) e `avaliarDatasContratuais`
+ * (datas do contrato) compartilhem o MESMO caminho de gravação. As quatro regras
+ * — dedup por família, carência, teto por pessoa e modo sombra — escritas duas
+ * vezes divergiriam, e a divergência apareceria como item contratual furando o
+ * teto de alguém.
+ */
+export interface ContextoGravacao {
+  readonly cliente: pg.PoolClient
+  readonly competencia: string
+  readonly agora: Date
+  /** Carga por pessoa, mutada ao longo da rodada. */
+  readonly carga: Map<string, number>
+  readonly playbooks: Map<string, string>
+  readonly promovidos: Set<string>
+}
+
+export interface CandidatoParaGravar {
+  readonly accountId: string
+  readonly gatilho: string
+  readonly familia: string
+  readonly prioridade: Prioridade
+  readonly motivo: string
+  readonly evidencia: unknown
+  readonly prazoDias: number
+  readonly dono: string
+  /** `null` = sem carência. Vem do gatilho, não é procurado aqui. */
+  readonly cooldownDias: number | null
+}
+
+export type Desfecho = 'criado' | 'atualizado' | 'bloqueado' | 'sombra' | 'backlog'
+
+/**
+ * Grava um candidato aplicando as quatro regras da fila.
+ *
+ * Devolve o que aconteceu, para quem chamou contar. Não abre transação: quem
+ * chama é dono dela, porque uma rodada tem que ser tudo ou nada — meia fila
+ * gravada é pior que fila nenhuma.
+ */
+export async function gravarCandidato(
+  ctx: ContextoGravacao,
+  c: CandidatoParaGravar,
+): Promise<Desfecho> {
+  const { cliente } = ctx
+
+  // ── Dedup: já existe item aberto desta família nesta conta? ──
+  const existente = await cliente.query<{ id: string; gatilho: string; prioridade: string }>(
+    `SELECT id, gatilho, prioridade FROM success.work_item
+      WHERE account_id = $1 AND familia = $2 AND estado IN ('aberto','backlog')
+      LIMIT 1`,
+    [c.accountId, c.familia],
+  )
+  if (existente.rows.length > 0) {
+    const atual = existente.rows[0]!
+    // O segundo sinal atualiza a evidência: o item continua sendo o mesmo
+    // trabalho, com informação mais fresca.
+    //
+    // MAS o texto só é sobrescrito se o novo candidato for pelo menos tão urgente
+    // quanto o que está lá, ou vier do mesmo gatilho. Sem esta guarda, a família
+    // `renovacao` ganhava o texto da data MENOS urgente: a janela de aviso criava
+    // o item ("cliente pode denunciar em 10 dias") e o vencimento, 30 dias depois,
+    // reescrevia por cima ("vigência acaba em 40 dias") — o item passava a mostrar
+    // o prazo folgado e escondia o apertado.
+    const maisUrgente =
+      atual.gatilho === c.gatilho ||
+      PESO_PRIORIDADE[c.prioridade] >= PESO_PRIORIDADE[atual.prioridade as Prioridade]
+
+    if (maisUrgente) {
+      await cliente.query(
+        `UPDATE success.work_item
+            SET motivo = $2, evidencia = $3, prioridade = $4, competencia = $5
+          WHERE id = $1`,
+        [atual.id, c.motivo, c.evidencia, c.prioridade, ctx.competencia],
+      )
+    } else {
+      // Só a competência: o item foi reavaliado hoje, e isso é fato.
+      await cliente.query(`UPDATE success.work_item SET competencia = $2 WHERE id = $1`, [
+        atual.id,
+        ctx.competencia,
+      ])
+    }
+    return 'atualizado'
+  }
+
+  // ── Carência: fechei isto há pouco? ──
+  if (c.cooldownDias) {
+    const { rows } = await cliente.query<{ n: string }>(
+      `SELECT count(*) n FROM success.work_item
+        WHERE account_id = $1 AND gatilho = $2 AND estado = 'fechado'
+          AND fechado_em > $3::timestamptz - make_interval(days => $4)`,
+      [c.accountId, c.gatilho, ctx.agora.toISOString(), c.cooldownDias],
+    )
+    if (Number(rows[0]?.n) > 0) return 'bloqueado'
+  }
+
+  // ── Modo sombra e teto ──
+  const sombra = !ctx.promovidos.has(c.gatilho)
+  // Item em sombra não ocupa a fila de ninguém: ele existe para a liderança medir
+  // o volume que ele PRODUZIRIA, e contá-lo no teto falsearia a conta.
+  const estouraTeto = !sombra && (ctx.carga.get(c.dono) ?? 0) >= TETO_POR_PESSOA
+
+  await cliente.query(
+    `INSERT INTO success.work_item
+       (account_id, gatilho, familia, prioridade, motivo, evidencia,
+        dono_email, prazo, estado, modo_sombra, competencia, playbook_id)
+     -- O playbook é resolvido na CRIAÇÃO e gravado por id, não consultado na
+     -- leitura. Assim a auditoria de um item fechado em março mostra o processo de
+     -- março: publicar a versão 3 em agosto não reescreve o que o CSM tinha em mãos.
+     VALUES ($1,$2,$3,$4,$5,$6,$7,($8::date + $9::int),$10,$11,$8,$12)`,
+    [
+      c.accountId,
+      c.gatilho,
+      c.familia,
+      c.prioridade,
+      c.motivo,
+      c.evidencia,
+      c.dono,
+      ctx.competencia,
+      c.prazoDias,
+      estouraTeto ? 'backlog' : 'aberto',
+      sombra,
+      ctx.playbooks.get(c.gatilho) ?? null,
+    ],
+  )
+
+  if (sombra) return 'sombra'
+  if (estouraTeto) return 'backlog'
+  ctx.carga.set(c.dono, (ctx.carga.get(c.dono) ?? 0) + 1)
+  return 'criado'
+}
+
+/** A carga por pessoa e os playbooks vigentes, para montar o contexto. */
+export async function prepararContexto(
+  cliente: pg.PoolClient,
+  competencia: string,
+  agora: Date,
+): Promise<ContextoGravacao> {
+  return {
+    cliente,
+    competencia,
+    agora,
+    carga: await cargaPorPessoa(cliente),
+    playbooks: await playbooksVigentes(cliente),
+    promovidos: await gatilhosPromovidos(cliente),
+  }
 }
 
 export interface OpcoesFila {
@@ -77,7 +227,6 @@ export async function avaliarFila(
   const agora = opts.agora ?? new Date()
 
   const estados = await carregarEstados(pool, competencia)
-  const promovidos = await gatilhosPromovidos(pool)
 
   // Todos os candidatos da competência, já com um por família por conta.
   const porConta = estados.map((e) => ({ estado: e, candidatos: umPorFamilia(avaliarGatilhos(e)) }))
@@ -94,13 +243,10 @@ export async function avaliarFila(
   try {
     await cliente.query('BEGIN')
 
-    // Carga atual por pessoa, para o teto. Contada uma vez e mantida em memória:
-    // o teto é sobre a fila que a pessoa vê, e ela não muda no meio da avaliação.
-    const carga = await cargaPorPessoa(cliente)
-    // Um SELECT só para todos os gatilhos, em vez de um por item: com 27 itens
-    // gerados seriam 27 idas ao banco por uma informação que não muda no meio da
-    // avaliação.
-    const playbooks = await playbooksVigentes(cliente)
+    // Carga, playbooks e flags contados UMA vez: o teto é sobre a fila que a
+    // pessoa vê, e ela não muda no meio da avaliação. Com 27 itens gerados, um
+    // SELECT por item seriam 27 idas ao banco por informação estática.
+    const ctx = await prepararContexto(cliente, competencia, agora)
 
     // Prioridade primeiro: se o teto cortar, tem que cortar o menos urgente.
     const fila = porConta
@@ -117,77 +263,25 @@ export async function avaliarFila(
       const dono = resolverDono(c, estado)
       if (!dono) continue
 
-      // ── Dedup: já existe item aberto desta família nesta conta? ──
-      const existente = await cliente.query<{ id: string; gatilho: string }>(
-        `SELECT id, gatilho FROM success.work_item
-          WHERE account_id = $1 AND familia = $2 AND estado IN ('aberto','backlog')
-          LIMIT 1`,
-        [estado.accountId, c.familia],
-      )
-      if (existente.rows.length > 0) {
-        // O segundo sinal ATUALIZA a evidência: o item continua sendo o mesmo
-        // trabalho, com informação mais fresca.
-        await cliente.query(
-          `UPDATE success.work_item
-              SET motivo = $2, evidencia = $3, prioridade = $4, competencia = $5
-            WHERE id = $1`,
-          [existente.rows[0]!.id, c.motivo, c.evidencia, c.prioridade, competencia],
-        )
-        atualizados++
-        continue
+      const desfecho = await gravarCandidato(ctx, {
+        accountId: estado.accountId,
+        gatilho: c.gatilho,
+        familia: c.familia,
+        prioridade: c.prioridade,
+        motivo: c.motivo,
+        evidencia: c.evidencia,
+        prazoDias: c.prazoDias,
+        dono,
+        cooldownDias: GATILHOS.find((x) => x.id === c.gatilho)?.cooldownDias ?? null,
+      })
+
+      if (desfecho === 'atualizado') atualizados++
+      else if (desfecho === 'bloqueado') bloqueados++
+      else {
+        criados++
+        if (desfecho === 'sombra') emSombra++
+        else if (desfecho === 'backlog') emBacklog++
       }
-
-      // ── Carência: fechei isto há pouco? ──
-      const g = GATILHOS.find((x) => x.id === c.gatilho)
-      if (g?.cooldownDias) {
-        const { rows } = await cliente.query<{ n: string }>(
-          `SELECT count(*) n FROM success.work_item
-            WHERE account_id = $1 AND gatilho = $2 AND estado = 'fechado'
-              AND fechado_em > $3::timestamptz - make_interval(days => $4)`,
-          [estado.accountId, c.gatilho, agora.toISOString(), g.cooldownDias],
-        )
-        if (Number(rows[0]?.n) > 0) {
-          bloqueados++
-          continue
-        }
-      }
-
-      // ── Modo sombra e teto ──
-      const sombra = !promovidos.has(c.gatilho)
-      // Item em sombra não ocupa a fila de ninguém: ele existe para a liderança
-      // medir o volume que ele PRODUZIRIA, e contá-lo no teto falsearia a conta.
-      const estouraTeto = !sombra && (carga.get(dono) ?? 0) >= TETO_POR_PESSOA
-      const estadoItem = estouraTeto ? 'backlog' : 'aberto'
-
-      await cliente.query(
-        `INSERT INTO success.work_item
-           (account_id, gatilho, familia, prioridade, motivo, evidencia,
-            dono_email, prazo, estado, modo_sombra, competencia, playbook_id)
-         -- O playbook é resolvido na CRIAÇÃO e gravado por id, não consultado na
-         -- leitura. Assim a auditoria de um item fechado em março mostra o
-         -- processo de março: publicar a versão 3 em agosto não reescreve o que o
-         -- CSM tinha em mãos quando agiu.
-         VALUES ($1,$2,$3,$4,$5,$6,$7,($8::date + $9::int),$10,$11,$8,$12)`,
-        [
-          estado.accountId,
-          c.gatilho,
-          c.familia,
-          c.prioridade,
-          c.motivo,
-          c.evidencia,
-          dono,
-          competencia,
-          c.prazoDias,
-          estadoItem,
-          sombra,
-          playbooks.get(c.gatilho) ?? null,
-        ],
-      )
-
-      criados++
-      if (sombra) emSombra++
-      else if (estouraTeto) emBacklog++
-      else carga.set(dono, (carga.get(dono) ?? 0) + 1)
     }
 
     await cliente.query('COMMIT')
@@ -234,7 +328,9 @@ function resolverDono(c: Candidato, e: EstadoConta): string | null {
 
 // ── Estado do banco ─────────────────────────────────────────────────────────
 
-async function gatilhosPromovidos(pool: pg.Pool): Promise<Set<string>> {
+// Aceita pool OU cliente: dentro de uma transação a leitura tem que usar a MESMA
+// conexão, senão uma flag ligada no meio da rodada seria vista pela metade dela.
+async function gatilhosPromovidos(pool: pg.Pool | pg.PoolClient): Promise<Set<string>> {
   const { rows } = await pool.query<{ chave: string }>(
     `SELECT chave FROM ops.feature_flag WHERE habilitado AND chave LIKE $1`,
     [`${FLAG_GATILHO}%`],

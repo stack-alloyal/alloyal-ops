@@ -97,7 +97,11 @@ export async function datasCriticas(
      SELECT 'vencimento' AS tipo, v.id AS account_id, v.razao_social AS conta,
             to_char(v.vigencia_fim,'YYYY-MM-DD') AS data,
             (v.vigencia_fim - $1::date) AS dias,
-            'Vigência acaba · renovação ' || COALESCE(r.modo, v.renovacao, 'não registrada') AS descricao,
+            -- Com o número de dias: toda descrição que vira motivo de item de
+            -- trabalho carrega número. "Vigência acaba" sem prazo é a mesma coisa
+            -- que "score caiu" — informa e não instrui.
+            'Vigência acaba em ' || (v.vigencia_fim - $1::date)::text ||
+              ' dias · renovação ' || COALESCE(r.modo, v.renovacao, 'não registrada') AS descricao,
             v.mrr_centavos::text AS mrr, v.csm_email AS dono,
             -- Renovação expressa: se ninguém agir, o contrato simplesmente acaba.
             (COALESCE(r.modo, v.renovacao) = 'expressa') AS irreversivel
@@ -115,8 +119,9 @@ export async function datasCriticas(
      SELECT 'janela_de_aviso', v.account_id, v.razao_social,
             to_char(v.vigencia_fim - COALESCE(av.dias, v.aviso_previo_dias, 30), 'YYYY-MM-DD'),
             (v.vigencia_fim - COALESCE(av.dias, v.aviso_previo_dias, 30) - $1::date),
-            'Cliente pode denunciar a partir daqui · ' ||
-              COALESCE(av.dias, v.aviso_previo_dias, 30)::text || ' dias de aviso' ||
+            'Cliente pode denunciar em ' ||
+              (v.vigencia_fim - COALESCE(av.dias, v.aviso_previo_dias, 30) - $1::date)::text ||
+              ' dias · aviso de ' || COALESCE(av.dias, v.aviso_previo_dias, 30)::text || ' dias' ||
               CASE WHEN av.dias IS NULL THEN ' (do contrato, sem cláusula confirmada)' ELSE '' END,
             v.mrr_centavos::text, v.csm_email,
             true
@@ -153,7 +158,14 @@ export async function datasCriticas(
      -- ── Obrigações ──
      SELECT 'obrigacao', o.account_id, a.razao_social,
             to_char(o.prazo,'YYYY-MM-DD'), (o.prazo - $1::date),
-            CASE o.parte WHEN 'alloyal' THEN 'Nossa obrigação: ' ELSE 'Obrigação do cliente: ' END
+            -- Com o prazo: a descrição é texto livre escrito por uma pessoa e não
+            -- carrega número por si. O número que decide numa obrigação é quantos
+            -- dias faltam, e sem ele o item informa sem instruir.
+            CASE o.parte WHEN 'alloyal' THEN 'Nossa obrigação' ELSE 'Obrigação do cliente' END
+              || CASE WHEN o.prazo < $1::date
+                      THEN ', vencida há ' || ($1::date - o.prazo)::text || ' dias: '
+                      WHEN o.prazo = $1::date THEN ', vence hoje: '
+                      ELSE ', vence em ' || (o.prazo - $1::date)::text || ' dias: ' END
               || o.descricao,
             ct.mrr_centavos::text, COALESCE(o.dono_interno, a.csm_email),
             false
