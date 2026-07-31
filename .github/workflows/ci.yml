@@ -167,13 +167,15 @@ jobs:
           # --test-concurrency=1 é obrigatório: os dois arquivos truncam as
           # MESMAS tabelas, e em paralelo um limpa o cenário do outro. A falha
           # seria intermitente — a pior classe, porque some quando se investiga.
+          pnpm --filter @ops/contratos build
           node --test --test-concurrency=1 \
             packages/success/dist/fila.test.js \
             packages/success/dist/conta.test.js \
             packages/success/dist/cancelamento.test.js \
             packages/success/dist/fechamento.test.js \
             packages/success/dist/biblioteca.test.js \
-            packages/success/dist/renovacao.test.js 2>&1 | tee sup.txt
+            packages/success/dist/renovacao.test.js \
+            packages/contratos/dist/clausula.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1
@@ -220,7 +222,11 @@ jobs:
           node --test packages/metrics/dist/metrics.test.js
           node --test packages/metrics/dist/drivers.test.js
           # Verifica os ARQUIVOS de migration, sem banco — mas precisa do dist.
-          pnpm --filter @ops/db build && node --test packages/db/dist/migracoes.test.js
+          pnpm --filter @ops/db build
+          node --test packages/db/dist/migracoes.test.js
+          # A lista de papéis vive no TypeScript E num CHECK do banco. Este portão
+          # recusa a divergência — que já custou uma gravação quebrada.
+          node --test packages/db/dist/papeis.test.js
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
 

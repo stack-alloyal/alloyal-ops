@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   Database,
   DoorOpen,
+  FileText,
   Inbox,
   SlidersHorizontal,
   Wallet,
@@ -32,6 +33,12 @@ export const MENU: readonly ItemDeMenu[] = [
   },
   { href: '/saidas', rotulo: 'Saídas', icone: DoorOpen, proposito: 'Churn real, com as quatro datas' },
   { href: '/receita', rotulo: 'Receita', icone: Wallet, proposito: 'Cascata e fechamento mensal' },
+  {
+    href: '/contratos',
+    rotulo: 'Contratos',
+    icone: FileText,
+    proposito: 'O que vale hoje, com procedência',
+  },
   {
     href: '/biblioteca',
     rotulo: 'Biblioteca',

@@ -18,6 +18,14 @@ export const PAPEIS = [
   'ops-diretoria',
   'ops-admin',
   'ops-dados',
+  // ── Ferramenta 2 (Contratos) ──
+  // O Jurídico é dono da ferramenta; Marketing e Produto entram porque são dois
+  // dos sete times que hoje perguntam ao Jurídico se podem usar a marca do
+  // cliente e falar com os colaboradores dele. Sem papel próprio, eles não
+  // conseguem consultar — e o gargalo continua.
+  'ops-juridico',
+  'ops-marketing',
+  'ops-produto',
 ] as const
 
 export type Papel = (typeof PAPEIS)[number]
@@ -111,6 +119,37 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     fila: 'nenhum',
     receita: 'base',
     configurar: true,
+    aprovaDistrato: 'nao',
+    dadoIndividual: false,
+  },
+  // O Jurídico vê a base inteira de contas porque a pergunta dele é sempre sobre
+  // um contrato específico, e ele não tem carteira. Não vê receita agregada nem
+  // fila de CS: a alçada dele é contratual, e alçada larga demais é a que ninguém
+  // consegue justificar numa auditoria.
+  'ops-juridico': {
+    contas: 'base',
+    fila: 'nenhum',
+    receita: 'nenhum',
+    configurar: false,
+    aprovaDistrato: 'cs',
+    dadoIndividual: false,
+  },
+  // Marketing e Produto são CONSULTA. Veem a base para achar o contrato, e nada
+  // mais — a faixa de cláusula que cada um lê é decidida pela taxonomia, não por
+  // esta matriz.
+  'ops-marketing': {
+    contas: 'base',
+    fila: 'nenhum',
+    receita: 'nenhum',
+    configurar: false,
+    aprovaDistrato: 'nao',
+    dadoIndividual: false,
+  },
+  'ops-produto': {
+    contas: 'base',
+    fila: 'nenhum',
+    receita: 'nenhum',
+    configurar: false,
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },

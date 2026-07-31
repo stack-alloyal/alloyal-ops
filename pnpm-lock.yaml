@@ -32,6 +32,9 @@ importers:
       '@ops/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@ops/contratos':
+        specifier: workspace:*
+        version: link:../../packages/contratos
       '@ops/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -175,12 +178,34 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/contratos:
+    dependencies:
+      '@ops/auth':
+        specifier: workspace:*
+        version: link:../auth
+      pg:
+        specifier: ^8.13.0
+        version: 8.22.0
+    devDependencies:
+      '@ops/db':
+        specifier: workspace:*
+        version: link:../db
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.20.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/db:
     dependencies:
       pg:
         specifier: ^8.13.0
         version: 8.22.0
     devDependencies:
+      '@ops/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@types/pg':
         specifier: ^8.11.0
         version: 8.20.0
