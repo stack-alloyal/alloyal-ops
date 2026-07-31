@@ -218,7 +218,8 @@ jobs:
           pnpm --filter @ops/metrics build
           node --test packages/metrics/dist/metrics.test.js
           node --test packages/metrics/dist/drivers.test.js
-          node --test packages/db/dist/migracoes.test.js
+          # Verifica os ARQUIVOS de migration, sem banco — mas precisa do dist.
+          pnpm --filter @ops/db build && node --test packages/db/dist/migracoes.test.js
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
 
