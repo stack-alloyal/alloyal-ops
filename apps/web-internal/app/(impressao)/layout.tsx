@@ -1,4 +1,4 @@
-import '@ops/ui/estilo.css'
+import '@pulse/ui/estilo.css'
 
 import type { ReactNode } from 'react'
 

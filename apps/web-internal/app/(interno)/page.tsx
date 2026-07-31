@@ -1,5 +1,5 @@
-import { carregarFila, DESFECHOS, vePelaSombra, type ItemDaFila } from '@ops/success'
-import { Badge, Btn, Field, TOM_POR_FAIXA, Vazio, cn } from '@ops/ui'
+import { carregarFila, DESFECHOS, vePelaSombra, type ItemDaFila } from '@pulse/success'
+import { Badge, Btn, Field, TOM_POR_FAIXA, Vazio, cn } from '@pulse/ui'
 import { BookOpen, CalendarClock, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 

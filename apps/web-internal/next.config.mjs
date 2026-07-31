@@ -1,10 +1,10 @@
-import { cabecalhosDeSeguranca } from '@ops/ui/cabecalhos'
+import { cabecalhosDeSeguranca } from '@pulse/ui/cabecalhos'
 
 /** @type {import('next').NextConfig} */
 export default {
   output: 'standalone',
   // Pacotes do monorepo são compilados junto: evita publicar build intermediário.
-  transpilePackages: ['@ops/ui', '@ops/metrics', '@ops/auth', '@ops/db', '@ops/config'],
+  transpilePackages: ['@pulse/ui', '@pulse/metrics', '@pulse/auth', '@pulse/db', '@pulse/config'],
   poweredByHeader: false,
   experimental: {
     // Habilita unauthorized() e forbidden(). Sem isso, falha de autenticação vira

@@ -7,8 +7,8 @@ import {
   MINIMO_PARA_ACURACIA,
   previsao,
   type Renovacao,
-} from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, Kpi, Select, Table, Vazio, cn } from '@ops/ui'
+} from '@pulse/success'
+import { Aviso, Badge, Btn, Card, Field, Kpi, Select, Table, Vazio, cn } from '@pulse/ui'
 import Link from 'next/link'
 
 import { acaoCenario, acaoDesfecho } from './acoes'

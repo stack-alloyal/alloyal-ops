@@ -19,13 +19,13 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import { anunciar, confirmarAviso, reter } from './cancelamento.js'
 import { criarRascunho, descartar, enviar, revisar } from './relatorio.js'
 import { abrirJanela, darDesfecho, marcarCenario } from './renovacao.js'
-import { ForaDaCarteiraError } from '@ops/auth'
+import { ForaDaCarteiraError } from '@pulse/auth'
 
 const ADMIN = process.env['DATABASE_URL_ADMIN']
 const COMP = '2026-07-01'
@@ -36,15 +36,15 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
-const LIDER = quem('lider@alloyal.com.br', 'ops-cs-lead')
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
+const LIDER = quem('lider@alloyal.com.br', 'pulse-cs-lead')
 
 describe('recorte de carteira na ESCRITA', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })
@@ -147,7 +147,7 @@ describe('recorte de carteira na ESCRITA', { skip: !ADMIN }, () => {
   })
 
   test('quem vê a base toda escreve em qualquer carteira — de propósito', async () => {
-    // `ops-cs-lead` tem `contas: 'base'`. O recorte não é "só o dono": é o escopo
+    // `pulse-cs-lead` tem `contas: 'base'`. O recorte não é "só o dono": é o escopo
     // declarado na matriz de permissão. Um portão que barrasse a liderança estaria
     // confundindo posse com alçada.
     const daAna = await conta('Acme', ANA.email)

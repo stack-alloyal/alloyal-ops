@@ -1,5 +1,5 @@
-import { listarCascatas, type Cascata } from '@ops/success'
-import { Badge, Card, Kpi, Table, Vazio, cn } from '@ops/ui'
+import { listarCascatas, type Cascata } from '@pulse/success'
+import { Badge, Card, Kpi, Table, Vazio, cn } from '@pulse/ui'
 
 import { Corpo, Topo } from '../casca'
 import { pool } from '../../../lib/db'

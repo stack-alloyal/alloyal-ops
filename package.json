@@ -1,5 +1,5 @@
 {
-  "name": "alloyal-ops",
+  "name": "alloyal-pulse",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.34.5",
@@ -14,8 +14,8 @@
     "format:check": "prettier --check .",
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
-    "db:migrate": "pnpm --filter @ops/db migrate",
-    "db:reset": "pnpm --filter @ops/db reset",
+    "db:migrate": "pnpm --filter @pulse/db migrate",
+    "db:reset": "pnpm --filter @pulse/db reset",
     "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

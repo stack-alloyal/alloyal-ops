@@ -1,6 +1,6 @@
 'use server'
 
-import { cumprirObrigacao, dispensarObrigacao, ObrigacaoInvalidaError } from '@ops/contratos'
+import { cumprirObrigacao, dispensarObrigacao, ObrigacaoInvalidaError } from '@pulse/contratos'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../../lib/db'

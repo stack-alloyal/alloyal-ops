@@ -1,5 +1,5 @@
 {
-  "name": "@ops/metrics",
+  "name": "@pulse/metrics",
   "version": "0.0.0",
   "private": true,
   "type": "module",

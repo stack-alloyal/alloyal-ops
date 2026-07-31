@@ -1,7 +1,7 @@
 /**
- * @ops/metrics — o dicionário de métricas da plataforma.
+ * @pulse/metrics — o dicionário de métricas da plataforma.
  *
- * ADR-010. Este pacote é a única implementação de cada número do Alloyal Ops.
+ * ADR-010. Este pacote é a única implementação de cada número do Alloyal Pulse.
  * O gateway interno, o gateway externo, o renderizador de PDF e a rotina de
  * fechamento mensal importam daqui. Nenhum deles recalcula.
  *

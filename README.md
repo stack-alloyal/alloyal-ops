@@ -1,4 +1,4 @@
-# Alloyal Ops
+# Alloyal Pulse
 
 Plataforma interna de ferramentas de operação da Alloyal. Um login, uma casca, uma base de dados governada — e as ferramentas como módulos dentro dela.
 
@@ -8,7 +8,7 @@ Plataforma interna de ferramentas de operação da Alloyal. Um login, uma casca,
 
 | Doc | Conteúdo | Para quem |
 |---|---|---|
-| [`00-PRD-Plataforma-Alloyal-Ops.md`](docs/00-PRD-Plataforma-Alloyal-Ops.md) | O chassi: identidade e papéis, plataforma de dados, isolamento de tenant, design system, observabilidade, entrega, LGPD, ADRs | Engenharia, liderança técnica |
+| [`00-PRD-Plataforma-Alloyal-Pulse.md`](docs/00-PRD-Plataforma-Alloyal-Pulse.md) | O chassi: identidade e papéis, plataforma de dados, isolamento de tenant, design system, observabilidade, entrega, LGPD, ADRs | Engenharia, liderança técnica |
 | [`01-PRD-Alloyal-Success.md`](docs/01-PRD-Alloyal-Success.md) | A primeira ferramenta: problema, objetivos, escopo, dicionário de métricas, sinais e score, gatilhos, design das telas, roadmap, riscos | Produto, CS, engenharia |
 | [`02-Decisoes-e-Verificacoes-Abertas.md`](docs/02-Decisoes-e-Verificacoes-Abertas.md) | **Documento de trabalho.** Decisões pendentes com default, verificações com a query pronta, dúvidas de bootstrap, aprovações | Todos |
 
@@ -27,9 +27,9 @@ Fase 0 aguardando:
 ## Estrutura
 
 ```
-apps/       web-internal (Next.js, papel ops_api)
-            web-portal   (Next.js, papel ops_portal)
-            worker       (BullMQ, papel ops_worker)
+apps/       web-internal (Next.js, papel pulse_api)
+            web-portal   (Next.js, papel pulse_portal)
+            worker       (BullMQ, papel pulse_worker)
 packages/   ui · metrics (dicionário como código) · contracts · auth · db
 infra/      docker-compose · Dockerfile · secrets (SOPS) · backup
 docs/       00 plataforma · 01 produto · 02 pendências

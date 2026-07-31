@@ -39,7 +39,7 @@ export const HEADER_EMAIL = 'x-auth-request-email'
 export const HEADER_USER = 'x-auth-request-user'
 
 /** Cabeçalho do segredo compartilhado, injetado pelo proxy reverso. */
-export const HEADER_SEGREDO = 'x-ops-proxy-secret'
+export const HEADER_SEGREDO = 'x-pulse-proxy-secret'
 
 export interface Identidade {
   readonly email: string
@@ -162,7 +162,7 @@ export async function identidadeDaRequisicao(
     // ainda não foi adicionada a um grupo do Workspace. A mensagem tem que dizer
     // isso, porque a alternativa é um 403 que ninguém sabe como resolver.
     throw new NaoAutenticadoError(
-      `${email} autenticado mas sem papel. Adicione a pessoa a um grupo ops-* no Google Workspace.`,
+      `${email} autenticado mas sem papel. Adicione a pessoa a um grupo pulse-* no Google Workspace.`,
     )
   }
 

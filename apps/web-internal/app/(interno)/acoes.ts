@@ -1,6 +1,6 @@
 'use server'
 
-import { fecharItem, NaoEhSeuError, type Desfecho } from '@ops/success'
+import { fecharItem, NaoEhSeuError, type Desfecho } from '@pulse/success'
 import { revalidatePath } from 'next/cache'
 
 import { pool } from '../../lib/db'

@@ -11,7 +11,7 @@ import animate from 'tailwindcss-animate'
  * Roxo #6A18E5 = ação; laranja #FF7A00 = marca/acento. Tokens semânticos shadcn
  * (via HSL em tokens.css) + paleta Alloyal crua.
  *
- * É cópia e não aproximação porque o objetivo é que quem abre o Ops depois do
+ * É cópia e não aproximação porque o objetivo é que quem abre o Pulse depois do
  * Publi não perceba que trocou de produto: mesmas classes, mesmos números,
  * mesmas sombras. Aproximar geraria dois roxos parecidos, que é pior que dois
  * roxos diferentes — ninguém sabe qual é o certo.

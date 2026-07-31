@@ -1,5 +1,5 @@
-import { historicoDeMudancas } from '@ops/config'
-import { Badge, Card, Table, Vazio } from '@ops/ui'
+import { historicoDeMudancas } from '@pulse/config'
+import { Badge, Card, Table, Vazio } from '@pulse/ui'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 

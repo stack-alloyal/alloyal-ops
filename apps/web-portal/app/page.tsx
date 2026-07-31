@@ -1,4 +1,4 @@
-import { AlloyalLogo, Btn, Card, Field } from '@ops/ui'
+import { AlloyalLogo, Btn, Card, Field } from '@pulse/ui'
 
 /**
  * Entrada por magic link (porta primária — ADR-011).

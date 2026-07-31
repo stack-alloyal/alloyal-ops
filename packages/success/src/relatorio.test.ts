@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -49,8 +49,8 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
 const SEM_GRUPO = quem('novo@alloyal.com.br')
 
 // ── A supressão, pura ───────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ describe('relatório do cliente', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

@@ -46,7 +46,7 @@ export default tseslint.config(
         {
           paths: [
             {
-              name: '@ops/db',
+              name: '@pulse/db',
               importNames: ['poolApi'],
               message:
                 'A superfície do cliente usa poolPortal (papel ops_portal). poolApi é da superfície interna e não sofre a política de tenant (ADR-017).',
@@ -54,9 +54,9 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@ops/web-internal*', '../../web-internal/**', '**/modules/**'],
+              group: ['@pulse/web-internal*', '../../web-internal/**', '**/modules/**'],
               message:
-                'O portal não reusa código de tela interna. Compartilhamento se faz por @ops/ui e @ops/metrics.',
+                'O portal não reusa código de tela interna. Compartilhamento se faz por @pulse/ui e @pulse/metrics.',
             },
           ],
         },
@@ -67,7 +67,7 @@ export default tseslint.config(
   // ─────────────────────────────────────────────────────────────────────────────
   // FRONTEIRA 2 — O dicionário de métricas não importa aplicação.
   //
-  // Doc 00, 6.5 / ADR-010. `@ops/metrics` é a única implementação de cada número
+  // Doc 00, 6.5 / ADR-010. `@pulse/metrics` é a única implementação de cada número
   // e é importado pelas duas superfícies, pelo worker, pelo PDF e pelo fechamento.
   // Se ele passar a depender de uma dessas camadas, a dependência inverte e o
   // "um número, uma implementação" se desfaz na primeira necessidade de reuso.
@@ -80,7 +80,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@ops/web-*', '@ops/worker*', '@ops/ui*', 'next*', 'react*'],
+              group: ['@pulse/web-*', '@pulse/worker*', '@pulse/ui*', 'next*', 'react*'],
               message:
                 'O dicionário de métricas é independente de aplicação e de framework (ADR-010).',
             },

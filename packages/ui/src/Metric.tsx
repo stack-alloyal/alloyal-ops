@@ -1,4 +1,4 @@
-import type { EstadoDado, Lineage } from '@ops/metrics'
+import type { EstadoDado, Lineage } from '@pulse/metrics'
 
 import { cn } from './base'
 

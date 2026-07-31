@@ -1,5 +1,5 @@
-import { gatilhosAmbiguos, gatilhosSemPlaybook, indice } from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, Table, TextArea, Vazio } from '@ops/ui'
+import { gatilhosAmbiguos, gatilhosSemPlaybook, indice } from '@pulse/success'
+import { Aviso, Badge, Btn, Card, Field, Table, TextArea, Vazio } from '@pulse/ui'
 import Link from 'next/link'
 
 import { salvar } from './acoes'

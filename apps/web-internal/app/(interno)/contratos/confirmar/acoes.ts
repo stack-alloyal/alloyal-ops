@@ -1,6 +1,6 @@
 'use server'
 
-import { ClausulaInvalidaError, confirmar, SemPermissaoContratos } from '@ops/contratos'
+import { ClausulaInvalidaError, confirmar, SemPermissaoContratos } from '@pulse/contratos'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../../lib/db'
@@ -9,7 +9,7 @@ import { exigir, temEscopo } from '../../../../lib/guarda'
 /**
  * Confirmar cláusula.
  *
- * A alçada real está em `@ops/contratos` (só o Jurídico confirma). Aqui só se
+ * A alçada real está em `@pulse/contratos` (só o Jurídico confirma). Aqui só se
  * garante autenticação e acesso à ferramenta — Server Action é endpoint público, e
  * a tela que desenhou o botão não é prova de nada.
  */

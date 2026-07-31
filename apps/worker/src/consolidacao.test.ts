@@ -21,7 +21,7 @@ describe('consolidação diária', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate, semear } = await import('@ops/db')
+    const { migrate, semear } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
     await semear(pool, { contas: 24, dias: 90, hoje: new Date('2026-07-30T00:00:00Z') })

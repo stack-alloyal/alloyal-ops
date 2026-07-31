@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -37,8 +37,8 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const LEAD = quem('lead@alloyal.com.br', 'ops-cs-lead')
-const CSM = quem('csm@alloyal.com.br', 'ops-csm')
+const LEAD = quem('lead@alloyal.com.br', 'pulse-cs-lead')
+const CSM = quem('csm@alloyal.com.br', 'pulse-csm')
 
 const CONTEUDO =
   'Ligar para o contato financeiro no mesmo dia. Confirmar se a nota chegou, se ' +
@@ -72,7 +72,7 @@ describe('biblioteca', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

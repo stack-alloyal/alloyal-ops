@@ -1,5 +1,5 @@
 {
-  "name": "@ops/web-internal",
+  "name": "@pulse/web-internal",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -9,19 +9,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ops/auth": "workspace:*",
-    "@ops/db": "workspace:*",
-    "@ops/metrics": "workspace:*",
-    "@ops/success": "workspace:*",
-    "@ops/ui": "workspace:*",
+    "@pulse/auth": "workspace:*",
+    "@pulse/db": "workspace:*",
+    "@pulse/metrics": "workspace:*",
+    "@pulse/success": "workspace:*",
+    "@pulse/ui": "workspace:*",
     "lucide-react": "^1.28.0",
     "next": "^15.1.0",
     "pg": "^8.13.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
-    "@ops/contratos": "workspace:*",
-    "@ops/config": "workspace:*"
+    "@pulse/contratos": "workspace:*",
+    "@pulse/config": "workspace:*"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",

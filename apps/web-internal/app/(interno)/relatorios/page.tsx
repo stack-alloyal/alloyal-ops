@@ -1,5 +1,5 @@
-import { carregarCarteira, listarRelatorios } from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio } from '@ops/ui'
+import { carregarCarteira, listarRelatorios } from '@pulse/success'
+import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio } from '@pulse/ui'
 import Link from 'next/link'
 
 import { acaoCompor, acaoDescartar } from './acoes'

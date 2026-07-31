@@ -1,5 +1,5 @@
 /**
- * `@ops/config` — o que o admin muda sem chamar o dev.
+ * `@pulse/config` — o que o admin muda sem chamar o dev.
  *
  * Três coisas, separadas de propósito: ajuste operacional (legível), segredo de
  * integração (cifrado, nunca devolvido à tela) e papel de pessoa. As três escrevem na

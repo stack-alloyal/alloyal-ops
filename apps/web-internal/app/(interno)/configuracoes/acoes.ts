@@ -10,7 +10,7 @@ import {
   gravarSegredo,
   revogar,
   testarConexao,
-} from '@ops/config'
+} from '@pulse/config'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'
@@ -85,7 +85,7 @@ export async function salvarSegredo(dados: FormData): Promise<void> {
     if (m) voltar('/configuracoes/segredos', 'erro', m)
     // Erro de cifra (chave mestra ausente, por exemplo) tem mensagem acionável e
     // não contém o valor — pode ir para a tela.
-    if (err instanceof Error && /OPS_CHAVE_MESTRA|cifr/i.test(err.message)) {
+    if (err instanceof Error && /PULSE_CHAVE_MESTRA|cifr/i.test(err.message)) {
       voltar('/configuracoes/segredos', 'erro', err.message)
     }
     throw err

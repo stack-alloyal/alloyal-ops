@@ -1,4 +1,4 @@
-import { alloyalPreset } from '@ops/ui/tailwind-preset'
+import { alloyalPreset } from '@pulse/ui/tailwind-preset'
 import type { Config } from 'tailwindcss'
 
 /** Superfície interna. O tema vem do preset; aqui só o que é desta aplicação. */

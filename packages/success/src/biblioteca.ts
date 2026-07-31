@@ -1,4 +1,4 @@
-import type { Identidade } from '@ops/auth'
+import type { Identidade } from '@pulse/auth'
 import type pg from 'pg'
 
 /**

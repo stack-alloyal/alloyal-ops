@@ -1,6 +1,6 @@
 'use server'
 
-import { criarRascunho, descartar, enviar, RelatorioInvalidoError, revisar } from '@ops/success'
+import { criarRascunho, descartar, enviar, RelatorioInvalidoError, revisar } from '@pulse/success'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'

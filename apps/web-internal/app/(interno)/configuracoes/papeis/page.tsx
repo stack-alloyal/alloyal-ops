@@ -1,6 +1,6 @@
-import { PAPEIS, PERMISSOES, type Papel, type Permissoes } from '@ops/auth'
-import { listarPessoas } from '@ops/config'
-import { Aviso, Badge, Btn, Card, Field, Select, Table } from '@ops/ui'
+import { PAPEIS, PERMISSOES, type Papel, type Permissoes } from '@pulse/auth'
+import { listarPessoas } from '@pulse/config'
+import { Aviso, Badge, Btn, Card, Field, Select, Table } from '@pulse/ui'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
  * │ A tela mostra as permissões EFETIVAS, já com a união dos papéis aplicada,   │
  * │ e não a lista de papéis para o leitor somar de cabeça. Papel duplo é        │
  * │ exatamente onde alguém erra ao estimar o acesso de outra pessoa: quem tem    │
- * │ `ops-csm` + `ops-financeiro` vê a base toda, e ninguém deduz isso lendo     │
+ * │ `pulse-csm` + `pulse-financeiro` vê a base toda, e ninguém deduz isso lendo     │
  * │ "csm, financeiro".                                                         │
  * │                                                                            │
  * │ E mostra a matriz de referência ao lado. Sem ela, "aprovaDistrato: cs" é    │
@@ -203,7 +203,7 @@ export default async function Acessos({
               <Btn type="submit">Conceder</Btn>
               <span className="text-[12.5px] text-ink-3">
                 O papel aqui decide o que a pessoa vê DEPOIS de entrar. Quem autoriza a entrada
-                continua sendo o grupo <code className="text-[11.5px]">ops-*</code> no Google
+                continua sendo o grupo <code className="text-[11.5px]">pulse-*</code> no Google
                 Workspace — as duas coisas são separadas de propósito, para dar ou tirar acesso a
                 uma tela sem mexer no grupo.
               </span>

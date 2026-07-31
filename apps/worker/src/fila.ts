@@ -27,7 +27,7 @@
  * └───────────────────────────────────────────────────────────────────────────┘
  */
 
-import { numerosConfigurados } from '@ops/auth'
+import { numerosConfigurados } from '@pulse/auth'
 import {
   avaliarGatilhos,
   LIMIARES_PADRAO,
@@ -38,7 +38,7 @@ import {
   type Candidato,
   type EstadoConta,
   type Prioridade,
-} from '@ops/metrics'
+} from '@pulse/metrics'
 import type pg from 'pg'
 
 /**
@@ -205,7 +205,7 @@ export async function gravarCandidato(
 /**
  * O teto configurado, ou o padrão.
  *
- * Consulta direta e não `@ops/config`: o worker não deve depender do pacote que serve
+ * Consulta direta e não `@pulse/config`: o worker não deve depender do pacote que serve
  * a tela de administração, e a leitura de UMA chave não justifica a aresta. Se um dia
  * forem várias, o pacote entra — hoje seria dependência por antecipação.
  */
@@ -373,10 +373,10 @@ export async function avaliarFila(
 function resolverDono(c: Candidato, e: EstadoConta): string | null {
   if (c.donoPapel === 'csm' || c.donoPapel === null) return e.csmEmail
   const porPapel: Record<string, string | undefined> = {
-    cs_lead: process.env['OPS_EMAIL_CS_LEAD'],
-    financeiro: process.env['OPS_EMAIL_FINANCEIRO'],
-    implantacao: process.env['OPS_EMAIL_IMPLANTACAO'],
-    comercial: process.env['OPS_EMAIL_COMERCIAL'],
+    cs_lead: process.env['PULSE_EMAIL_CS_LEAD'],
+    financeiro: process.env['PULSE_EMAIL_FINANCEIRO'],
+    implantacao: process.env['PULSE_EMAIL_IMPLANTACAO'],
+    comercial: process.env['PULSE_EMAIL_COMERCIAL'],
   }
   // Sem caixa de papel configurada, cai no CSM da conta: melhor o item chegar a
   // alguém que pode escalar do que não chegar a ninguém.

@@ -1,4 +1,4 @@
-import { Login } from '@ops/ui'
+import { Login } from '@pulse/ui'
 
 /**
  * 401 — não autenticado. É a tela de login.
@@ -11,7 +11,7 @@ import { Login } from '@ops/ui'
  * A composição é a do Allvoice (Hub): painel de marca escuro à esquerda, entrada à
  * direita. Quem trabalha nos dois produtos reconhece a porta.
  *
- * O que esta tela NÃO diz: nada sobre `OPS_DEV_EMAIL` nem sobre segredo de proxy. A
+ * O que esta tela NÃO diz: nada sobre `PULSE_DEV_EMAIL` nem sobre segredo de proxy. A
  * versão anterior dizia, e era um vazamento de detalhe de deploy para uma tela que
  * fica exposta — quem roda local tem o README, e quem chega aqui em produção só
  * precisa do botão.

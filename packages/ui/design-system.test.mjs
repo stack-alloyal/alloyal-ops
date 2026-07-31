@@ -84,7 +84,7 @@ test('nenhuma tela usa elemento de formulário cru', () => {
         if (el === 'input' && m[0].includes('type="hidden"')) continue
         if (temExcecao(texto, m.index)) continue
         const linha = texto.slice(0, m.index).split('\n').length
-        faltas.push(`${caminho}:${linha} — <${el}> cru; use <${comp}> de @ops/ui`)
+        faltas.push(`${caminho}:${linha} — <${el}> cru; use <${comp}> de @pulse/ui`)
       }
     }
   }
@@ -110,7 +110,7 @@ test('nenhuma cópia à mão do inputCls', () => {
       caminho !== relative(RAIZ, BASE) && texto.includes('focus:ring-purple-100'),
   ).map(({ caminho }) => caminho)
 
-  assert.deepEqual(copias, [], `cópia do inputCls em: ${copias.join(', ')} — importe de @ops/ui`)
+  assert.deepEqual(copias, [], `cópia do inputCls em: ${copias.join(', ')} — importe de @pulse/ui`)
 })
 
 /**

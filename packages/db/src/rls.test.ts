@@ -20,7 +20,7 @@ import { comTenant, poolPortal } from './index.js'
 import { migrate } from './migrate.js'
 
 const ADMIN = process.env['DATABASE_URL_ADMIN']
-const SENHA = process.env['OPS_TEST_PASSWORD'] ?? 'teste_local_apenas'
+const SENHA = process.env['PULSE_TEST_PASSWORD'] ?? 'teste_local_apenas'
 
 const CONTA_A = '11111111-1111-1111-1111-111111111111'
 const CONTA_B = '22222222-2222-2222-2222-222222222222'
@@ -42,7 +42,7 @@ describe('isolamento de tenant em public_v', { skip: !ADMIN }, () => {
     admin = new pg.Client({ connectionString: ADMIN })
     await admin.connect()
 
-    for (const role of ['ops_api', 'ops_portal', 'ops_worker']) {
+    for (const role of ['pulse_api', 'pulse_portal', 'pulse_worker']) {
       await admin.query(`ALTER ROLE ${role} WITH PASSWORD '${SENHA}'`)
     }
 
@@ -63,7 +63,7 @@ describe('isolamento de tenant em public_v', { skip: !ADMIN }, () => {
       [CONTA_A, CONTA_B],
     )
 
-    portal = poolPortal(urlComoRole(ADMIN as string, 'ops_portal'))
+    portal = poolPortal(urlComoRole(ADMIN as string, 'pulse_portal'))
   })
 
   after(async () => {
@@ -120,7 +120,7 @@ describe('isolamento de tenant em public_v', { skip: !ADMIN }, () => {
   test('o tenant não vaza entre requisições que reusam a conexão do pool', async () => {
     // O vazamento real: set_config em nível de SESSÃO persiste na conexão.
     // Duas leituras seguidas no mesmo pool, a segunda sem definir tenant.
-    const poolDeUm = poolPortal(urlComoRole(ADMIN as string, 'ops_portal'))
+    const poolDeUm = poolPortal(urlComoRole(ADMIN as string, 'pulse_portal'))
     try {
       await comTenant(poolDeUm, CONTA_B, async (c) => c.query('SELECT 1'))
 
@@ -172,13 +172,13 @@ describe('isolamento de tenant em public_v', { skip: !ADMIN }, () => {
     )
   })
 
-  test('ops_portal tem USAGE em exatamente um esquema', async () => {
+  test('pulse_portal tem USAGE em exatamente um esquema', async () => {
     // Invariante auditável: a superfície do cliente alcança public_v e nada mais.
     // Enunciada como teste porque é fácil de violar sem perceber — basta um GRANT
     // de conveniência numa migration futura para resolver um erro de permissão.
     const { rows } = await admin.query<{ nspname: string }>(
       `SELECT nspname FROM pg_namespace
-        WHERE has_schema_privilege('ops_portal', nspname, 'USAGE')
+        WHERE has_schema_privilege('pulse_portal', nspname, 'USAGE')
           AND nspname NOT LIKE 'pg\\_%'
           AND nspname <> 'information_schema'
         ORDER BY nspname`,
@@ -186,14 +186,14 @@ describe('isolamento de tenant em public_v', { skip: !ADMIN }, () => {
     assert.deepEqual(
       rows.map((r) => r.nspname),
       ['public_v'],
-      'ops_portal alcança esquema além de public_v',
+      'pulse_portal alcança esquema além de public_v',
     )
   })
 
   test('a superfície interna não alcança public_v', async () => {
     // Se o interno lesse a versão suprimida, o número mostrado ao CSM passaria a
     // depender do tamanho da base do cliente.
-    const api = new pg.Client({ connectionString: urlComoRole(ADMIN as string, 'ops_api') })
+    const api = new pg.Client({ connectionString: urlComoRole(ADMIN as string, 'pulse_api') })
     await api.connect()
     try {
       await assert.rejects(

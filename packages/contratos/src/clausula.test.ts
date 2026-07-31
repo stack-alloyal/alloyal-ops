@@ -16,7 +16,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -43,11 +43,11 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const JURIDICO = quem('ju@alloyal.com.br', 'ops-juridico')
-const MARKETING = quem('mkt@alloyal.com.br', 'ops-marketing')
-const CSM = quem('csm@alloyal.com.br', 'ops-csm')
-const COMERCIAL = quem('com@alloyal.com.br', 'ops-comercial')
-const DIRETORIA = quem('dir@alloyal.com.br', 'ops-diretoria')
+const JURIDICO = quem('ju@alloyal.com.br', 'pulse-juridico')
+const MARKETING = quem('mkt@alloyal.com.br', 'pulse-marketing')
+const CSM = quem('csm@alloyal.com.br', 'pulse-csm')
+const COMERCIAL = quem('com@alloyal.com.br', 'pulse-comercial')
+const DIRETORIA = quem('dir@alloyal.com.br', 'pulse-diretoria')
 
 // ── A taxonomia e o sigilo, sem banco ──────────────────────────────────────
 
@@ -75,13 +75,13 @@ test('CSM comum não lê a faixa reservada', () => {
   // curto para um cliente descobrir o desconto do vizinho.
   assert.equal(podeLerValor('escopo_produto', CSM.papeis), true)
   assert.equal(podeLerValor('excecao_comercial', CSM.papeis), false)
-  assert.equal(podeLerValor('excecao_comercial', quem('l@a.br', 'ops-cs-lead').papeis), true)
+  assert.equal(podeLerValor('excecao_comercial', quem('l@a.br', 'pulse-cs-lead').papeis), true)
 })
 
 test('admin da plataforma não lê litígio', () => {
   // Administrar a plataforma não é o mesmo que ter alçada sobre conflito jurídico.
-  assert.equal(PAPEIS_POR_FAIXA.restrita.includes('ops-admin'), false)
-  assert.equal(podeLerValor('conflito', ['ops-admin']), false)
+  assert.equal(PAPEIS_POR_FAIXA.restrita.includes('pulse-admin'), false)
+  assert.equal(podeLerValor('conflito', ['pulse-admin']), false)
 })
 
 test('tipo fora da taxonomia falha FECHADO', () => {
@@ -93,8 +93,8 @@ test('tipo fora da taxonomia falha FECHADO', () => {
 
 test('"outra" só é legível por quem está na audiência escolhida', () => {
   assert.equal(podeLerValor('outra', DIRETORIA.papeis), false, 'sem audiência, ninguém lê')
-  assert.equal(podeLerValor('outra', MARKETING.papeis, ['ops-marketing']), true)
-  assert.equal(podeLerValor('outra', DIRETORIA.papeis, ['ops-marketing']), false)
+  assert.equal(podeLerValor('outra', MARKETING.papeis, ['pulse-marketing']), true)
+  assert.equal(podeLerValor('outra', DIRETORIA.papeis, ['pulse-marketing']), false)
 })
 
 test('o aviso de restrição diz quem lê, e não só que é restrito', () => {
@@ -125,7 +125,7 @@ test('os tipos legíveis por Marketing não incluem faixa reservada', () => {
 
 test('só o Jurídico confirma', () => {
   assert.equal(podeConfirmar(JURIDICO), true)
-  assert.equal(podeConfirmar(quem('a@a.br', 'ops-admin')), true, 'admin configura')
+  assert.equal(podeConfirmar(quem('a@a.br', 'pulse-admin')), true, 'admin configura')
   assert.equal(podeConfirmar(COMERCIAL), false)
   assert.equal(podeConfirmar(DIRETORIA), false)
 })
@@ -139,7 +139,7 @@ describe('cláusulas', { skip: !ADMIN }, () => {
   let aditivo: string
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })
@@ -451,7 +451,7 @@ describe('cláusulas', { skip: !ADMIN }, () => {
       tipo: 'outra',
       texto: 'acordo de co-marketing com a agência do cliente',
       validoDe: '2024-03-01',
-      audienciaPapeis: ['ops-marketing', 'ops-juridico'],
+      audienciaPapeis: ['pulse-marketing', 'pulse-juridico'],
     })
     await confirmar(pool, JURIDICO, id, { documentoId: contrato, trecho: 'anexo II' })
 

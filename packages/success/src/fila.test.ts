@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import { carregarFila, fecharItem, NaoEhSeuError, vePelaSombra } from './fila.js'
@@ -24,9 +24,9 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
-const LIDER = quem('lider@alloyal.com.br', 'ops-cs-lead')
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
+const LIDER = quem('lider@alloyal.com.br', 'pulse-cs-lead')
 
 describe('recorte da fila', { skip: !ADMIN }, () => {
   let pool: pg.Pool
@@ -79,7 +79,7 @@ describe('recorte da fila', { skip: !ADMIN }, () => {
   }
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })
@@ -273,7 +273,7 @@ describe('recorte da fila', { skip: !ADMIN }, () => {
   test('quem não tem escopo de fila não recebe consulta nenhuma', async () => {
     const c = await conta('acme')
     await item({ conta: c, dono: ANA.email })
-    const comercial = quem('ju@alloyal.com.br', 'ops-comercial')
+    const comercial = quem('ju@alloyal.com.br', 'pulse-comercial')
     assert.equal(comercial.permissoes.fila, 'nenhum')
 
     const f = await carregarFila(pool, comercial, { hoje: HOJE })

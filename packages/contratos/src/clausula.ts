@@ -1,4 +1,4 @@
-import type { Identidade } from '@ops/auth'
+import type { Identidade } from '@pulse/auth'
 import type pg from 'pg'
 
 import { especificacao, podeLerValor, textoRestrito, type TipoClausula } from './taxonomia.js'
@@ -32,7 +32,7 @@ export class SemPermissaoContratos extends Error {
 }
 
 /** Só o Jurídico confirma cláusula. Confirmar é afirmar o que o contrato diz. */
-const PAPEL_CONFIRMA = 'ops-juridico'
+const PAPEL_CONFIRMA = 'pulse-juridico'
 
 export function podeConfirmar(id: Identidade): boolean {
   return id.papeis.includes(PAPEL_CONFIRMA) || id.permissoes.configurar

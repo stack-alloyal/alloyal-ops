@@ -4,8 +4,8 @@ import {
   filaDeConfirmacao,
   podeConfirmar,
   progresso,
-} from '@ops/contratos'
-import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio } from '@ops/ui'
+} from '@pulse/contratos'
+import { Aviso, Badge, Btn, Card, Field, Select, Table, Vazio } from '@pulse/ui'
 import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 

@@ -1,5 +1,5 @@
 {
-  "name": "@ops/success",
+  "name": "@pulse/success",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,13 +13,13 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@ops/auth": "workspace:*",
+    "@pulse/auth": "workspace:*",
     "pg": "^8.13.0",
-    "@ops/metrics": "workspace:*"
+    "@pulse/metrics": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
     "@types/pg": "^8.11.0",
-    "@ops/db": "workspace:*"
+    "@pulse/db": "workspace:*"
   }
 }

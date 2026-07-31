@@ -5,7 +5,7 @@ import pg from 'pg'
 /**
  * Pool da superfície interna.
  *
- * Conecta como `ops_api`, que NÃO tem acesso a `public_v` — a camada do
+ * Conecta como `pulse_api`, que NÃO tem acesso a `public_v` — a camada do
  * cliente. Se o interno lesse a versão suprimida, o número mostrado ao CSM
  * passaria a depender do tamanho da base do cliente.
  */

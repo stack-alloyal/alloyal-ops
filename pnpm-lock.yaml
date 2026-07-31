@@ -29,25 +29,25 @@ importers:
 
   apps/web-internal:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@ops/config':
+      '@pulse/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@ops/contratos':
+      '@pulse/contratos':
         specifier: workspace:*
         version: link:../../packages/contratos
-      '@ops/db':
+      '@pulse/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@ops/metrics':
+      '@pulse/metrics':
         specifier: workspace:*
         version: link:../../packages/metrics
-      '@ops/success':
+      '@pulse/success':
         specifier: workspace:*
         version: link:../../packages/success
-      '@ops/ui':
+      '@pulse/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -96,16 +96,16 @@ importers:
 
   apps/web-portal:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@ops/db':
+      '@pulse/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@ops/metrics':
+      '@pulse/metrics':
         specifier: workspace:*
         version: link:../../packages/metrics
-      '@ops/ui':
+      '@pulse/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       next:
@@ -142,19 +142,19 @@ importers:
 
   apps/worker:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@ops/contratos':
+      '@pulse/contratos':
         specifier: workspace:*
         version: link:../../packages/contratos
-      '@ops/db':
+      '@pulse/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@ops/metrics':
+      '@pulse/metrics':
         specifier: workspace:*
         version: link:../../packages/metrics
-      '@ops/success':
+      '@pulse/success':
         specifier: workspace:*
         version: link:../../packages/success
       bullmq:
@@ -179,7 +179,7 @@ importers:
 
   packages/config:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../auth
       pg:
@@ -208,14 +208,14 @@ importers:
 
   packages/contratos:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../auth
       pg:
         specifier: ^8.13.0
         version: 8.22.0
     devDependencies:
-      '@ops/db':
+      '@pulse/db':
         specifier: workspace:*
         version: link:../db
       '@types/pg':
@@ -231,7 +231,7 @@ importers:
         specifier: ^8.13.0
         version: 8.22.0
     devDependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../auth
       '@types/pg':
@@ -249,17 +249,17 @@ importers:
 
   packages/success:
     dependencies:
-      '@ops/auth':
+      '@pulse/auth':
         specifier: workspace:*
         version: link:../auth
-      '@ops/metrics':
+      '@pulse/metrics':
         specifier: workspace:*
         version: link:../metrics
       pg:
         specifier: ^8.13.0
         version: 8.22.0
     devDependencies:
-      '@ops/db':
+      '@pulse/db':
         specifier: workspace:*
         version: link:../db
       '@types/pg':
@@ -284,7 +284,7 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
     devDependencies:
-      '@ops/metrics':
+      '@pulse/metrics':
         specifier: workspace:*
         version: link:../metrics
       '@types/react':

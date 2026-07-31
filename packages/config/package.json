@@ -1,5 +1,5 @@
 {
-  "name": "@ops/config",
+  "name": "@pulse/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test": "echo 'sem teste próprio; ver config.test.ts'"
   },
   "dependencies": {
-    "@ops/auth": "workspace:*",
+    "@pulse/auth": "workspace:*",
     "pg": "^8.13.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import { carregarCarteira, resumir, type ContaDaCarteira } from '@ops/success'
-import { Aviso, Badge, Card, Kpi, TOM_POR_FAIXA, Table, Vazio, cn } from '@ops/ui'
+import { carregarCarteira, resumir, type ContaDaCarteira } from '@pulse/success'
+import { Aviso, Badge, Card, Kpi, TOM_POR_FAIXA, Table, Vazio, cn } from '@pulse/ui'
 import Link from 'next/link'
 
 import { Corpo, Topo } from '../casca'

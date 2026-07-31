@@ -1,5 +1,5 @@
-import { numeroConfigurado } from '@ops/auth'
-import { recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+import { numeroConfigurado } from '@pulse/auth'
+import { recorteDaConta, veBaseDeContas, type Identidade } from '@pulse/auth'
 
 import type pg from 'pg'
 

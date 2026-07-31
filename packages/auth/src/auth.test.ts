@@ -18,12 +18,12 @@ const SEGREDO = 'segredo-do-proxy-de-teste'
 const opts = {
   faixasConfiaveis: FAIXAS,
   dominio: 'alloyal.com.br',
-  papeisDe: async () => ['ops-csm'],
+  papeisDe: async () => ['pulse-csm'],
 }
 const optsSegredo = {
   segredoDoProxy: SEGREDO,
   dominio: 'alloyal.com.br',
-  papeisDe: async () => ['ops-csm'],
+  papeisDe: async () => ['pulse-csm'],
 }
 
 // ─── Fronteira de confiança do cabeçalho ─────────────────────────────────────
@@ -35,7 +35,7 @@ test('identidade é aceita quando a requisição vem do proxy', async () => {
     opts,
   )
   assert.equal(id.email, 'pessoa@alloyal.com.br')
-  assert.deepEqual(id.papeis, ['ops-csm'])
+  assert.deepEqual(id.papeis, ['pulse-csm'])
 })
 
 test('cabeçalho de identidade de fora da faixa do proxy é ignorado', async () => {
@@ -98,7 +98,7 @@ test('sem NENHUMA prova configurada, a autenticação é recusada', async () => 
   await assert.rejects(
     identidadeDaRequisicao({ [HEADER_EMAIL]: 'pessoa@alloyal.com.br' }, '172.18.0.5', {
       dominio: 'alloyal.com.br',
-      papeisDe: async () => ['ops-csm'],
+      papeisDe: async () => ['pulse-csm'],
     }),
     ConfiguracaoInsegura,
   )
@@ -126,7 +126,7 @@ test('pessoa autenticada sem grupo recebe erro que diz como resolver', async () 
       ...opts,
       papeisDe: async () => [],
     }),
-    /grupo ops-\* no Google Workspace/,
+    /grupo pulse-\* no Google Workspace/,
   )
 })
 
@@ -144,7 +144,7 @@ test('faixas CIDR são avaliadas corretamente', () => {
 test('nenhum papel de interface vê dado individual de usuário final', () => {
   for (const papel of PAPEIS) {
     const perm = PERMISSOES[papel]
-    if (papel === 'ops-admin') {
+    if (papel === 'pulse-admin') {
       assert.equal(perm.dadoIndividual, 'auditado')
     } else {
       assert.equal(perm.dadoIndividual, false, `${papel} enxerga dado individual`)
@@ -154,11 +154,11 @@ test('nenhum papel de interface vê dado individual de usuário final', () => {
 
 test('só o Financeiro aprova distrato por inadimplência', () => {
   const porFinanceiro = PAPEIS.filter((p) => PERMISSOES[p].aprovaDistrato === 'financeiro')
-  assert.deepEqual(porFinanceiro, ['ops-financeiro'])
+  assert.deepEqual(porFinanceiro, ['pulse-financeiro'])
 })
 
 test('permissão de múltiplos grupos é a união, sempre a mais ampla', () => {
-  const p = permissoesDe(['ops-csm', 'ops-financeiro'])
+  const p = permissoesDe(['pulse-csm', 'pulse-financeiro'])
   assert.equal(p.contas, 'base')
   assert.equal(p.receita, 'base')
   assert.equal(p.aprovaDistrato, 'financeiro')

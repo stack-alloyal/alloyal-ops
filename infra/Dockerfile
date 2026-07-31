@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# Imagem multi-alvo do Alloyal Ops. ARM64 (Oracle Ampere).
+# Imagem multi-alvo do Alloyal Pulse. ARM64 (Oracle Ampere).
 #
 # Um Dockerfile, três alvos: worker, web-internal, web-portal. O compose escolhe
 # via `target:`. Mantém a instalação de dependências em cache compartilhado

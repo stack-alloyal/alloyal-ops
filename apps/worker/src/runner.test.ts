@@ -62,7 +62,7 @@ describe('executor de ciclos', { skip: !ADMIN }, () => {
   })
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN, max: 6 })
   })

@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import { carregarCarteira, PESO_FAIXA, resumir } from './carteira.js'
@@ -28,10 +28,10 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const ANA = quem('ana@alloyal.com.br', 'ops-csm')
-const BRUNO = quem('bruno@alloyal.com.br', 'ops-csm')
-const LIDER = quem('lider@alloyal.com.br', 'ops-cs-lead')
-// Autenticado e em NENHUM grupo `ops-*`. É o caso real do dia 1 de um piloto, e o
+const ANA = quem('ana@alloyal.com.br', 'pulse-csm')
+const BRUNO = quem('bruno@alloyal.com.br', 'pulse-csm')
+const LIDER = quem('lider@alloyal.com.br', 'pulse-cs-lead')
+// Autenticado e em NENHUM grupo `pulse-*`. É o caso real do dia 1 de um piloto, e o
 // que a guarda de escopo defende: todo papel declarado enxerga contas, então o
 // único jeito de não enxergar é não ter papel.
 const SEM_GRUPO = quem('novo@alloyal.com.br')
@@ -46,7 +46,7 @@ describe('carteira', { skip: !ADMIN }, () => {
   let pool: pg.Pool
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })

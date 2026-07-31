@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { NaoAutenticadoError, type Escopo, type Identidade, type Permissoes } from '@ops/auth'
+import { NaoAutenticadoError, type Escopo, type Identidade, type Permissoes } from '@pulse/auth'
 import { forbidden, unauthorized } from 'next/navigation'
 
 import { identidade } from './identidade'

@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { decidirAlarme, politicaCoerente } from '@ops/metrics'
+import { decidirAlarme, politicaCoerente } from '@pulse/metrics'
 
 import { todosOsCiclos } from './cycle.js'
 import './cycles/index.js'

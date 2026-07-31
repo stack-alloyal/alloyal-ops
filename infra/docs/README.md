@@ -52,7 +52,7 @@ openssl rand -hex 16          # 32 caracteres → OAUTH2_PROXY_COOKIE_SECRET
 ### 4 · Subir
 
 ```bash
-cd /opt/alloyal-ops
+cd /opt/alloyal-pulse
 docker compose -f infra/docs/docker-compose.yml up -d
 docker compose -f infra/docs/docker-compose.yml ps
 ```
@@ -97,7 +97,7 @@ Checklist do que precisa estar verdadeiro:
 ## Atualizar um documento
 
 ```bash
-cd /opt/alloyal-ops
+cd /opt/alloyal-pulse
 git pull
 ```
 

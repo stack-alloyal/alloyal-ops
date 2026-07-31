@@ -13,7 +13,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
-import { permissoesDe, type Identidade, type Papel } from '@ops/auth'
+import { permissoesDe, type Identidade, type Papel } from '@pulse/auth'
 import pg from 'pg'
 
 import {
@@ -43,9 +43,9 @@ const quem = (email: string, ...papeis: Papel[]): Identidade => ({
   permissoes: permissoesDe(papeis),
 })
 
-const CSM = quem('ana@alloyal.com.br', 'ops-csm')
-const LIDER = quem('lider@alloyal.com.br', 'ops-cs-lead')
-const FIN = quem('fin@alloyal.com.br', 'ops-financeiro')
+const CSM = quem('ana@alloyal.com.br', 'pulse-csm')
+const LIDER = quem('lider@alloyal.com.br', 'pulse-cs-lead')
+const FIN = quem('fin@alloyal.com.br', 'pulse-financeiro')
 
 // ── As funções puras ────────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
   let acme: string
 
   before(async () => {
-    const { migrate } = await import('@ops/db')
+    const { migrate } = await import('@pulse/db')
     await migrate(ADMIN as string)
     pool = new pg.Pool({ connectionString: ADMIN })
   })
@@ -454,7 +454,7 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
       origem: 'cliente',
       dataLevantada: '2026-07-15',
     })
-    const outro = quem('bruno@alloyal.com.br', 'ops-csm')
+    const outro = quem('bruno@alloyal.com.br', 'pulse-csm')
     assert.equal((await listarSaidas(pool, CSM)).length, 1)
     assert.equal((await listarSaidas(pool, outro)).length, 0)
     assert.equal((await listarSaidas(pool, LIDER)).length, 1)

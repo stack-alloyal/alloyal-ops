@@ -1,5 +1,5 @@
 /**
- * @ops/contracts — schemas compartilhados entre superfície e servidor.
+ * @pulse/contracts — schemas compartilhados entre superfície e servidor.
  *
  * Doc 00, 4.2.
  *

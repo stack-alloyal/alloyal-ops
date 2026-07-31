@@ -10,22 +10,22 @@
  */
 
 export const PAPEIS = [
-  'ops-csm',
-  'ops-cs-lead',
-  'ops-implantacao',
-  'ops-comercial',
-  'ops-financeiro',
-  'ops-diretoria',
-  'ops-admin',
-  'ops-dados',
+  'pulse-csm',
+  'pulse-cs-lead',
+  'pulse-implantacao',
+  'pulse-comercial',
+  'pulse-financeiro',
+  'pulse-diretoria',
+  'pulse-admin',
+  'pulse-dados',
   // ── Ferramenta 2 (Contratos) ──
   // O Jurídico é dono da ferramenta; Marketing e Produto entram porque são dois
   // dos sete times que hoje perguntam ao Jurídico se podem usar a marca do
   // cliente e falar com os colaboradores dele. Sem papel próprio, eles não
   // conseguem consultar — e o gargalo continua.
-  'ops-juridico',
-  'ops-marketing',
-  'ops-produto',
+  'pulse-juridico',
+  'pulse-marketing',
+  'pulse-produto',
 ] as const
 
 export type Papel = (typeof PAPEIS)[number]
@@ -49,13 +49,13 @@ export interface Permissoes {
    * `false` para todos os papéis de interface, sem exceção: não há base legal
    * para o gestor do cliente nem para o CSM verem consumo individual de
    * colaborador. O único caminho é consulta auditada com justificativa
-   * registrada por `ops-admin` (doc 00, 5.2 e 13).
+   * registrada por `pulse-admin` (doc 00, 5.2 e 13).
    */
   readonly dadoIndividual: false | 'auditado'
 }
 
 export const PERMISSOES: Record<Papel, Permissoes> = {
-  'ops-csm': {
+  'pulse-csm': {
     contas: 'carteira',
     fila: 'carteira',
     receita: 'nenhum',
@@ -63,7 +63,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },
-  'ops-cs-lead': {
+  'pulse-cs-lead': {
     contas: 'base',
     fila: 'base',
     receita: 'carteira',
@@ -71,7 +71,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'cs',
     dadoIndividual: false,
   },
-  'ops-implantacao': {
+  'pulse-implantacao': {
     contas: 'carteira',
     fila: 'carteira',
     receita: 'nenhum',
@@ -79,7 +79,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },
-  'ops-comercial': {
+  'pulse-comercial': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'carteira',
@@ -87,7 +87,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },
-  'ops-financeiro': {
+  'pulse-financeiro': {
     contas: 'base',
     fila: 'carteira',
     receita: 'base',
@@ -98,7 +98,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'financeiro',
     dadoIndividual: false,
   },
-  'ops-diretoria': {
+  'pulse-diretoria': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'base',
@@ -106,7 +106,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },
-  'ops-admin': {
+  'pulse-admin': {
     contas: 'base',
     fila: 'base',
     receita: 'base',
@@ -114,7 +114,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: 'auditado',
   },
-  'ops-dados': {
+  'pulse-dados': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'base',
@@ -126,7 +126,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
   // um contrato específico, e ele não tem carteira. Não vê receita agregada nem
   // fila de CS: a alçada dele é contratual, e alçada larga demais é a que ninguém
   // consegue justificar numa auditoria.
-  'ops-juridico': {
+  'pulse-juridico': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'nenhum',
@@ -137,7 +137,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
   // Marketing e Produto são CONSULTA. Veem a base para achar o contrato, e nada
   // mais — a faixa de cláusula que cada um lê é decidida pela taxonomia, não por
   // esta matriz.
-  'ops-marketing': {
+  'pulse-marketing': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'nenhum',
@@ -145,7 +145,7 @@ export const PERMISSOES: Record<Papel, Permissoes> = {
     aprovaDistrato: 'nao',
     dadoIndividual: false,
   },
-  'ops-produto': {
+  'pulse-produto': {
     contas: 'base',
     fila: 'nenhum',
     receita: 'nenhum',
