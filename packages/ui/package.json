@@ -12,7 +12,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "echo 'consumido via transpilePackages'"
+    "build": "echo 'consumido via transpilePackages'",
+    "test": "node --test design-system.test.mjs"
   },
   "peerDependencies": {
     "lucide-react": "^1.23.0",

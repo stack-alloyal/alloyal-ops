@@ -1,5 +1,5 @@
 import { listarRelatorios, type ConteudoRelatorio } from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, RelatorioCliente } from '@ops/ui'
+import { Aviso, Badge, Btn, Card, Field, RelatorioCliente, TextArea } from '@ops/ui'
 import { FileBarChart, Lock, Printer } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -110,19 +110,15 @@ export default async function Relatorio({ params }: { params: Promise<{ id: stri
           {podeRevisar ? (
             <form action={acaoRevisar} className="grid gap-3">
               <input type="hidden" name="id" value={r.id} />
-              <label className="block text-[13px]">
-                <span className="mb-1 block font-medium text-ink-2">
-                  Revise antes de enviar — você conhece o contexto que o número não tem
-                </span>
-                <textarea
-                  name="frase"
-                  rows={5}
-                  minLength={40}
-                  required
-                  defaultValue={r.fraseFinal ?? r.fraseGerada ?? ''}
-                  className="w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-[13.5px] leading-relaxed text-ink outline-none transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                />
-              </label>
+              <TextArea
+                label="Revise antes de enviar — você conhece o contexto que o número não tem"
+                name="frase"
+                rows={5}
+                minLength={40}
+                required
+                defaultValue={r.fraseFinal ?? r.fraseGerada ?? ''}
+                className="leading-relaxed"
+              />
               <div className="flex flex-wrap items-center gap-3">
                 <Btn type="submit">
                   {r.estado === 'revisado' ? 'Salvar revisão' : 'Revisar e congelar'}

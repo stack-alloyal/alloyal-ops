@@ -1,5 +1,5 @@
 import { gatilhosAmbiguos, gatilhosSemPlaybook, indice } from '@ops/success'
-import { Aviso, Badge, Btn, Card, Field, Table, Vazio } from '@ops/ui'
+import { Aviso, Badge, Btn, Card, Field, Table, TextArea, Vazio } from '@ops/ui'
 import Link from 'next/link'
 
 import { salvar } from './acoes'
@@ -127,19 +127,17 @@ export default async function Biblioteca({
               minLength={8}
               required
             />
-            <label className="block text-[13px]">
-              <span className="mb-1 block font-medium text-ink-2">Conteúdo</span>
-              <textarea
-                name="conteudo"
-                rows={10}
-                required
-                placeholder={
-                  'Escreva os passos na ordem em que se fazem, com o que registrar em cada um.\n' +
-                  'O CSM vai ler isto no meio de uma ligação: frases curtas, verbo primeiro.'
-                }
-                className="w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-[13px] leading-relaxed text-ink outline-none transition-colors placeholder:text-ink-4 focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-              />
-            </label>
+            <TextArea
+              label="Conteúdo"
+              name="conteudo"
+              rows={10}
+              required
+              placeholder={
+                'Escreva os passos na ordem em que se fazem, com o que registrar em cada um.\n' +
+                'O CSM vai ler isto no meio de uma ligação: frases curtas, verbo primeiro.'
+              }
+              className="leading-relaxed"
+            />
             <div className="flex flex-wrap items-center gap-3">
               <Btn type="submit">Salvar rascunho</Btn>
               {/* Salvar não publica. Duas etapas de propósito: o texto de processo

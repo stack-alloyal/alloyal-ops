@@ -27,7 +27,10 @@ export const dynamic = 'force-dynamic'
 
 const IMPRESSAO = `
   @page { size: A4; margin: 16mm 14mm; }
-  html, body { background: #fff !important; }
+  /* O token, e não um branco cravado: a tela usa \`--bg\` (cinza claro) e o papel quer
+     branco puro, que é exatamente o que \`--surface\` já significa. Um hex aqui deixaria
+     esta página de fora de qualquer mudança de paleta. */
+  html, body { background: var(--surface) !important; }
   @media print {
     .ops-so-tela { display: none !important; }
     section, li, table { break-inside: avoid; }

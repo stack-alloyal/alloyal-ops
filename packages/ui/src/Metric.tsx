@@ -113,6 +113,10 @@ export function Metric({ dados, explicacao, formula, unidade, rotulo, className 
           {rotulo}
         </div>
       ) : null}
+      {/* ds-excecao: botão por acessibilidade, não por aparência — o valor precisa
+          receber foco de teclado para revelar a procedência do número, e é estilizado
+          como `border-0 bg-transparent` justamente para não parecer botão. `Btn` aqui
+          aplicaria a aparência errada a um número. */}
       <button
         type="button"
         title={titulo}

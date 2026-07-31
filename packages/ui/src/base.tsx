@@ -118,22 +118,47 @@ export function Select({
   )
 }
 
+/**
+ * O campo de texto longo, com o MESMO `inputCls` do `Field`.
+ *
+ * Existe porque os dois textarea que havia na app copiaram essas classes à mão e já
+ * tinham divergido entre si — um em 13px com regra de placeholder, o outro em 13.5px
+ * sem. Cópia à mão de token diverge; a única defesa é não haver cópia.
+ *
+ * `py-2` em vez da altura fixa do `Field`: aqui quem manda é o `rows`.
+ */
+export function TextArea({
+  label,
+  className,
+  ...props
+}: { label?: React.ReactNode } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <label className="block text-[13px]">
+      {label && <span className="mb-1 block font-medium text-ink-2">{label}</span>}
+      <textarea {...props} className={cn('py-2', inputCls, className)} />
+    </label>
+  )
+}
+
 export function Table({
   cols,
   rows,
   vazio = 'sem registros',
+  denso = false,
 }: {
   cols: React.ReactNode[]
   rows: React.ReactNode[][]
   vazio?: React.ReactNode
+  /** Tipo e respiro menores, para a folha A4 — onde a coluna é estreita. */
+  denso?: boolean
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[14px]">
+      <table className={cn('w-full', denso ? 'text-[13px]' : 'text-[14px]')}>
         <thead>
           <tr className="border-b border-line text-left text-[10.5px] uppercase tracking-[0.08em] text-ink-3">
             {cols.map((c, i) => (
-              <th key={i} className="px-3 py-2 font-semibold">
+              <th key={i} className={cn('font-semibold', denso ? 'py-1.5 pr-3' : 'px-3 py-2')}>
                 {c}
               </th>
             ))}
@@ -148,9 +173,19 @@ export function Table({
             </tr>
           )}
           {rows.map((r, i) => (
-            <tr key={i} className="border-b border-line last:border-0 hover:bg-surface-2">
+            <tr
+              key={i}
+              className={cn(
+                'border-b border-line last:border-0',
+                /* Sem hover na folha impressa: estado de mouse em papel não existe. */
+                !denso && 'hover:bg-surface-2',
+              )}
+            >
               {r.map((c, j) => (
-                <td key={j} className="px-3 py-2.5 align-top text-ink">
+                <td
+                  key={j}
+                  className={cn('align-top text-ink', denso ? 'py-1.5 pr-3' : 'px-3 py-2.5')}
+                >
                   {c}
                 </td>
               ))}
@@ -242,7 +277,9 @@ export function Aviso({
     erro: 'border-red/30 bg-red-50 text-red',
   }[tom]
   return (
-    <div role={papel} className={cn('rounded-md border px-[14px] py-[11px] text-[13px]', t)}>
+    /* `px-3 py-2` é a medida do `ErrorBox` do Publi, de quem este componente é a
+       generalização em quatro tons. Antes daqui havia um `py-[11px]` que eu inventei. */
+    <div role={papel} className={cn('rounded-md border px-3 py-2 text-[13px]', t)}>
       {children}
     </div>
   )

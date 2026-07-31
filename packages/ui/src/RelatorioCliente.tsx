@@ -1,4 +1,4 @@
-import { cn } from './base'
+import { cn, Table } from './base'
 
 /**
  * O relatório do cliente, como conteúdo puro.
@@ -168,24 +168,24 @@ export function RelatorioCliente({
           <h2 className="mb-2 text-[15px] font-bold tracking-[-0.01em] text-ink">
             Evolução · {c.evolucao.length} meses
           </h2>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-line text-left text-[10.5px] uppercase tracking-[0.08em] text-ink-3">
-                <th className="py-1.5 font-semibold">Mês</th>
-                <th className="py-1.5 font-semibold">Adesão</th>
-                <th className="py-1.5 font-semibold">Base cadastrada</th>
-              </tr>
-            </thead>
-            <tbody>
-              {c.evolucao.map((p) => (
-                <tr key={p.competencia} className="border-b border-line last:border-0">
-                  <td className="py-1.5 tabular-nums">{p.competencia}</td>
-                  <td className="py-1.5 tabular-nums">{PCT(p.adesao30d)}</td>
-                  <td className="py-1.5 tabular-nums">{PCT(p.coberturaCadastral)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* `Table` em modo denso, e não uma tabela à mão: as classes do cabeçalho
+              aqui eram cópia literal das do `Table`, e cópia diverge quando o
+              componente muda — sem que ninguém abra o PDF para ver. */}
+          <Table
+            denso
+            cols={['Mês', 'Adesão', 'Base cadastrada']}
+            rows={c.evolucao.map((p) => [
+              <span key="m" className="tabular-nums">
+                {p.competencia}
+              </span>,
+              <span key="a" className="tabular-nums">
+                {PCT(p.adesao30d)}
+              </span>,
+              <span key="b" className="tabular-nums">
+                {PCT(p.coberturaCadastral)}
+              </span>,
+            ])}
+          />
         </section>
       )}
 
