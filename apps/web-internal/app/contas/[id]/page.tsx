@@ -1,7 +1,9 @@
+import { especificacao, valeHoje } from '@ops/contratos'
 import { envelope, DRIVERS } from '@ops/metrics'
 import { carregarConta, ContaNaoVisivelError, type Conta360 } from '@ops/success'
 import { Aviso, Badge, Card, Kpi, Metric, TOM_POR_FAIXA, Table, cn } from '@ops/ui'
-import { Building2 } from 'lucide-react'
+import { Building2, FileText, Lock } from 'lucide-react'
+import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 
 import { Corpo, Topo } from '../../casca'
@@ -17,7 +19,8 @@ export const dynamic = 'force-dynamic'
  * carrega os quatro números que aparecem em praticamente toda conversa de CS —
  * adesão, cobertura, atraso e dias sem contato — sempre no mesmo lugar.
  *
- * ESCOPO DESTA ENTREGA: cabeçalho, aba Visão (faixa e drivers) e itens abertos.
+ * ESCOPO DESTA ENTREGA: cabeçalho, o que o contrato permite, aba Visão (faixa e
+ * drivers) e itens abertos.
  * As abas Resultado, Suporte, Relacionamento e Timeline dependem de fontes que
  * ainda não chegam (C7 tickets, C10 WhatsApp, C11 Calendar) — e estão listadas
  * como ausentes em vez de omitidas, para que a falta seja visível e não pareça
@@ -96,6 +99,18 @@ export default async function Conta({ params }: { params: Promise<{ id: string }
       ],
     })
   }
+
+  // As cláusulas vigentes entram aqui porque é ANTES DA LIGAÇÃO que o CSM precisa
+  // saber se pode usar a marca e falar com os colaboradores. Perguntar ao Jurídico
+  // no meio da conversa é o gargalo que a ferramenta 2 existe para acabar — e
+  // deixá-las só na ficha de contrato manteria a resposta a um clique de distância
+  // do lugar errado.
+  //
+  // O sigilo é o mesmo: `valeHoje` já apaga o valor do que está fora da faixa deste
+  // papel, e a tela não tem como vazar o que não recebeu.
+  const clausulas = await valeHoje(pool(), id, accountId)
+  const AGENDA_CS: readonly string[] = ['uso_marca', 'comunicacao_usuario', 'telemedicina', 'sla']
+  const paraAConversa = clausulas.filter((c) => AGENDA_CS.includes(c.tipo))
 
   const fontesAusentes = Object.entries(
     c.qualidadePorFonte as Record<string, { status?: string } | undefined>,
@@ -208,6 +223,60 @@ export default async function Conta({ params }: { params: Promise<{ id: string }
                 </li>
               ))}
             </ul>
+          </Card>
+        )}
+
+        {/* ── O que o contrato permite ── */}
+        {paraAConversa.length > 0 && (
+          <Card
+            title="Antes da ligação"
+            actions={
+              <Link
+                href={`/contratos/${accountId}`}
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-purple-700 hover:text-purple-500"
+              >
+                <FileText className="h-[14px] w-[14px]" />
+                ficha do contrato
+              </Link>
+            }
+          >
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {paraAConversa.map((c) => (
+                <li key={c.id} className="rounded-md border border-line bg-surface-2 px-3 py-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+                    {c.rotulo}
+                  </span>
+                  <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
+                    {c.restrito ? (
+                      <span className="inline-flex items-center gap-1 text-[13px] text-ink-3">
+                        <Lock className="h-[13px] w-[13px]" />
+                        {c.avisoRestricao}
+                      </span>
+                    ) : (
+                      <strong className="text-[13.5px] text-ink">
+                        {typeof c.valorEstruturado?.['valor'] === 'string'
+                          ? String(c.valorEstruturado['valor']).replace(/_/g, ' ')
+                          : Object.entries(c.valorEstruturado ?? {})
+                              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${String(v)}`)
+                              .join(' · ') || '—'}
+                      </strong>
+                    )}
+                    {/* Proposta aparece marcada: ela NÃO vale para decisão, e agir
+                        sobre valor não conferido é pior que não ter o valor. */}
+                    {c.estado === 'proposta' && !c.restrito && (
+                      <Badge tone="amber">não conferida</Badge>
+                    )}
+                  </div>
+                  <span className="mt-0.5 block text-[11.5px] text-ink-3">
+                    {especificacao(c.tipo)?.pergunta}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 max-w-[80ch] text-[12.5px] text-ink-3">
+              O que vale HOJE, com aditivos aplicados. Cláusula marcada como não conferida foi
+              extraída e ainda não validada pelo Jurídico — ela não decide nada.
+            </p>
           </Card>
         )}
 
