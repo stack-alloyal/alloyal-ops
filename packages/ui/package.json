@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./estilo.css": "./src/estilo.css",
-    "./tailwind-preset": "./tailwind-preset.ts"
+    "./tailwind-preset": "./tailwind-preset.ts",
+    "./cabecalhos": "./cabecalhos.mjs"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -1,4 +1,5 @@
-import type { Identidade } from '@ops/auth'
+import { exigirConta, recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+
 import type pg from 'pg'
 
 import { perderPorSaida } from './renovacao.js'
@@ -206,6 +207,10 @@ export async function anunciar(
       'levantada de mão exige a data em que o cliente comunicou — é a data do churn de contas',
     )
   }
+  // A conta vem de fora (FormData), e o INSERT lê `core.contract` para congelar o MRR
+  // da levantada. Sem este recorte, um CSM abre saída em conta de outra carteira — e o
+  // valor do contrato alheio volta na resposta.
+  await exigirConta(db, id, dados.accountId, 'conta')
 
   const cliente = await db.connect()
   try {
@@ -298,11 +303,12 @@ export async function confirmarAviso(
             aviso_confirmado_por = $2,
             aviso_confirmado_em = now(),
             estado = CASE WHEN estado = 'anunciado' THEN 'em_aviso' ELSE estado END
-      WHERE id = $1 AND estado IN ('anunciado','em_aviso')`,
-    [saidaId, id.email, avisoPrevioDias],
+      WHERE id = $1 AND estado IN ('anunciado','em_aviso')
+        AND ${recorteDaConta('success.cancellation.account_id', 4, 2)}`,
+    [saidaId, id.email, avisoPrevioDias, veBaseDeContas(id)],
   )
   if (rowCount === 0) {
-    throw new TransicaoInvalidaError('saída não está aberta')
+    throw new TransicaoInvalidaError('saída não está aberta, ou não é de conta da sua carteira')
   }
 }
 
@@ -339,10 +345,12 @@ export async function confirmarUltimaCobranca(
             -- recusa, mas recusar aqui dá uma mensagem que uma pessoa entende.
             competencia_efeito_receita =
               CASE WHEN aviso_confirmado_por IS NOT NULL THEN $4::date END
-      WHERE id = $1 AND estado IN ('anunciado','em_aviso')`,
-    [saidaId, id.email, comp, efeito],
+      WHERE id = $1 AND estado IN ('anunciado','em_aviso')
+        AND ${recorteDaConta('success.cancellation.account_id', 5, 2)}`,
+    [saidaId, id.email, comp, efeito, veBaseDeContas(id)],
   )
-  if (rowCount === 0) throw new TransicaoInvalidaError('saída não está aberta')
+  if (rowCount === 0)
+    throw new TransicaoInvalidaError('saída não está aberta, ou não é de conta da sua carteira')
   return { competenciaEfeitoReceita: efeito }
 }
 
@@ -366,11 +374,12 @@ export async function reter(
     `UPDATE success.cancellation
         SET estado = 'retido', retido_em = current_date, retido_por = $2,
             motivo_detalhe = COALESCE($3, motivo_detalhe)
-      WHERE id = $1 AND estado IN ('anunciado','em_aviso')`,
-    [saidaId, id.email, nota ?? null],
+      WHERE id = $1 AND estado IN ('anunciado','em_aviso')
+        AND ${recorteDaConta('success.cancellation.account_id', 4, 2)}`,
+    [saidaId, id.email, nota ?? null, veBaseDeContas(id)],
   )
   if (rowCount === 0) {
-    throw new TransicaoInvalidaError('só uma saída anunciada ou em aviso pode ser retida')
+    throw new TransicaoInvalidaError('só uma saída anunciada ou em aviso, de conta da sua carteira, pode ser retida')
   }
 }
 
@@ -395,10 +404,16 @@ export async function encerrar(
   try {
     await cliente.query('BEGIN')
     const { rows } = await cliente.query<Saida>(
+      // O recorte aqui é defesa em profundidade: hoje nenhum papel combina alçada
+      // de distrato com escopo de carteira, então a cláusula não barra ninguém. Ela
+      // existe para o dia em que um papel novo combinar as duas coisas — e nesse dia
+      // ninguém vai revisar esta consulta.
       `SELECT ${COLUNAS} FROM success.cancellation c
          JOIN core.account a ON a.id = c.account_id
-        WHERE c.id = $1 FOR UPDATE OF c`,
-      [saidaId],
+        WHERE c.id = $1
+          AND ($2::boolean OR a.csm_email = $3)
+        FOR UPDATE OF c`,
+      [saidaId, id.permissoes.contas === 'base', id.email],
     )
     const s = rows[0]
     if (!s) throw new TransicaoInvalidaError('saída não encontrada')

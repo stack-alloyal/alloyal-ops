@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { pool } from '../../../../lib/db'
 import { exigir, temEscopo } from '../../../../lib/guarda'
+import { uuidOu404 } from '../../../../lib/parametro'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,9 @@ export const dynamic = 'force-dynamic'
  */
 export default async function PlaybookDoItem({ params }: { params: Promise<{ id: string }> }) {
   await exigir((p) => temEscopo(p.fila) || p.configurar, 'playbook')
-  const { id } = await params
+  const { id: idBruto } = await params
+  // Formato antes da consulta: id torto virava 500, e 500 previsível esconde o real.
+  const id = uuidOu404(idBruto)
 
   const { rows } = await pool().query<{ chave: string }>(
     'SELECT chave FROM success.playbook WHERE id = $1',

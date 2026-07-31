@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 import { Corpo, Topo } from '../../casca'
 import { pool } from '../../../../lib/db'
 import { exigir, temEscopo } from '../../../../lib/guarda'
+import { uuidOu404 } from '../../../../lib/parametro'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,7 +52,9 @@ interface Cabecalho {
 
 export default async function FichaContrato({ params }: { params: Promise<{ id: string }> }) {
   const id = await exigir((p) => temEscopo(p.contas), 'ficha de contrato')
-  const { id: accountId } = await params
+  const { id: accountIdBruto } = await params
+  // Formato antes da consulta: id torto virava 500, e 500 previsível esconde o real.
+  const accountId = uuidOu404(accountIdBruto)
 
   const { rows } = await pool().query<Cabecalho>(
     `SELECT a.razao_social, ct.numero_contrato, ct.mrr_centavos::text AS mrr_centavos,

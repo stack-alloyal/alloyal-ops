@@ -8,6 +8,7 @@ import { acaoEnviar, acaoRevisar } from '../acoes'
 import { Corpo, Topo } from '../../casca'
 import { pool } from '../../../../lib/db'
 import { exigir, temEscopo } from '../../../../lib/guarda'
+import { uuidOu404 } from '../../../../lib/parametro'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function Relatorio({ params }: { params: Promise<{ id: string }> }) {
   const identidade = await exigir((p) => temEscopo(p.contas), 'relatório do cliente')
-  const { id } = await params
+  const { id: idBruto } = await params
+  // Formato antes da consulta: id torto virava 500, e 500 previsível esconde o real.
+  const id = uuidOu404(idBruto)
 
   // Sem consulta por id no módulo: a lista já aplica o recorte de carteira, e
   // acrescentar uma leitura por id que ignore o recorte seria abrir um caminho

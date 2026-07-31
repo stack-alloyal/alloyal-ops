@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { pool } from '../../../../../lib/db'
 import { exigir, temEscopo } from '../../../../../lib/guarda'
+import { uuidOu404 } from '../../../../../lib/parametro'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +45,9 @@ const IMPRESSAO = `
 
 export default async function Imprimir({ params }: { params: Promise<{ id: string }> }) {
   const identidade = await exigir((p) => temEscopo(p.contas), 'relatório do cliente')
-  const { id } = await params
+  const { id: idBruto } = await params
+  // Formato antes da consulta: id torto virava 500, e 500 previsível esconde o real.
+  const id = uuidOu404(idBruto)
 
   // Pela lista, que já aplica o recorte de carteira: uma leitura por id que ignore o
   // recorte seria um caminho paralelo, e é assim que alguém imprime o relatório de

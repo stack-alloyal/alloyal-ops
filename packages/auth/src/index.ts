@@ -6,3 +6,4 @@
 export * from './papeis.js'
 export * from './proxy.js'
 export * from './magic-link.js'
+export * from './recorte.js'

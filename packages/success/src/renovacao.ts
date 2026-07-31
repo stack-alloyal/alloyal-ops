@@ -1,4 +1,5 @@
-import type { Identidade } from '@ops/auth'
+import { recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+
 import type pg from 'pg'
 
 /**
@@ -149,8 +150,9 @@ export async function marcarCenario(
     `UPDATE success.renewal
         SET cenario = $2, estado = 'em_negociacao',
             nota = COALESCE($3, nota)
-      WHERE id = $1 AND estado IN ('aberta','em_negociacao')`,
-    [renovacaoId, cenario, nota ?? null],
+      WHERE id = $1 AND estado IN ('aberta','em_negociacao')
+        AND ${recorteDaConta('success.renewal.account_id', 4, 5)}`,
+    [renovacaoId, cenario, nota ?? null, veBaseDeContas(id), id.email],
   )
   if (rowCount === 0) {
     throw new RenovacaoInvalidaError('esta renovação já teve desfecho — o cenário não muda depois')
@@ -177,10 +179,11 @@ export async function darDesfecho(
   const { rowCount } = await db.query(
     `UPDATE success.renewal
         SET estado = $2, desfecho_em = current_date, nota = COALESCE($3, nota)
-      WHERE id = $1 AND estado IN ('aberta','em_negociacao')`,
-    [renovacaoId, desfecho, nota ?? null],
+      WHERE id = $1 AND estado IN ('aberta','em_negociacao')
+        AND ${recorteDaConta('success.renewal.account_id', 4, 5)}`,
+    [renovacaoId, desfecho, nota ?? null, veBaseDeContas(id), id.email],
   )
-  if (rowCount === 0) throw new RenovacaoInvalidaError('esta renovação já foi fechada')
+  if (rowCount === 0) throw new RenovacaoInvalidaError('esta renovação já foi fechada, ou não é de conta da sua carteira')
 }
 
 /**

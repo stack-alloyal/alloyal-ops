@@ -1,4 +1,4 @@
-import type { Identidade } from '@ops/auth'
+import { recorteDaConta, type Identidade } from '@ops/auth'
 import type pg from 'pg'
 
 /**
@@ -289,10 +289,17 @@ export async function cumprirObrigacao(
   const { rowCount } = await db.query(
     `UPDATE contracts.obligation
         SET estado = 'cumprida', cumprida_em = current_date, cumprida_por = $2
-      WHERE id = $1 AND estado = 'ativa'`,
-    [obrigacaoId, id.email],
+      WHERE id = $1 AND estado = 'ativa'
+        AND ${recorteDaConta('contracts.obligation.account_id', 3, 2)}`,
+    [obrigacaoId, id.email, id.permissoes.contas === 'base'],
   )
-  if (rowCount === 0) throw new ObrigacaoInvalidaError('esta obrigação já foi fechada')
+  if (rowCount === 0) {
+    // Uma mensagem para as duas causas — já fechada, ou de conta de outra carteira.
+    // Separá-las confirmaria a existência de um ID que a pessoa não deveria conhecer.
+    throw new ObrigacaoInvalidaError(
+      'esta obrigação já foi fechada, ou não é de conta da sua carteira',
+    )
+  }
 }
 
 /**
@@ -317,10 +324,15 @@ export async function dispensarObrigacao(
     `UPDATE contracts.obligation
         SET estado = 'dispensada', cumprida_em = current_date, cumprida_por = $2,
             descricao = descricao || ' · dispensada: ' || $3
-      WHERE id = $1 AND estado = 'ativa'`,
-    [obrigacaoId, id.email, motivo.trim()],
+      WHERE id = $1 AND estado = 'ativa'
+        AND ${recorteDaConta('contracts.obligation.account_id', 4, 2)}`,
+    [obrigacaoId, id.email, motivo.trim(), id.permissoes.contas === 'base'],
   )
-  if (rowCount === 0) throw new ObrigacaoInvalidaError('esta obrigação já foi fechada')
+  if (rowCount === 0) {
+    throw new ObrigacaoInvalidaError(
+      'esta obrigação já foi fechada, ou não é de conta da sua carteira',
+    )
+  }
 }
 
 /**

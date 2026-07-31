@@ -1,4 +1,5 @@
-import type { Identidade } from '@ops/auth'
+import { exigirConta, recorteDaConta, veBaseDeContas, type Identidade } from '@ops/auth'
+
 import type pg from 'pg'
 
 import { comparativoDaConta, type Comparativo } from './benchmark.js'
@@ -338,9 +339,16 @@ export async function criarRascunho(
   accountId: string,
   competencia: string,
 ): Promise<Relatorio> {
+  // Sem grupo nenhum é problema DE ACESSO, e a mensagem tem que dizer isso: "conta
+  // não encontrada na sua carteira" mandaria a pessoa procurar a conta quando o que
+  // falta é ela estar num grupo `ops-*`. As duas recusas têm soluções diferentes.
   if (id.permissoes.contas === 'nenhum') {
     throw new RelatorioInvalidoError('compor relatório exige acesso a contas')
   }
+  // ANTES de montar: `montarConteudo` lê adesão, MRR e cobertura da conta. Recortar
+  // só na escrita deixaria o número do outro cliente ser calculado e devolvido com a
+  // operação aparentemente "recusada".
+  await exigirConta(db, id, accountId, 'conta')
   const conteudo = await montarConteudo(db, accountId, competencia)
   const frase = gerarFrase(conteudo)
 
@@ -440,11 +448,16 @@ export async function revisar(
     `UPDATE success.client_report
         SET estado = 'revisado', frase_final = $3,
             revisado_por = $2, revisado_em = now()
-      WHERE id = $1 AND estado IN ('rascunho','revisado')`,
-    [relatorioId, id.email, fraseFinal.trim()],
+      WHERE id = $1 AND estado IN ('rascunho','revisado')
+        AND ${recorteDaConta('success.client_report.account_id', 4, 2)}`,
+    [relatorioId, id.email, fraseFinal.trim(), veBaseDeContas(id)],
   )
   if (rowCount === 0) {
-    throw new RelatorioInvalidoError('este relatório já foi enviado ou descartado')
+    // Mensagem única para as duas causas — já enviado, ou fora da carteira. Separar
+    // as duas transformaria a recusa em confirmação de que o ID existe.
+    throw new RelatorioInvalidoError(
+      'este relatório já foi enviado, descartado, ou não é de uma conta da sua carteira',
+    )
   }
 }
 
@@ -473,12 +486,15 @@ export async function enviar(
             enviado_por = $2, enviado_em = now()
       -- Só o REVISADO é enviável: rascunho enviado é a frase da máquina saindo sem
       -- ninguém ter lido.
-      WHERE id = $1 AND estado = 'revisado'`,
-    [relatorioId, id.email, destinatario.trim()],
+      WHERE id = $1 AND estado = 'revisado'
+        AND ${recorteDaConta('success.client_report.account_id', 4, 2)}`,
+    [relatorioId, id.email, destinatario.trim(), veBaseDeContas(id)],
   )
   if (rowCount === 0) {
+    // Duas causas, uma mensagem: não está revisado, ou não é de conta da sua
+    // carteira. Separar as duas confirmaria a existência de um ID alheio.
     throw new RelatorioInvalidoError(
-      'só um relatório revisado pode ser enviado — revise antes, para a frase ser sua e não da máquina',
+      'só um relatório revisado e de conta da sua carteira pode ser enviado — revise antes, para a frase ser sua e não da máquina',
     )
   }
 }
@@ -494,10 +510,15 @@ export async function descartar(
   }
   const { rowCount } = await db.query(
     `UPDATE success.client_report SET estado = 'descartado'
-      WHERE id = $1 AND estado IN ('rascunho','revisado')`,
-    [relatorioId],
+      WHERE id = $1 AND estado IN ('rascunho','revisado')
+        AND ${recorteDaConta('success.client_report.account_id', 3, 2)}`,
+    [relatorioId, id.email, veBaseDeContas(id)],
   )
   if (rowCount === 0) {
-    throw new RelatorioInvalidoError('relatório enviado não se descarta — o cliente tem uma cópia')
+    // Enviado não se descarta (o cliente tem uma cópia) — e fora da carteira também
+    // não. Uma mensagem só, para a recusa não virar oráculo de existência de ID.
+    throw new RelatorioInvalidoError(
+      'não foi possível descartar: relatório enviado tem cópia no cliente, e relatório de outra carteira não é seu para descartar',
+    )
   }
 }

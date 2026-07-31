@@ -164,6 +164,13 @@ jobs:
       # qual conta, e as duas confirmações sem as quais a receita não se move. As
       # asserções são sobre o que NÃO aparece — a classe de erro que passa numa
       # revisão de tela, porque a tela fica bonita e mostra demais.
+      - name: Portão 4i — recorte de carteira na ESCRITA (Postgres real)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:postgres@127.0.0.1:5432/ops
+        run: |
+          pnpm --filter @ops/success build
+          node --test --test-concurrency=1 packages/success/dist/recorte.test.js
+
       - name: Portão 4h — recorte da fila e do Cliente 360 (Postgres real)
         env:
           DATABASE_URL_ADMIN: postgres://postgres:teste@127.0.0.1:5434/ops
@@ -236,6 +243,7 @@ jobs:
           node --test packages/db/dist/papeis.test.js
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @ops/success build && node --test packages/success/dist/calibracao.test.js
+          node --test packages/success/dist/idor.test.js
 
       - name: Portão 7 — design system (sem banco, sem build)
         run: node --test packages/ui/design-system.test.mjs
