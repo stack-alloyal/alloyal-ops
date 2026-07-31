@@ -1,3 +1,4 @@
+import { decidirAlarme, type PoliticaFalha } from '@ops/metrics'
 import { Aviso, Badge, Card, Kpi, Table, cn } from '@ops/ui'
 
 import { Corpo, Topo } from '../casca'
@@ -26,7 +27,9 @@ interface Ciclo {
   agenda: string | null
   fase: string
   implementado: boolean
-  em_falha: { degradacao: string; tentativas: number; alarmeApos: number }
+  /* O tipo vem do pacote: o painel decide alarme com `decidirAlarme`, e uma cópia
+     estrutural aqui deixaria os dois lados divergirem em silêncio. */
+  em_falha: PoliticaFalha
   ultimo_sucesso: Date | null
   ultimo_estado: string | null
   duracao_s: number | null
@@ -44,7 +47,27 @@ interface Estado {
   excecoes: number
 }
 
-async function carregar(): Promise<{ ciclos: Ciclo[]; estado: Estado }> {
+/**
+ * A procedência da lacuna: qual fonte faltou, em quantas contas, e de quem é.
+ *
+ * Existe porque "10 parciais" não é acionável. O painel dizia que havia lacuna sem
+ * dizer onde, e o operador tinha que abrir o banco para descobrir — o que significa
+ * que ninguém descobria. `metrics.daily_snapshot.qualidade_por_fonte` já gravava o
+ * detalhe desde a migration 0004; era só ninguém ler.
+ *
+ * `ciclos` é a lista de ciclos declarados que alimentam a fonte. Vazia significa
+ * algo diferente de falha: a fonte não tem ciclo construído, e a lacuna não vai
+ * fechar sozinha. As duas conversas são diferentes e a tela precisa separá-las.
+ */
+interface Lacuna {
+  fonte: string
+  status: string
+  contas: number
+  ciclos: string[] | null
+  algum_implementado: boolean
+}
+
+async function carregar(): Promise<{ ciclos: Ciclo[]; estado: Estado; lacunas: Lacuna[] }> {
   const db = pool()
 
   const ciclos = await db.query<Ciclo>(
@@ -94,7 +117,29 @@ async function carregar(): Promise<{ ciclos: Ciclo[]; estado: Estado }> {
             (SELECT count(*)::int FROM ops.excecao_referencia WHERE estado = 'aberta') excecoes`,
   )
 
-  return { ciclos: ciclos.rows, estado: estado.rows[0] as Estado }
+  // Só o que NÃO está ok: uma lista com 4 fontes verdes e 1 vermelha esconde a
+  // vermelha. O que está íntegro já está dito pelo contador de completas.
+  const lacunas = await db.query<Lacuna>(
+    `WITH atual AS (
+       SELECT qualidade_por_fonte FROM metrics.daily_snapshot
+        WHERE competencia = (SELECT max(competencia) FROM metrics.daily_snapshot)
+     ),
+     por_fonte AS (
+       SELECT f.key AS fonte, f.value->>'status' AS status, count(*)::int AS contas
+         FROM atual, jsonb_each(atual.qualidade_por_fonte) f
+        WHERE f.value->>'status' <> 'ok'
+        GROUP BY 1, 2
+     )
+     SELECT p.fonte, p.status, p.contas,
+            nullif(array_agg(d.id ORDER BY d.id) FILTER (WHERE d.id IS NOT NULL), '{}') AS ciclos,
+            COALESCE(bool_or(d.implementado), false) AS algum_implementado
+       FROM por_fonte p
+       LEFT JOIN ops.cycle_declaration d ON d.fonte = p.fonte
+      GROUP BY p.fonte, p.status, p.contas
+      ORDER BY p.contas DESC, p.fonte`,
+  )
+
+  return { ciclos: ciclos.rows, estado: estado.rows[0] as Estado, lacunas: lacunas.rows }
 }
 
 
@@ -110,8 +155,13 @@ export default async function Painel() {
   // Quem garante o dado é quem opera esta tela.
   await exigir((p) => p.configurar || p.contas === 'base', 'acesso à plataforma de dados')
 
-  const { ciclos, estado } = await carregar()
-  const alertas = ciclos.filter((c) => c.falhas_seguidas >= (c.em_falha?.alarmeApos ?? 1))
+  const { ciclos, estado, lacunas } = await carregar()
+  // A decisão vem de `@ops/metrics`, não de uma comparação escrita aqui: é a regra
+  // que decide se alguém é avisado de que o dado parou de entrar, e regra dentro do
+  // componente não tem teste. Ver `apps/worker/src/alarme.test.ts`.
+  const alertas = ciclos
+    .map((c) => ({ ciclo: c, alarme: decidirAlarme(c.falhas_seguidas, c.em_falha) }))
+    .filter((x) => x.alarme.nivel !== 'silencio')
   const construidos = ciclos.filter((c) => c.implementado).length
 
   return (
@@ -136,7 +186,14 @@ export default async function Painel() {
             <Kpi
               rotulo="Parciais"
               valor={estado.parciais}
-              nota={estado.parciais > 0 ? 'fonte faltando em alguma conta' : 'todas completas'}
+              /* A nota NOMEIA a fonte. "Fonte faltando em alguma conta" obrigava
+                 abrir o banco para descobrir qual — o que significa que ninguém
+                 descobria, e a lacuna virava permanente. */
+              nota={
+                lacunas.length === 0
+                  ? 'todas completas'
+                  : lacunas.map((l) => `${l.fonte} ${l.status}`).join(' · ')
+              }
               {...(estado.parciais > 0 ? { tom: 'amber' as const } : {})}
             />
             <Kpi
@@ -158,13 +215,10 @@ export default async function Painel() {
 
         {(alertas.length > 0 || estado.divergencias > 0 || estado.excecoes > 0) && (
           <div className="grid gap-2">
-            {alertas.map((c) => (
-              <Aviso
-                key={c.id}
-                tom={c.em_falha?.degradacao === 'alarme_critico' ? 'erro' : 'alerta'}
-              >
-                <strong className="font-semibold">{c.id}</strong> falhou {c.falhas_seguidas}×
-                seguidas · degradação: {c.em_falha?.degradacao}
+            {alertas.map(({ ciclo, alarme }) => (
+              <Aviso key={ciclo.id} tom={alarme.nivel === 'critico' ? 'erro' : 'alerta'}>
+                <strong className="font-semibold">{ciclo.id}</strong> · {ciclo.descricao} —{' '}
+                {alarme.motivo}
               </Aviso>
             ))}
             {estado.divergencias > 0 && (
@@ -179,6 +233,42 @@ export default async function Painel() {
               </Aviso>
             )}
           </div>
+        )}
+
+        {lacunas.length > 0 && (
+          <Card title="De onde vem a lacuna">
+            <Table
+              cols={['Fonte', 'Estado', 'Contas', 'Quem preenche']}
+              rows={lacunas.map((l) => [
+                <span className="font-semibold">{l.fonte}</span>,
+                /* `ausente` e `defasado` não são o mesmo problema: sem valor
+                   nenhum vs. valor velho. Tratá-los igual faz o segundo parecer
+                   mais grave e o primeiro menos. */
+                l.status === 'ausente' ? (
+                  <Badge tone="red">sem dado</Badge>
+                ) : (
+                  <Badge tone="amber">{l.status}</Badge>
+                ),
+                <span className="tabular-nums">{l.contas}</span>,
+                /* A distinção que decide o que fazer hoje: ciclo que falhou se
+                   investiga, ciclo que não existe se constrói (ou se aceita a
+                   lacuna e se diz isso ao cliente). Sem esta coluna as duas
+                   situações mostram o mesmo alerta e esperam a mesma reação. */
+                l.ciclos === null ? (
+                  <span className="text-[12.5px] text-ink-2">
+                    <strong className="font-semibold">nenhum ciclo declarado</strong> — esta lacuna
+                    não fecha sozinha
+                  </span>
+                ) : !l.algum_implementado ? (
+                  <span className="text-[12.5px] text-ink-2">
+                    {l.ciclos.join(', ')} · <strong className="font-semibold">a construir</strong>
+                  </span>
+                ) : (
+                  <span className="text-[12.5px] text-ink-2">{l.ciclos.join(', ')}</span>
+                ),
+              ])}
+            />
+          </Card>
         )}
 
         <Card title="Ciclos de captação">

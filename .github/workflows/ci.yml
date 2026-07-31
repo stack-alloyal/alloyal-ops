@@ -247,5 +247,6 @@ jobs:
           pnpm --filter @ops/worker build
           node --test apps/worker/dist/cycle.test.js
           node --test apps/worker/dist/quality.test.js
+          node --test apps/worker/dist/alarme.test.js
           pnpm --filter @ops/db build
           node --test packages/db/dist/seed/seed.test.js

@@ -3,6 +3,7 @@ import '@ops/ui/estilo.css'
 import type { ReactNode } from 'react'
 
 import { Casca } from './casca'
+import { autenticado } from '../../lib/guarda'
 
 export const metadata = { title: 'Alloyal Ops', description: 'Ferramentas de operação' }
 
@@ -15,15 +16,35 @@ export const metadata = { title: 'Alloyal Ops', description: 'Ferramentas de ope
  * escapando para fora. O Next permite mais de um layout raiz exatamente para isto —
  * cada grupo declara o próprio `html`.
  *
- * Autenticação NÃO acontece aqui: o oauth2-proxy à frente do Nginx Proxy Manager já
- * barrou quem não é @alloyal.com.br (ADR-016). Esta camada resolve papel.
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ A casca só envolve quem está autenticado, e é aqui que isso se decide.      │
+ * │                                                                            │
+ * │ `unauthorized.tsx` mora dentro deste grupo, então a tela de login vinha     │
+ * │ DENTRO da casca: um visitante não autenticado via a sidebar com o nome de   │
+ * │ todas as telas internas, e o painel de login ficava espremido no espaço que │
+ * │ sobrava. O HTML da resposta não mostrava o vazamento — a `Nav` é componente │
+ * │ de cliente e só materializa ao hidratar. Apareceu na captura de tela.       │
+ * │                                                                            │
+ * │ `children` é renderizado NOS DOIS casos, e é o que preserva o status: a      │
+ * │ primeira tentativa trocava `children` por `<Login/>` direto aqui, a página   │
+ * │ deixava de rodar, `unauthorized()` nunca era chamado e a rota protegida      │
+ * │ passou a responder **200**. Login com 200 é o que faz monitoramento e        │
+ * │ rastreador lerem "deu certo" numa tela que diz "entre".                    │
+ * │                                                                            │
+ * │ Então: o layout decide o que ENVOLVER, e a página decide o que RESPONDER.   │
+ * │ Não autenticado → `unauthorized()` → `unauthorized.tsx` = `<Login/>`, agora  │
+ * │ sem casca em volta, com 401.                                               │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * A verificação de PAPEL não acontece aqui: papel é por tela, e cada página resolve
+ * com `exigir`. Aqui só se decide se existe alguém do outro lado.
  */
-export default function LayoutInterno({ children }: { children: ReactNode }) {
+export default async function LayoutInterno({ children }: { children: ReactNode }) {
+  const temAlguem = await autenticado()
+
   return (
     <html lang="pt-BR">
-      <body>
-        <Casca>{children}</Casca>
-      </body>
+      <body>{temAlguem ? <Casca>{children}</Casca> : children}</body>
     </html>
   )
 }

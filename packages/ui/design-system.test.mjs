@@ -114,23 +114,66 @@ test('nenhuma cópia à mão do inputCls', () => {
 })
 
 /**
+ * Comentários fora, mantendo o número da linha.
+ *
+ * A primeira versão da regra de cor varria o arquivo inteiro e acusou duas vezes um
+ * hex que eu havia escrito em COMENTÁRIO — uma vez explicando por que a folha de
+ * impressão usa `--surface`, outra explicando quais cinzas do Allvoice foram
+ * deliberadamente NÃO copiados. Hex em prosa não pinta nada, e um portão que obriga a
+ * reescrever a explicação para passar está ensinando a escrever comentário pior.
+ *
+ * Troca por espaço em vez de remover, para o número da linha continuar apontando o
+ * lugar certo no erro.
+ */
+function semComentarios(texto) {
+  const branco = (c) => c.replace(/[^\n]/g, ' ')
+  return (
+    texto
+      .replace(/\/\*[\s\S]*?\*\//g, branco)
+      // `(^|[^:])` deixa `https://` em paz: sem isso, uma URL numa linha apagaria o
+      // resto dela e a varredura passaria por cima de um hex real logo depois.
+      .replace(/(^|[^:])\/\/[^\n]*/gm, (c, antes) => antes + branco(c.slice(antes.length)))
+  )
+}
+
+/**
  * Cor fora do token.
  *
  * Hex só pode existir onde os tokens são DEFINIDOS (`estilo.css`), no logo (que é um
  * SVG de marca) e nos dois tons do `Badge` que o próprio Publi declara em hex. Fora
  * disso, hex é cor que o tema não controla — e que não acompanha nenhuma mudança de
  * paleta.
+ *
+ * Inclui as cores do logotipo do Google: elas são reais e legítimas, e por isso vivem
+ * em `estilo.css` (`.g-azul` e as outras três) em vez de num `fill` do componente.
+ * Abrir exceção aqui custaria mais que a indireção — invariante com exceção é
+ * invariante que ninguém confia.
  */
 test('nenhuma cor cravada fora dos tokens', () => {
   const cravadas = []
   for (const { caminho, texto } of ARQUIVOS) {
     if (caminho.endsWith('AlloyalLogo.tsx') || caminho === relative(RAIZ, BASE)) continue
-    for (const m of texto.matchAll(/#[0-9a-fA-F]{3,8}\b/g)) {
+    for (const m of semComentarios(texto).matchAll(/#[0-9a-fA-F]{3,8}\b/g)) {
       const linha = texto.slice(0, m.index).split('\n').length
       cravadas.push(`${caminho}:${linha} — ${m[0]}`)
     }
   }
   assert.deepEqual(cravadas, [], `\n${cravadas.join('\n')}\n`)
+})
+
+test('a regra de cor ainda pega hex em código, não só em comentário', () => {
+  // Sem isto, `semComentarios` poderia mascarar tudo e o teste acima passaria vazio —
+  // um portão que não recusa nada é pior que nenhum portão, porque parece cobertura.
+  const fingido = [
+    'const a = 1 // #AAAAAA no fim da linha',
+    '  // #BBBBBB em linha própria',
+    '/* #CCCCCC em bloco */',
+    "const doc = 'https://x.dev/a' // e a URL não come o resto",
+    "const cor = '#123456'",
+    "const svg = <path fill='#654321' />",
+  ].join('\n')
+  const achados = [...semComentarios(fingido).matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0])
+  assert.deepEqual(achados, ['#123456', '#654321'])
 })
 
 /**

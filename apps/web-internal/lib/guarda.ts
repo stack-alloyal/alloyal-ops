@@ -32,3 +32,27 @@ export async function exigir(
 }
 
 export const temEscopo = (e: Escopo) => e !== 'nenhum'
+
+/**
+ * Há identidade? Sem lançar, para o LAYOUT poder decidir o que envolver.
+ *
+ * Existe por um defeito que só a captura de tela mostrou: `unauthorized.tsx` fica
+ * dentro do grupo `(interno)`, então a tela de login renderizava DENTRO da casca — e
+ * um visitante não autenticado via a sidebar inteira, com os nomes de todas as telas
+ * internas. No HTML do servidor o vazamento não aparecia: a `Nav` é componente de
+ * cliente, sai como referência lazy e só materializa ao hidratar. Conferir o HTML da
+ * resposta não bastava; foi preciso olhar o navegador.
+ *
+ * Devolve booleano e não a identidade porque é só isso que o layout precisa saber, e
+ * um layout que carrega identidade convida a usá-la para decidir conteúdo — que é
+ * trabalho da página, onde a permissão é checada com `exigir`.
+ */
+export async function autenticado(): Promise<boolean> {
+  try {
+    await identidade()
+    return true
+  } catch (err) {
+    if (err instanceof NaoAutenticadoError) return false
+    throw err
+  }
+}

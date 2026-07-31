@@ -38,6 +38,16 @@
     --red: #dc2626;
     --red-50: #fcebeb;
 
+    /* ---- Superfície escura, só para o painel de marca da tela de login ----
+       Papel que o Ops não tinha: todas as telas internas são claras. O valor é o
+       do Allvoice (Hub), de onde a composição do login vem — os dois produtos
+       mostram o mesmo painel escuro, e um cinza escuro "quase igual" ao do outro
+       seria pior que um diferente, porque ninguém saberia qual é o certo.
+       Os NEUTROS do login não vêm daqui: `#1E1E28`, `#FAFAFB` e `#9A9AAE` do
+       Allvoice já têm equivalente em `--ink`, `--surface-2` e `--ink-3`, e
+       duplicá-los criaria seis cinzas concorrentes. */
+    --escuro: #17171f;
+
     --shadow-sm: 0 1px 2px rgba(20, 18, 30, 0.05), 0 1px 3px rgba(20, 18, 30, 0.04);
     --shadow-md: 0 2px 6px rgba(20, 18, 30, 0.06), 0 8px 24px rgba(20, 18, 30, 0.05);
     --shadow-pop: 0 12px 40px rgba(20, 18, 30, 0.16), 0 0 0 1px rgba(20, 18, 30, 0.05);
@@ -121,5 +131,50 @@
   }
   [data-saude='critico'] {
     color: var(--red);
+  }
+}
+
+@layer components {
+  /* ── Painel de marca da tela de login ──────────────────────────────────────
+     O gradiente vive aqui, e não num `style` do TSX, por dois motivos: hex e rgb
+     crus em componente furam o token (e o portão do design system recusa), e a
+     composição é a mesma do Allvoice (Hub) — mantê-la num lugar só é o que permite
+     conferir os dois produtos lado a lado.
+
+     Roxo no canto de origem, laranja no oposto: é a leitura da marca (roxo = ação,
+     laranja = acento) aplicada ao maior espaço vazio que o produto tem. */
+  .ops-marca {
+    background: var(--escuro);
+  }
+  .ops-marca::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 480px at 0% 0%, rgb(106 24 229 / 45%) 0%, transparent 52%),
+      radial-gradient(820px 460px at 100% 100%, rgb(255 122 0 / 38%) 0%, transparent 48%);
+  }
+}
+
+@layer components {
+  /* ── Logotipo do Google, no botão de entrar ────────────────────────────────
+     Estas quatro cores NÃO são tokens da Alloyal e não devem ser trocadas: são a
+     marca do Google, e as regras de uso deles proíbem repintar. Ficam aqui, e não
+     num `fill` do TSX, porque a regra "nenhum hex em componente" só vale a pena se
+     não tiver exceção — invariante com exceção é invariante que ninguém confia.
+
+     Se um dia o botão ganhar variante escura, é aqui que ela entra. */
+  .g-azul {
+    fill: #4285f4;
+  }
+  .g-verde {
+    fill: #34a853;
+  }
+  .g-amarelo {
+    fill: #fbbc05;
+  }
+  .g-vermelho {
+    fill: #ea4335;
   }
 }
