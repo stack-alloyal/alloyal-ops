@@ -1,6 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist" },
-  "references": [{ "path": "../../packages/db" }, { "path": "../../packages/metrics" }],
-  "include": ["src/**/*"]
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    {
+      "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/metrics"
+    },
+    {
+      "path": "../../packages/success"
+    }
+  ],
+  "include": [
+    "src/**/*"
+  ]
 }

@@ -10,7 +10,14 @@
 
 export type MetodoCiclo = 'incremental_watermark' | 'full' | 'webhook' | 'reconciliacao' | 'consolidacao'
 
-export type Janela = 'desde_watermark' | 'estado_atual' | '90d' | 'dia_anterior' | 'sem_janela'
+export type Janela =
+  | 'desde_watermark'
+  | 'estado_atual'
+  | '90d'
+  | 'dia_anterior'
+  /** Competência inteira do mês anterior — a unidade do fechamento contábil. */
+  | 'mes_anterior'
+  | 'sem_janela'
 
 export type Degradacao =
   /** Métrica derivada entra neutra e SINALIZADA. Nunca com o último valor. */

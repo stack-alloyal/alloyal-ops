@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Design tokens Alloyal — os MESMOS do alloyal-publi.
+   Roxo #6A18E5 = AÇÃO · Laranja #FF7A00 = MARCA/ACENTO.
+
+   Copiado e não reescrito: o objetivo é que quem abre o Ops depois
+   do Publi não perceba que trocou de produto. Dois roxos parecidos
+   são piores que dois roxos diferentes — ninguém sabe qual é o certo.
+   ============================================================ */
+@layer base {
+  :root {
+    /* ---- Alloyal hex (fonte de verdade) ---- */
+    --bg: #f6f6f8;
+    --surface: #ffffff;
+    --surface-2: #fbfbfc;
+    --line: #ececef;
+    --line-strong: #e0e0e6;
+    --ink: #16161a;
+    --ink-2: #5b5b66;
+    --ink-3: #9a9aa6;
+    --ink-4: #bfbfc8;
+
+    --purple-50: #f3ecfe;
+    --purple-100: #e3d2fb;
+    --purple-500: #6a18e5;
+    --purple-700: #5512b8;
+    --purple-900: #2e0962;
+    --orange-50: #fff3e8;
+    --orange-500: #ff7a00;
+    --orange-700: #b45309;
+    --green: #16a34a;
+    --green-50: #e9f7ef;
+    --amber: #f59e0b;
+    --amber-50: #fef4e2;
+    --red: #dc2626;
+    --red-50: #fcebeb;
+
+    --shadow-sm: 0 1px 2px rgba(20, 18, 30, 0.05), 0 1px 3px rgba(20, 18, 30, 0.04);
+    --shadow-md: 0 2px 6px rgba(20, 18, 30, 0.06), 0 8px 24px rgba(20, 18, 30, 0.05);
+    --shadow-pop: 0 12px 40px rgba(20, 18, 30, 0.16), 0 0 0 1px rgba(20, 18, 30, 0.05);
+
+    --sidebar-w: 252px;
+    --topbar-h: 62px;
+    --font-inter: 'Inter';
+
+    /* ---- shadcn/ui (HSL sem hsl()) mapeado p/ Alloyal ---- */
+    --background: 240 9% 97%;
+    --foreground: 240 8% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 8% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 8% 9%;
+    --primary: 263 81% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 263 80% 96%;
+    --secondary-foreground: 263 82% 40%;
+    --muted: 240 13% 98%;
+    --muted-foreground: 240 6% 38%;
+    --accent: 240 8% 95%;
+    --accent-foreground: 240 8% 9%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 7% 93%;
+    --input: 240 11% 89%;
+    --ring: 263 81% 50%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ============================================================
+   Estados de dado (D10) — específicos do Ops, não existem no Publi.
+
+   O Ops mostra números derivados de várias fontes, e um número
+   defasado NUNCA pode aparecer igual a um número íntegro. Os cinco
+   estados usam a paleta Alloyal, e nenhum deles é verde: verde
+   significa "saudável", e frescor de dado não é saúde de negócio.
+   ============================================================ */
+@layer components {
+  [data-dado='defasado'] {
+    color: var(--amber);
+  }
+  [data-dado='parcial'],
+  [data-dado='suprimido'] {
+    color: var(--ink-3);
+  }
+  [data-dado='em_verificacao'] {
+    color: var(--purple-700);
+  }
+
+  /* Faixa de saúde. Cor nunca sozinha (D9): sempre acompanha rótulo. */
+  [data-saude='saudavel'] {
+    color: var(--green);
+  }
+  [data-saude='atencao'] {
+    color: var(--amber);
+  }
+  [data-saude='risco'] {
+    color: var(--orange-700);
+  }
+  [data-saude='critico'] {
+    color: var(--red);
+  }
+}

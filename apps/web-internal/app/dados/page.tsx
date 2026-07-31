@@ -1,3 +1,6 @@
+import { Aviso, Badge, Card, Kpi, Table, cn } from '@ops/ui'
+
+import { Corpo, Topo } from '../casca'
 import { pool } from '../../lib/db'
 import { exigir } from '../../lib/guarda'
 
@@ -94,6 +97,7 @@ async function carregar(): Promise<{ ciclos: Ciclo[]; estado: Estado }> {
   return { ciclos: ciclos.rows, estado: estado.rows[0] as Estado }
 }
 
+
 function haQuanto(d: Date | null): string {
   if (!d) return 'nunca'
   const min = Math.round((Date.now() - new Date(d).getTime()) / 60_000)
@@ -108,97 +112,123 @@ export default async function Painel() {
 
   const { ciclos, estado } = await carregar()
   const alertas = ciclos.filter((c) => c.falhas_seguidas >= (c.em_falha?.alarmeApos ?? 1))
+  const construidos = ciclos.filter((c) => c.implementado).length
 
   return (
-    <section>
-      <h1>Pipeline de dados</h1>
+    <>
+      <Topo
+        href="/dados"
+        acoes={
+          <span className="text-[13px] text-ink-2">
+            {construidos} de {ciclos.length} ciclos construídos
+          </span>
+        }
+      />
+      <Corpo className="grid gap-5">
+        {estado.competencia ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi
+              rotulo="Snapshot"
+              valor={<span className="text-[22px]">{estado.competencia}</span>}
+              nota={`publicado ${haQuanto(estado.gerado_em)}`}
+            />
+            <Kpi rotulo="Contas" valor={estado.contas} nota={`${estado.completos} completas`} />
+            <Kpi
+              rotulo="Parciais"
+              valor={estado.parciais}
+              nota={estado.parciais > 0 ? 'fonte faltando em alguma conta' : 'todas completas'}
+              {...(estado.parciais > 0 ? { tom: 'amber' as const } : {})}
+            />
+            <Kpi
+              rotulo="Divergências"
+              valor={estado.divergencias}
+              /* É o único sinal de que um número JÁ PUBLICADO está errado. */
+              nota="reconciliação sem resolver"
+              {...(estado.divergencias > 0 ? { tom: 'red' as const } : {})}
+            />
+          </div>
+        ) : (
+          // Estado vazio que ensina: diz o que falta, não só que não há nada.
+          <Aviso tom="alerta">
+            Nenhum snapshot consolidado ainda. O primeiro sai depois que os ciclos de captação
+            rodarem — ou agora mesmo, contra massa sintética, com{' '}
+            <code className="rounded bg-surface px-1 py-0.5 text-[12px]">make seed</code>.
+          </Aviso>
+        )}
 
-      {estado.competencia ? (
-        <p className="painel__resumo">
-          Snapshot de <strong>{estado.competencia}</strong> · {estado.contas} contas ·{' '}
-          {estado.parciais > 0 ? (
-            <span data-estado="parcial">
-              {estado.parciais} parciais, {estado.completos} completas
-            </span>
-          ) : (
-            <span data-estado="ok">todas completas</span>
-          )}{' '}
-          · publicado {haQuanto(estado.gerado_em)}
+        {(alertas.length > 0 || estado.divergencias > 0 || estado.excecoes > 0) && (
+          <div className="grid gap-2">
+            {alertas.map((c) => (
+              <Aviso
+                key={c.id}
+                tom={c.em_falha?.degradacao === 'alarme_critico' ? 'erro' : 'alerta'}
+              >
+                <strong className="font-semibold">{c.id}</strong> falhou {c.falhas_seguidas}×
+                seguidas · degradação: {c.em_falha?.degradacao}
+              </Aviso>
+            ))}
+            {estado.divergencias > 0 && (
+              <Aviso tom="erro">
+                {estado.divergencias} divergência(s) da reconciliação sem resolver — é o único
+                sinal de que um número já publicado está errado
+              </Aviso>
+            )}
+            {estado.excecoes > 0 && (
+              <Aviso tom="alerta">
+                {estado.excecoes} registro(s) sem conta correspondente na fila de exceção
+              </Aviso>
+            )}
+          </div>
+        )}
+
+        <Card title="Ciclos de captação">
+          <Table
+            cols={['Ciclo', 'Agenda', 'Último sucesso', 'Duração', 'Linhas', 'Estado']}
+            /* "sem registros" faria parecer defeito da tela. A declaração é
+               publicada pelo worker ao subir: lista vazia significa que o worker
+               não subiu, e é isso que a pessoa precisa ler aqui. */
+            vazio={
+              <>
+                Nenhum ciclo declarado. A lista é publicada pelo worker ao subir — se está vazia,
+                o worker não subiu contra este banco.
+              </>
+            }
+            rows={ciclos.map((c) => [
+              <>
+                <span className="font-semibold">{c.id}</span>
+                <span className="text-ink-2"> · {c.descricao}</span>
+                <span className="mt-0.5 block text-[11.5px] text-ink-3">
+                  {c.fonte} · {c.metodo}
+                </span>
+              </>,
+              <span className="tabular-nums text-[12.5px]">{c.agenda ?? 'webhook'}</span>,
+              <span className={cn('tabular-nums text-[12.5px]', !c.ultimo_sucesso && 'text-ink-4')}>
+                {haQuanto(c.ultimo_sucesso)}
+              </span>,
+              <span className="tabular-nums text-[12.5px]">
+                {c.duracao_s !== null ? `${c.duracao_s}s` : '—'}
+              </span>,
+              <span className="tabular-nums text-[12.5px]">{c.linhas_gravadas ?? '—'}</span>,
+              /* Distinguir "não rodou porque falhou" de "não rodou porque ainda
+                 não existe" — são conversas diferentes. */
+              !c.implementado ? (
+                <Badge>a construir · {c.fase}</Badge>
+              ) : c.falhas_seguidas > 0 ? (
+                <Badge tone="red">falhando</Badge>
+              ) : c.ultimo_estado === 'ok' ? (
+                <Badge tone="green">ok</Badge>
+              ) : (
+                <Badge tone="amber">sem execução</Badge>
+              ),
+            ])}
+          />
+        </Card>
+
+        <p className="max-w-[80ch] text-[13px] leading-relaxed text-ink-2">
+          Esta lista é gerada da declaração dos ciclos publicada pelo worker ao subir — ciclo novo
+          aparece aqui sem ninguém mexer nesta tela.
         </p>
-      ) : (
-        // Estado vazio que ensina: diz o que falta, não só que não há nada.
-        <p className="painel__resumo" data-estado="parcial">
-          Nenhum snapshot consolidado ainda. O primeiro sai depois que os ciclos de
-          captação rodarem — ou agora mesmo, contra massa sintética, com <code>make seed</code>.
-        </p>
-      )}
-
-      {(alertas.length > 0 || estado.divergencias > 0 || estado.excecoes > 0) && (
-        <ul className="painel__alertas">
-          {alertas.map((c) => (
-            <li key={c.id} data-severidade={c.em_falha?.degradacao === 'alarme_critico' ? 'critico' : 'alto'}>
-              <strong>{c.id}</strong> falhou {c.falhas_seguidas}× seguidas ·{' '}
-              degradação: {c.em_falha?.degradacao}
-            </li>
-          ))}
-          {estado.divergencias > 0 && (
-            <li data-severidade="critico">
-              {estado.divergencias} divergência(s) da reconciliação sem resolver — é o único
-              sinal de que um número já publicado está errado
-            </li>
-          )}
-          {estado.excecoes > 0 && (
-            <li data-severidade="alto">
-              {estado.excecoes} registro(s) sem conta correspondente na fila de exceção
-            </li>
-          )}
-        </ul>
-      )}
-
-      <table className="painel__ciclos">
-        <thead>
-          <tr>
-            <th>Ciclo</th>
-            <th>Agenda</th>
-            <th>Último sucesso</th>
-            <th>Duração</th>
-            <th>Linhas</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ciclos.map((c) => (
-            <tr key={c.id}>
-              <td>
-                <strong>{c.id}</strong> · {c.descricao}
-                <small> {c.fonte} · {c.metodo}</small>
-              </td>
-              <td className="num">{c.agenda ?? 'webhook'}</td>
-              <td className="num">{haQuanto(c.ultimo_sucesso)}</td>
-              <td className="num">{c.duracao_s !== null ? `${c.duracao_s}s` : '—'}</td>
-              <td className="num">{c.linhas_gravadas ?? '—'}</td>
-              <td>
-                {/* Distinguir "não rodou porque falhou" de "não rodou porque
-                    ainda não existe" — são conversas diferentes. */}
-                {!c.implementado ? (
-                  <span data-estado="pendente">a construir · {c.fase}</span>
-                ) : c.falhas_seguidas > 0 ? (
-                  <span data-estado="falha">falhando</span>
-                ) : c.ultimo_estado === 'ok' ? (
-                  <span data-estado="ok">ok</span>
-                ) : (
-                  <span data-estado="pendente">sem execução</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <p className="painel__nota">
-        Esta lista é gerada da declaração dos ciclos publicada pelo worker ao subir —
-        ciclo novo aparece aqui sem ninguém mexer nesta tela.
-      </p>
-    </section>
+      </Corpo>
+    </>
   )
 }

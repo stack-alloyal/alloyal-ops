@@ -170,7 +170,8 @@ jobs:
           node --test --test-concurrency=1 \
             packages/success/dist/fila.test.js \
             packages/success/dist/conta.test.js \
-            packages/success/dist/cancelamento.test.js 2>&1 | tee sup.txt
+            packages/success/dist/cancelamento.test.js \
+            packages/success/dist/fechamento.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1

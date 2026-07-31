@@ -8,9 +8,14 @@
  *
  * O cálculo (drivers, score, gatilhos) fica em `@ops/metrics`; a persistência,
  * em `@ops/db`. Este pacote é a leitura e a escrita que a interface faz.
+ *
+ * O fechamento mensal mora aqui pelo mesmo motivo: a cascata é lida pela tela e
+ * escrita pelo ciclo mensal do worker, e o pior lugar para ela seria dentro de
+ * um dos dois — a app web importando o worker, ou o worker exportando tela.
  */
 
 export * from './fila.js'
 export * from './calibracao.js'
 export * from './conta.js'
 export * from './cancelamento.js'
+export * from './fechamento.js'

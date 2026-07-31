@@ -19,6 +19,8 @@
  * horário de São Paulo, e o agendador aplica o fuso (ver `queue.ts`).
  */
 
+import { competenciaAnterior, CompetenciaCongeladaError, fechar } from '@ops/success'
+
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
 import { defineCycle } from '../cycle.js'
@@ -157,6 +159,51 @@ export const c12Snapshot = defineCycle({
       linhasLidas: r.contas,
       linhasGravadas: r.sinais + r.publicados + r.suprimidos + f.criados,
       detalhe: { consolidacao: r, fila: f },
+    }
+  },
+})
+
+/**
+ * C13 — fechamento mensal.
+ *
+ * Roda todo dia enquanto a competência anterior estiver ABERTA, e não uma vez
+ * só no dia 1: evento de MRR chega atrasado — uma aprovação de distrato no dia
+ * 4 pertence ao mês 3 — e uma cascata calculada uma vez ficaria errada até
+ * alguém reparar. Recalcular é barato; descobrir tarde não é.
+ *
+ * O congelamento NÃO é automático. Ele é a decisão de uma pessoa de que aquele
+ * mês está pronto para ir ao board, e a partir dali os números não mudam mais.
+ * Automatizá-lo transformaria o relógio em autoridade sobre o número.
+ */
+export const c13Fechamento = defineCycle({
+  id: 'C13',
+  descricao: 'Cascata de receita da competência anterior',
+  fonte: 'ops',
+  metodo: 'consolidacao',
+  agenda: '30 7 * * *',
+  janela: 'mes_anterior',
+  chaveNatural: ['competencia'],
+  emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'neutro_sinalizado' },
+  fase: 'F1',
+  executar: async (ctx) => {
+    const anterior = competenciaAnterior(ctx.agora.toISOString().slice(0, 10))
+    const pool = poolDoWorker()
+    try {
+      const c = await fechar(pool, anterior)
+      const residuo = Number(c.naoAtribuidoCentavos)
+      ctx.log(
+        `${c.competencia.slice(0, 7)} · MRR final ${(Number(c.mrrFinalCentavos) / 100).toFixed(0)} · ` +
+          `NRR ${c.nrr ?? '—'} · GRR ${c.grr ?? '—'} · não atribuído ${(residuo / 100).toFixed(0)}`,
+      )
+      return { linhasLidas: c.contasIniciais, linhasGravadas: 1, detalhe: { cascata: c } }
+    } catch (err) {
+      if (err instanceof CompetenciaCongeladaError) {
+        // Não é falha: é o estado normal depois que alguém fechou o mês. Tratar
+        // como erro encheria o painel de alarme previsível todo santo dia.
+        ctx.log(`${anterior.slice(0, 7)} já congelada — nada a recalcular`)
+        return { linhasLidas: 0, linhasGravadas: 0 }
+      }
+      throw err
     }
   },
 })

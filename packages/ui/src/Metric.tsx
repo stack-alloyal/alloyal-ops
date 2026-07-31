@@ -1,5 +1,7 @@
 import type { EstadoDado, Lineage } from '@ops/metrics'
 
+import { cn } from './base'
+
 /**
  * O componente de número da plataforma.
  *
@@ -21,6 +23,13 @@ import type { EstadoDado, Lineage } from '@ops/metrics'
  * │ a mostrar o mesmo indicador com arredondamento diferente, e é o começo da  │
  * │ conversa em que ninguém confia no relatório.                               │
  * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Este componente não existe no alloyal-publi: lá os números vêm de uma fonte
+ * só. Aqui vêm de cinco, e por isso o estado do DADO precisa de lugar na tela.
+ *
+ * Nenhum estado de dado é pintado de VERDE. Verde significa "saudável", e
+ * frescor de dado não é saúde de negócio — pintar `ok` de verde faria "adesão
+ * 13,8%" aparecer em verde só porque a fonte entregou em dia.
  */
 
 export interface MetricProps {
@@ -30,6 +39,7 @@ export interface MetricProps {
   readonly formula?: string
   readonly unidade: 'inteiro' | 'percentual' | 'centavos' | 'dias' | 'razao' | 'escala_0_100'
   readonly rotulo?: string
+  readonly className?: string
 }
 
 const ROTULO_ESTADO: Record<EstadoDado, string | null> = {
@@ -75,7 +85,7 @@ export function formatar(
   }
 }
 
-export function Metric({ dados, explicacao, formula, unidade, rotulo }: MetricProps) {
+export function Metric({ dados, explicacao, formula, unidade, rotulo, className }: MetricProps) {
   const formatado = formatar(dados.valor, unidade)
   const rotuloEstado = ROTULO_ESTADO[dados.estado]
 
@@ -94,15 +104,34 @@ export function Metric({ dados, explicacao, formula, unidade, rotulo }: MetricPr
     .join('\n')
 
   return (
-    <span className="ops-metric" data-estado={dados.estado} data-metrica={dados.metrica}>
-      {rotulo ? <span className="ops-metric__rotulo">{rotulo}</span> : null}
-      <button type="button" className="ops-metric__valor" title={titulo} aria-describedby={undefined}>
-        <span style={{ fontFamily: 'var(--ops-font-num)' }}>
-          {formatado ?? TEXTO_SEM_VALOR[dados.estado]}
-        </span>
-        {/* Cor não é o único portador de significado (D9): o estado é texto. */}
-        {rotuloEstado ? <small className="ops-metric__estado"> · {rotuloEstado}</small> : null}
+    <div
+      className={cn('rounded-lg border border-line bg-surface p-[18px] shadow-sm', className)}
+      data-metrica={dados.metrica}
+    >
+      {rotulo ? (
+        <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+          {rotulo}
+        </div>
+      ) : null}
+      <button
+        type="button"
+        title={titulo}
+        data-dado={dados.estado}
+        className={cn(
+          'mt-1.5 block cursor-help border-0 bg-transparent p-0 text-left text-kpi tabular-nums',
+          // Sem cor quando o dado está íntegro: o valor é `ink`, e a cor fica
+          // reservada para os estados que exigem cautela.
+          dados.estado === 'ok' && 'text-ink',
+        )}
+      >
+        {formatado ?? TEXTO_SEM_VALOR[dados.estado]}
       </button>
-    </span>
+      {/* Cor não é o único portador de significado (D9): o estado é texto. */}
+      {rotuloEstado ? (
+        <div data-dado={dados.estado} className="mt-1 text-[12px]">
+          {rotuloEstado}
+        </div>
+      ) : null}
+    </div>
   )
 }

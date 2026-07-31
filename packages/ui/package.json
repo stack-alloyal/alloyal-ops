@@ -7,19 +7,26 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens.css": "./src/tokens.css",
-    "./app.css": "./src/app.css"
+    "./estilo.css": "./src/estilo.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "echo 'consumido via transpilePackages'"
   },
   "peerDependencies": {
+    "lucide-react": "^1.23.0",
+    "next": "^15.1.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
     "@ops/metrics": "workspace:*",
     "@types/react": "^19.0.0",
+    "next": "^15.5.22",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.28.0",
+    "tailwind-merge": "^3.6.0"
   }
 }

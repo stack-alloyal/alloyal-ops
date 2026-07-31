@@ -1,3 +1,6 @@
+import { AlloyalLogo, Card } from '@ops/ui'
+import Link from 'next/link'
+
 /**
  * 403 — autenticado, sem permissão.
  *
@@ -7,13 +10,21 @@
  */
 export default function SemPermissao() {
   return (
-    <section className="ops-barrado">
-      <h1>Sem permissão para esta área</h1>
-      <p>
-        Você está autenticado, mas o seu papel não dá acesso a esta tela. Os papéis
-        vêm dos grupos <code>ops-*</code> do Google Workspace — peça a inclusão no
-        grupo certo a quem administra o Workspace.
-      </p>
-    </section>
+    <main className="mx-auto flex min-h-screen max-w-[52ch] flex-col justify-center px-5">
+      <AlloyalLogo className="mb-6 h-7" />
+      <Card title="Sem permissão para esta área">
+        <p className="text-[13.5px] leading-relaxed text-ink-2">
+          Você está autenticado, mas o seu papel não dá acesso a esta tela. Os papéis vêm dos
+          grupos <code className="rounded bg-surface-2 px-1 py-0.5 text-[12px]">ops-*</code> do
+          Google Workspace — peça a inclusão no grupo certo a quem administra o Workspace.
+        </p>
+        <Link
+          href="/"
+          className="mt-4 inline-block text-[13px] font-semibold text-purple-700 hover:text-purple-500"
+        >
+          Voltar para a fila →
+        </Link>
+      </Card>
+    </main>
   )
 }
