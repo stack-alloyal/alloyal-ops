@@ -19,15 +19,25 @@ export const dynamic = 'force-dynamic'
  * flag continua sendo ligada à mão, por uma pessoa, deliberadamente.
  */
 
-const VEREDITO: Record<
-  string,
-  { rotulo: string; tom: 'green' | 'red' | 'amber' | 'slate' }
-> = {
-  ok: { rotulo: 'dentro do estimado', tom: 'green' },
-  acima: { rotulo: 'acima do estimado', tom: 'red' },
-  abaixo: { rotulo: 'abaixo do estimado', tom: 'amber' },
-  sem_dados: { rotulo: 'sem itens ainda', tom: 'slate' },
-  sem_estimativa: { rotulo: 'volume não estimável', tom: 'slate' },
+/**
+ * O veredito em UMA palavra, porque ele fica ao lado da faixa numérica.
+ *
+ * "8–15 · dentro" se lê inteiro; "8–15 · dentro do estimado" quebra em duas
+ * linhas dentro da pílula e fica pior que a versão curta. Os dois vereditos sem
+ * comparação possível saem como texto simples: pílula existe para estado, e
+ * "não estimável" é ausência de estado.
+ */
+const VEREDITO: Record<string, { rotulo: string; tom: 'green' | 'red' | 'amber' } | null> = {
+  ok: { rotulo: 'dentro', tom: 'green' },
+  acima: { rotulo: 'acima', tom: 'red' },
+  abaixo: { rotulo: 'abaixo', tom: 'amber' },
+  sem_dados: null,
+  sem_estimativa: null,
+}
+
+const SEM_PILULA: Record<string, string> = {
+  sem_dados: 'sem itens ainda',
+  sem_estimativa: 'volume não estimável',
 }
 
 export default async function Calibracao() {
@@ -62,7 +72,7 @@ export default async function Calibracao() {
           <Table
             cols={['Gatilho', 'Volume /100 contas', 'Estimado', 'Falso positivo', 'Situação']}
             rows={linhas.map((l) => {
-              const v = VEREDITO[l.veredito] ?? VEREDITO['sem_dados']!
+              const v = VEREDITO[l.veredito] ?? null
               const p = prontoParaPromover(l)
               return [
                 <>
@@ -83,7 +93,13 @@ export default async function Calibracao() {
                     {l.estimado ? `${l.estimado[0]}–${l.estimado[1]}` : '—'}
                   </span>
                   <span className="mt-1 block">
-                    <Badge tone={v.tom}>{v.rotulo}</Badge>
+                    {v ? (
+                      <Badge tone={v.tom}>{v.rotulo}</Badge>
+                    ) : (
+                      <span className="text-[11.5px] text-ink-3">
+                        {SEM_PILULA[l.veredito] ?? '—'}
+                      </span>
+                    )}
                   </span>
                 </>,
                 <>
