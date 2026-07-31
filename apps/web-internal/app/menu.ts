@@ -1,4 +1,12 @@
-import { BookOpen, Database, DoorOpen, Inbox, SlidersHorizontal, Wallet } from 'lucide-react'
+import {
+  BookOpen,
+  CalendarCheck,
+  Database,
+  DoorOpen,
+  Inbox,
+  SlidersHorizontal,
+  Wallet,
+} from 'lucide-react'
 
 /**
  * O menu do Ops.
@@ -16,6 +24,12 @@ export interface ItemDeMenu {
 
 export const MENU: readonly ItemDeMenu[] = [
   { href: '/', rotulo: 'Minha fila', icone: Inbox, proposito: 'O que fazer agora' },
+  {
+    href: '/renovacoes',
+    rotulo: 'Renovações',
+    icone: CalendarCheck,
+    proposito: 'Janela de 90 dias, com a previsão medida',
+  },
   { href: '/saidas', rotulo: 'Saídas', icone: DoorOpen, proposito: 'Churn real, com as quatro datas' },
   { href: '/receita', rotulo: 'Receita', icone: Wallet, proposito: 'Cascata e fechamento mensal' },
   {

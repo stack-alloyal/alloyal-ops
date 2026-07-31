@@ -19,7 +19,12 @@
  * horário de São Paulo, e o agendador aplica o fuso (ver `queue.ts`).
  */
 
-import { competenciaAnterior, CompetenciaCongeladaError, fechar } from '@ops/success'
+import {
+  abrirJanela,
+  competenciaAnterior,
+  CompetenciaCongeladaError,
+  fechar,
+} from '@ops/success'
 
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
@@ -205,6 +210,35 @@ export const c13Fechamento = defineCycle({
       }
       throw err
     }
+  },
+})
+
+/**
+ * C14 — abertura das janelas de renovação.
+ *
+ * Roda todo dia, não uma vez por mês: um contrato que entra na janela hoje tem
+ * que aparecer hoje. O propósito do módulo inteiro é nunca descobrir um
+ * vencimento pelo vencimento, e um ciclo mensal criaria até 30 dias de atraso na
+ * descoberta — dentro de uma janela de 90.
+ *
+ * Antes do C12 de propósito: a renovação existe quando o gatilho G-09 avalia a
+ * conta, e não depois dele. Na ordem inversa, o item de trabalho de renovação
+ * apareceria um dia antes da renovação que ele representa.
+ */
+export const c14Renovacoes = defineCycle({
+  id: 'C14',
+  descricao: 'Abertura das janelas de renovação (90 dias da vigência)',
+  fonte: 'ops',
+  metodo: 'consolidacao',
+  agenda: '30 6 * * *',
+  janela: 'estado_atual',
+  chaveNatural: ['account_id', 'vigencia_fim'],
+  emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 2, degradacao: 'reprocessa' },
+  fase: 'F1',
+  executar: async (ctx) => {
+    const r = await abrirJanela(poolDoWorker(), { hoje: ctx.agora.toISOString().slice(0, 10) })
+    ctx.log(`${r.abertas} janela(s) aberta(s) · ${r.jaAbertas} já estavam na janela`)
+    return { linhasLidas: r.abertas + r.jaAbertas, linhasGravadas: r.abertas }
   },
 })
 

@@ -106,8 +106,8 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
 
   beforeEach(async () => {
     await pool.query(
-      `TRUNCATE success.cancellation, fact.mrr_event, metrics.daily_snapshot,
-                core.contract, core.account CASCADE`,
+      `TRUNCATE success.cancellation, success.renewal, fact.mrr_event,
+                metrics.daily_snapshot, core.contract, core.account CASCADE`,
     )
     const { rows } = await pool.query<{ id: string }>(
       `INSERT INTO core.account (razao_social, porte, setor, brand_id, csm_email)
@@ -459,6 +459,24 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
     assert.equal((await listarSaidas(pool, outro)).length, 0)
     assert.equal((await listarSaidas(pool, LIDER)).length, 1)
   })
+  test('encerrar a saída fecha a renovação aberta da conta', async () => {
+    // Dois módulos contando a mesma conta de formas opostas é como a previsão
+    // passa a somar receita de quem já foi embora.
+    await pool.query(
+      `INSERT INTO success.renewal
+         (account_id, contract_id, vigencia_fim, mrr_em_risco_centavos, estado)
+       SELECT $1, id, vigencia_fim, mrr_centavos, 'em_negociacao'
+         FROM core.contract WHERE account_id = $1`,
+      [acme],
+    )
+    await ateEncerrar()
+    const { rows } = await pool.query<{ estado: string; nota: string }>(
+      'SELECT estado, nota FROM success.renewal WHERE account_id = $1',
+      [acme],
+    )
+    assert.equal(rows[0]?.estado, 'perdida')
+    assert.match(String(rows[0]?.nota), /saída encerrada/)
+  })
 })
 
 test('a taxonomia de motivos é fechada e tem rótulo legível', () => {
@@ -469,4 +487,5 @@ test('a taxonomia de motivos é fechada e tem rótulo legível', () => {
   assert.ok(MOTIVOS_SAIDA.length <= 10, 'taxonomia grande é preenchida no chute')
   assert.ok(MOTIVOS_SAIDA.some((m) => m.valor === 'outro'), 'sem "outro" a categoria errada é escolhida')
   for (const m of MOTIVOS_SAIDA) assert.ok(m.explica.length > 10, `${m.valor} sem explicação`)
+
 })

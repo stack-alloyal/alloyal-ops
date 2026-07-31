@@ -1,6 +1,8 @@
 import type { Identidade } from '@ops/auth'
 import type pg from 'pg'
 
+import { perderPorSaida } from './renovacao.js'
+
 /**
  * Churn real — a saída modelada como PROCESSO, com quatro datas.
  *
@@ -442,6 +444,12 @@ export async function encerrar(
         WHERE id = (SELECT contract_id FROM success.cancellation WHERE id = $1)`,
       [saidaId, s.competenciaUltimaCobranca + '-01'],
     )
+
+    // A renovação aberta desta conta morre aqui, na mesma transação. Sem isto a
+    // conta sai pela porta da saída e continua na previsão de renovação como
+    // receita esperada — dois módulos contando a mesma conta de formas opostas, e
+    // a previsão somando receita de quem já foi embora.
+    await perderPorSaida(cliente, s.accountId, id.email)
 
     // `chave_natural` faz a gravação ser idempotente: dois cliques no botão de
     // aprovar não podem virar duas baixas de receita.
