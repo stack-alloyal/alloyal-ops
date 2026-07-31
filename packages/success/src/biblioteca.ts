@@ -222,15 +222,25 @@ export async function indice(
     tem_vigente: boolean
     gatilhos: string[]
   }>(
-    `SELECT chave,
-            count(*)::text AS versoes,
-            -- O título da versão VIGENTE quando há uma; senão o da mais recente.
-            (array_agg(titulo ORDER BY ativo DESC, versao DESC))[1] AS titulo,
-            bool_or(ativo) AS tem_vigente,
-            (array_agg(gatilhos ORDER BY ativo DESC, versao DESC))[1] AS gatilhos
-       FROM success.playbook
-      GROUP BY chave
-      ORDER BY bool_or(ativo) DESC, chave`,
+    // DISTINCT ON e não array_agg: `gatilhos` é text[], e `array_agg` de arrays
+    // produz um array 2-D — indexar com [1] nele devolve NULL, não o primeiro
+    // sub-array. O sintoma foi a coluna "Gatilhos" dizendo "nenhum" para todos os
+    // playbooks, com os gatilhos corretos gravados na tabela.
+    `WITH representante AS (
+       SELECT DISTINCT ON (chave) chave, titulo, gatilhos, ativo
+         FROM success.playbook
+        -- A versão VIGENTE representa a chave; sem vigente, a mais recente. Um
+        -- rascunho novo com título mudado não pode alterar o que a listagem diz
+        -- ser o processo atual.
+        ORDER BY chave, ativo DESC, versao DESC
+     ),
+     contagem AS (
+       SELECT chave, count(*)::text AS versoes, bool_or(ativo) AS tem_vigente
+         FROM success.playbook GROUP BY chave
+     )
+     SELECT r.chave, c.versoes, r.titulo, c.tem_vigente, r.gatilhos
+       FROM representante r JOIN contagem c USING (chave)
+      ORDER BY c.tem_vigente DESC, r.chave`,
   )
   return rows.map((r) => ({
     chave: r.chave,

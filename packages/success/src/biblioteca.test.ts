@@ -245,6 +245,18 @@ describe('biblioteca', { skip: !ADMIN }, () => {
     assert.equal(i?.titulo, 'Cobrança relacional aos 30 dias')
     assert.equal(i?.versoes, 2)
     assert.equal(i?.temVigente, true)
+    // Este assert faltava, e a falta custou um bug que só apareceu na tela:
+    // `array_agg` de text[] produz array 2-D, e indexá-lo devolvia NULL — a
+    // coluna "Gatilhos" dizia "nenhum" com os gatilhos gravados na tabela.
+    assert.deepEqual(i?.gatilhos, ['G-01'], 'os gatilhos da versão representante')
+  })
+
+  test('o índice traz os gatilhos de cada chave, não um array vazio', async () => {
+    await publicar(pool, LEAD, (await rascunho('cobranca-30d', ['G-01', 'G-02'])).id)
+    await publicar(pool, LEAD, (await rascunho('cobertura', ['G-06'])).id)
+    const porChave = new Map((await indice(pool)).map((i) => [i.chave, i.gatilhos]))
+    assert.deepEqual(porChave.get('cobranca-30d'), ['G-01', 'G-02'])
+    assert.deepEqual(porChave.get('cobertura'), ['G-06'])
   })
 
   test('chave só com rascunho aparece no índice sem vigente', async () => {
