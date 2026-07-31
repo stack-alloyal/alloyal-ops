@@ -181,7 +181,8 @@ jobs:
             packages/success/dist/renovacao.test.js \
             packages/contratos/dist/clausula.test.js \
             packages/contratos/dist/calendario.test.js \
-            packages/success/dist/carteira.test.js 2>&1 | tee sup.txt
+            packages/success/dist/carteira.test.js \
+            packages/success/dist/relatorio.test.js 2>&1 | tee sup.txt
           if grep -qE '^# skipped [1-9]' sup.txt; then
             echo "::error::Testes de recorte da superfície foram PULADOS."
             exit 1

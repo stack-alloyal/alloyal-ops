@@ -28,6 +28,8 @@ import {
 
 import { vencerObrigacoes } from '@ops/contratos'
 
+import { calcularBenchmark } from '@ops/success'
+
 import { avaliarDatasContratuais } from '../contratual.js'
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
@@ -305,6 +307,38 @@ export const c16DatasContratuais = defineCycle({
         (r.semDono > 0 ? ` · ${r.semDono} sem dono (carteira a corrigir)` : ''),
     )
     return { linhasLidas: r.datasAvaliadas, linhasGravadas: r.criados, detalhe: { contratual: r } }
+  },
+})
+
+/**
+ * C17 — benchmark anônimo por porte e setor.
+ *
+ * Depois do C12, porque lê o snapshot dele. É o único agregado do produto que sai da
+ * empresa contendo informação derivada de OUTROS clientes, e por isso o k-anonimato
+ * é aplicado no cálculo e imposto pelo banco: recorte pequeno é gravado suprimido e
+ * sem valor, nunca omitido.
+ *
+ * Recalcula a competência inteira a cada rodada, apagando antes: um recorte que
+ * deixa de atingir o mínimo — porque uma conta saiu — tem que voltar a ser suprimido,
+ * e um UPSERT sem a limpeza deixaria o valor antigo publicado.
+ */
+export const c17Benchmark = defineCycle({
+  id: 'C17',
+  descricao: 'Benchmark anônimo por porte e setor (k-anonimato)',
+  fonte: 'ops',
+  metodo: 'consolidacao',
+  agenda: '15 8 * * *',
+  janela: 'dia_anterior',
+  chaveNatural: ['competencia', 'porte', 'setor', 'metrica'],
+  emFalha: { tentativas: 2, backoff: 'fixo', alarmeApos: 1, degradacao: 'neutro_sinalizado' },
+  fase: 'F3',
+  executar: async (ctx) => {
+    const competencia = new Date(ctx.agora.getTime() - 86_400_000).toISOString().slice(0, 10)
+    const r = await calcularBenchmark(poolDoWorker(), competencia)
+    ctx.log(
+      `${r.gravados} recorte(s) publicado(s) · ${r.suprimidos} suprimido(s) por k-anonimato`,
+    )
+    return { linhasLidas: r.recortes.length, linhasGravadas: r.gravados + r.suprimidos }
   },
 })
 

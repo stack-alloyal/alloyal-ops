@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Database,
   DoorOpen,
+  FileBarChart,
   FileText,
   Inbox,
   SlidersHorizontal,
@@ -41,6 +42,12 @@ export const MENU: readonly ItemDeMenu[] = [
   },
   { href: '/saidas', rotulo: 'Saídas', icone: DoorOpen, proposito: 'Churn real, com as quatro datas' },
   { href: '/receita', rotulo: 'Receita', icone: Wallet, proposito: 'Cascata e fechamento mensal' },
+  {
+    href: '/relatorios',
+    rotulo: 'Relatórios',
+    icone: FileBarChart,
+    proposito: 'O que o cliente recebe — congelado no envio',
+  },
   {
     href: '/contratos',
     rotulo: 'Contratos',
