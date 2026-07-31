@@ -249,6 +249,20 @@ jobs:
           node --test packages/config/dist/uso.test.js
           node --test packages/auth/dist/cifra.test.js
 
+      - name: Portão 8 — segredos sem placeholder
+        # Não decifra (o CI não tem a chave age): confere que o ARQUIVO cifrado não
+        # tem chave faltando e que o script do portão continua executável. A
+        # verificação de conteúdo roda na VM, em `make secrets-decrypt`.
+        run: |
+          test -f infra/secrets/pulse.env.sops.yaml
+          bash -n infra/secrets/verificar.sh
+          for k in PULSE_PROXY_SECRET PULSE_CHAVE_MESTRA PULSE_API_PASSWORD \
+                   PULSE_WORKER_PASSWORD POSTGRES_PULSE_PASSWORD; do
+            grep -q "^$k:" infra/secrets/pulse.env.sops.yaml || { echo "falta $k no SOPS"; exit 1; }
+          done
+          # E que nada foi commitado em texto claro por engano.
+          ! grep -qE '^[A-Z_]+: (trocar|change|placeholder)$' infra/secrets/pulse.env.sops.yaml
+
       - name: Portão 7 — design system (sem banco, sem build)
         run: node --test packages/ui/design-system.test.mjs
 

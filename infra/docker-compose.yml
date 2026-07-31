@@ -98,12 +98,16 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
       target: worker
-    container_name: ops-worker
+    container_name: pulse-worker-app
     restart: always
     env_file: .env
     environment:
       NODE_ENV: production
       TZ: UTC
+      # Montada aqui pelo mesmo motivo da web-internal: a senha do role vive só em
+      # PULSE_WORKER_PASSWORD. `db.ts` prefere DATABASE_URL_WORKER, e é este valor.
+      DATABASE_URL_WORKER: postgres://pulse_worker:${PULSE_WORKER_PASSWORD:?defina no .env}@postgres-pulse:5432/pulse
+      REDIS_URL: redis://:${REDIS_PULSE_PASSWORD:?defina no .env}@redis-pulse:6379
     networks:
       - pulse-net
       # Sai para as APIs externas (HubSpot, CleverTap, Omie) e alcança a réplica.
@@ -120,14 +124,18 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
       target: web-internal
-    container_name: ops-web-internal
+    container_name: pulse-web-internal
     restart: always
     env_file: .env
     environment:
       NODE_ENV: production
       PORT: '3000'
       # Conecta como pulse_api: sem acesso a public_v (migration 0005).
-      DATABASE_URL: ${DATABASE_URL_API:?defina no .env}
+      # A URL é MONTADA aqui, e não lida do .env pronta. A senha vive num lugar só
+      # (PULSE_API_PASSWORD, no SOPS): escrever a URL inteira à mão punha a mesma senha
+      # em duas linhas, e na primeira rotação uma das duas fica velha — com sintoma de
+      # "autenticação falhou" que ninguém liga a um .env desatualizado.
+      DATABASE_URL: postgres://pulse_api:${PULSE_API_PASSWORD:?defina no .env}@postgres-pulse:5432/pulse
       # Prova de que a requisição passou pelo proxy. Sem isto a aplicação
       # recusa autenticar — e é assim que se quer que ela falhe.
       PULSE_PROXY_SECRET: ${PULSE_PROXY_SECRET:?defina no .env}
@@ -148,9 +156,9 @@ services:
   # ─── oauth2-proxy da superfície interna ────────────────────────────────────
   # Uma instância por domínio: redirect-url e cookie-domain são por domínio.
   # Mesma imagem e mesmo padrão dos outros apps da casa.
-  oauth2-proxy-ops:
+  oauth2-proxy-pulse:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3
-    container_name: oauth2-proxy-ops
+    container_name: oauth2-proxy-pulse
     restart: always
     env_file: oauth2.env
     command:
@@ -180,14 +188,14 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
       target: web-portal
-    container_name: ops-web-portal
+    container_name: pulse-web-portal
     restart: always
     env_file: .env
     environment:
       NODE_ENV: production
       PORT: '3000'
       # Conecta como pulse_portal: só public_v, só SELECT, sob RLS forçado.
-      DATABASE_URL: ${DATABASE_URL_PORTAL:?defina no .env}
+      DATABASE_URL: postgres://pulse_portal:${PULSE_PORTAL_PASSWORD:?defina no .env}@postgres-pulse:5432/pulse
     networks:
       - pulse-net
       - proxy-net
