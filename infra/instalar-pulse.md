@@ -112,19 +112,46 @@ docker exec pulse-web-internal sh -c 'cat /proc/net/tcp' | head -3
 O passo 4 já entrega a tela — mas **sem oauth2-proxy o Advanced Config devolve 502**,
 porque ele faz `auth_request` para `oauth2-proxy-pulse:4180`, que ainda não existe.
 
-Falta `infra/oauth2.env` com o client OAuth do Google (`C-07`):
+### Client PRÓPRIO, não reaproveitado
 
+A casa tem cinco oauth2-proxy no mesmo projeto GCP (`59783477182`): `hub/allvoice`,
+`publi` e `evolution` com client próprio, e `radar`+`enable` **compartilhando** um.
+
+O Pulse leva client próprio, por quatro motivos em ordem de peso:
+
+1. **Isolamento do segredo.** Vazando o do Pulse, só o Pulse cai. Compartilhando, um
+   vazamento em qualquer produto que use aquele client compromete todos — e o Pulse
+   guarda receita, dado pessoal e contrato.
+2. **Rotação independente.** Hoje girar o segredo do `radar` obriga a girar o do
+   `enable` junto, e a indisponibilidade é dos dois.
+3. **A tela de consentimento mostra o nome do app.** Compartilhando, quem entra no
+   Pulse vê o nome de outro produto — no exato instante em que deveria reconhecer o
+   que está autorizando.
+4. É a convenção dominante: 3 de 5.
+
+### Criar
+
+Console do Google → **APIs e Serviços → Credenciais → Criar credenciais → ID do
+cliente OAuth → Aplicativo da Web**
+
+- Nome: `Alloyal Pulse`
+- URI de redirecionamento autorizado:
+  `https://pulse.alloyal.com.br/oauth2/callback`
+
+Depois:
+
+```bash
+bash infra/configurar-oauth.sh
 ```
-OAUTH2_PROXY_CLIENT_ID=...
-OAUTH2_PROXY_CLIENT_SECRET=...
-OAUTH2_PROXY_COOKIE_SECRET=<openssl rand -hex 16>
-```
 
-⚠️ O cookie secret precisa de 16, 24 ou 32 **bytes**. `openssl rand -hex 16` dá 32
-caracteres e funciona; `openssl rand -base64 32` dá 44 e o oauth2-proxy morre com erro
-de AES.
+Ele pede os dois valores (o segredo sem eco), confere que o Client ID tem o formato do
+Google e que é do MESMO projeto dos outros produtos — client de outro projeto autentica
+contra outra base de usuários, e o sintoma é "e-mail não autorizado" para gente que
+existe.
 
-Redirect URI a cadastrar no Google: `https://pulse.alloyal.com.br/oauth2/callback`.
+E gera o cookie secret com o tamanho certo. ⚠️ Ele precisa de 16, 24 ou 32 **bytes**:
+`openssl rand -hex 16` dá 32 caracteres e funciona; `openssl rand -base64 32` dá 44 e o
+oauth2-proxy **morre na partida** com erro de AES que não menciona tamanho.
 
 Depois: `cd infra && docker compose up -d oauth2-proxy-pulse`
 
