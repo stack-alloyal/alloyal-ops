@@ -7,6 +7,7 @@
 import pg from 'pg'
 
 export { migrate } from './migrate.js'
+export { primeiroAdmin, JaTemAdminError } from './primeiro-admin.js'
 export * from './seed/index.js'
 
 /**

@@ -39,6 +39,21 @@ export async function migrate(connectionString: string): Promise<void> {
   await client.connect()
 
   try {
+    // As senhas dos roles de aplicação chegam por variável de SESSÃO, e não escritas
+    // no arquivo da migration: migration é versionada, e senha em arquivo versionado
+    // é exatamente o que o SOPS existe para evitar. A 0018 lê estas três.
+    //
+    // `set_config(..., false)` = vale pela sessão inteira, não só pela transação —
+    // cada migration roda na própria transação, e local morreria antes de a 0018 rodar.
+    for (const [ajuste, variavel] of [
+      ['pulse.senha_api', 'PULSE_API_PASSWORD'],
+      ['pulse.senha_portal', 'PULSE_PORTAL_PASSWORD'],
+      ['pulse.senha_worker', 'PULSE_WORKER_PASSWORD'],
+    ] as const) {
+      const valor = process.env[variavel]
+      if (valor) await client.query('SELECT set_config($1, $2, false)', [ajuste, valor])
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.schema_migration (
         nome        text PRIMARY KEY,

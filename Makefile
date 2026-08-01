@@ -46,6 +46,12 @@ db-test: ## Sobe Postgres descartável e roda o portão de isolamento de tenant
 secrets-edit: ## Edita os segredos cifrados
 	sops infra/secrets/pulse.env.sops.yaml
 
+.PHONY: primeiro-admin
+primeiro-admin: ## Dá o primeiro acesso num banco vazio (EMAIL=nome@alloyal.com.br)
+	@test -n "$(EMAIL)" || { echo "uso: make primeiro-admin EMAIL=nome@alloyal.com.br"; exit 1; }
+	pnpm --filter @pulse/db build
+	@node packages/db/dist/primeiro-admin-cli.js "$(EMAIL)"
+
 .PHONY: secrets-check
 secrets-check: ## Recusa segredo que é placeholder cifrado ou curto demais
 	@bash infra/secrets/verificar.sh
