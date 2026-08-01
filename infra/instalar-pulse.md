@@ -67,16 +67,24 @@ o que me fez diagnosticar errado qual host quebrava sob Full (Strict).
 
 ## 4 · Criar o proxy host
 
-1. **NPM → Proxy Hosts → Add Proxy Host**
-   Domain `pulse.alloyal.com.br` · Forward `web-internal` · porta `3000` · esquema
-   `http`
-2. **SSL** → "pulse.alloyal.com.br Origin (Cloudflare)" · Force SSL · HTTP/2
-3. **Advanced** → cole `infra/proxy-pulse.advanced.conf`, trocando
-   `SUBSTITUIR_PELO_MESMO_VALOR_DE_PULSE_PROXY_SECRET` pelo valor real:
-
 ```bash
-grep '^PULSE_PROXY_SECRET=' infra/.env | cut -d= -f2
+sudo bash infra/criar-proxy-host.sh
 ```
+
+Pela tela também dá, mas o script existe por um motivo: o Advanced Config precisa do
+valor real de `PULSE_PROXY_SECRET` no lugar do placeholder, e copiar 64 caracteres para
+um textarea é onde isso erra. Um caractere a mais dá **401 em tudo**, com a aplicação
+dizendo só "não comprovou ter passado pelo proxy".
+
+⚠️ **O forward é `web-internal:3000`, e NÃO `oauth2-proxy-pulse:4180`.**
+
+Os outros produtos da casa encaminham para o oauth2-proxy, que fala com o app. O Pulse
+não pode: a aplicação exige `X-Pulse-Proxy-Secret` como prova de ter passado pelo proxy,
+e **o oauth2-proxy não injeta cabeçalho estático arbitrário** — só o nginx injeta. Por
+isso o `oauth2-proxy-pulse` roda com `--upstream=static://200`: ele só responde ao
+`auth_request`, e quem encaminha ao app é o nginx.
+
+Copiar o padrão dos vizinhos aqui daria 401 em tudo.
 
 A rede já está resolvida: o compose liga `web-internal` às DUAS — `pulse-net` (banco e
 fila) e `proxy-net` (onde o NPM está). Verificado: o NPM resolve `web-internal` e
