@@ -28,6 +28,36 @@
 
 set -euo pipefail
 
+# ── Leitura de entrada, com ou sem terminal ───────────────────────────────────
+# `</dev/tty` falha com "No such device or address" quando o script roda sem
+# terminal — por exemplo pelo prefixo `!` do Claude Code, ou em pipe. Acontece
+# DEPOIS de o script já ter impresso instruções, então parece que ele funcionou e
+# só travou no fim.
+#
+# Com TTY: lê do terminal, o que permite `cmd | bash` sem consumir o pipe.
+# Sem TTY: cai para stdin, e a mensagem diz como passar os valores.
+# O teste TEM que ABRIR o dispositivo. `[ -e ]` e `[ -r ]` passam mesmo sem terminal
+# de controle — o nó existe e as permissões batem — e só o open() falha com ENXIO.
+# Foi assim que a primeira versão deste fallback não funcionou.
+if : 2>/dev/null </dev/tty; then   # o 2>/dev/null vem ANTES: bash aplica redireção da esquerda para a direita, e </dev/tty falharia antes de o silenciamento valer
+  ENTRADA=/dev/tty
+else
+  ENTRADA=/dev/stdin
+fi
+
+perguntar() {  # perguntar <variável> <rótulo> [-s]
+  local __var="$1" __rotulo="$2" __oculto="${3:-}" __valor
+  if [ "$__oculto" = "-s" ]; then
+    read -rsp "$__rotulo" __valor <"$ENTRADA" || {
+      echo; echo "✗ não consegui ler a entrada."; return 1; }
+    echo
+  else
+    read -rp "$__rotulo" __valor <"$ENTRADA" || {
+      echo; echo "✗ não consegui ler a entrada."; return 1; }
+  fi
+  printf -v "$__var" '%s' "$__valor"
+}
+
 PRODUTO="${1:?uso: sudo bash $0 <produto> [hostname]}"
 HOST="${2:-$PRODUTO.alloyal.com.br}"
 DIR=/etc/alloyal/origin-ca
@@ -97,9 +127,9 @@ echo "   expira:  $(openssl x509 -noout -enddate -in "$CRT" | sed 's/notAfter=//
 echo
 
 # ── Autenticação no NPM. `read -s` não ecoa e a senha não vira variável exportada.
-read -rp "e-mail do admin do NPM [stack@alloyal.com.br]: " NPM_EMAIL </dev/tty
+perguntar NPM_EMAIL "e-mail do admin do NPM [stack@alloyal.com.br]: "
 NPM_EMAIL="${NPM_EMAIL:-stack@alloyal.com.br}"
-read -rsp "senha do NPM: " NPM_SENHA </dev/tty
+perguntar NPM_SENHA "senha do NPM: " -s
 echo
 
 TOKEN=$(curl -s -X POST "$NPM_URL/api/tokens" -H 'Content-Type: application/json' \

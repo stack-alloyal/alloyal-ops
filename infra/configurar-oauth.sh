@@ -18,12 +18,42 @@
 
 set -euo pipefail
 
+# ── Leitura de entrada, com ou sem terminal ───────────────────────────────────
+# `</dev/tty` falha com "No such device or address" quando o script roda sem
+# terminal — por exemplo pelo prefixo `!` do Claude Code, ou em pipe. Acontece
+# DEPOIS de o script já ter impresso instruções, então parece que ele funcionou e
+# só travou no fim.
+#
+# Com TTY: lê do terminal, o que permite `cmd | bash` sem consumir o pipe.
+# Sem TTY: cai para stdin, e a mensagem diz como passar os valores.
+# O teste TEM que ABRIR o dispositivo. `[ -e ]` e `[ -r ]` passam mesmo sem terminal
+# de controle — o nó existe e as permissões batem — e só o open() falha com ENXIO.
+# Foi assim que a primeira versão deste fallback não funcionou.
+if : 2>/dev/null </dev/tty; then   # o 2>/dev/null vem ANTES: bash aplica redireção da esquerda para a direita, e </dev/tty falharia antes de o silenciamento valer
+  ENTRADA=/dev/tty
+else
+  ENTRADA=/dev/stdin
+fi
+
+perguntar() {  # perguntar <variável> <rótulo> [-s]
+  local __var="$1" __rotulo="$2" __oculto="${3:-}" __valor
+  if [ "$__oculto" = "-s" ]; then
+    read -rsp "$__rotulo" __valor <"$ENTRADA" || {
+      echo; echo "✗ não consegui ler a entrada."; return 1; }
+    echo
+  else
+    read -rp "$__rotulo" __valor <"$ENTRADA" || {
+      echo; echo "✗ não consegui ler a entrada."; return 1; }
+  fi
+  printf -v "$__var" '%s' "$__valor"
+}
+
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 ARQ="$RAIZ/infra/oauth2.env"
 
 if [ -e "$ARQ" ]; then
   echo "$ARQ já existe."
-  read -rp "sobrescrever? [s/N] " R </dev/tty
+  perguntar R "sobrescrever? [s/N] "
   [ "$R" = "s" ] || [ "$R" = "S" ] || exit 1
 fi
 
@@ -34,8 +64,8 @@ echo "  URI de redirecionamento autorizado:"
 echo "     https://pulse.alloyal.com.br/oauth2/callback"
 echo
 
-read -rp "Client ID: " CLIENT_ID </dev/tty
-read -rsp "Client Secret: " CLIENT_SECRET </dev/tty
+perguntar CLIENT_ID "Client ID: "
+perguntar CLIENT_SECRET "Client Secret: " -s
 echo
 
 # ── Validações que evitam descobrir o erro na partida do contêiner
@@ -57,7 +87,7 @@ case "$CLIENT_ID" in
   "$PROJETO_ESPERADO"-*) ;;
   *) echo "⚠ este client é do projeto $(printf '%s' "$CLIENT_ID" | cut -d- -f1),"
      echo "  e os outros produtos usam o $PROJETO_ESPERADO."
-     read -rp "  Seguir assim mesmo? [s/N] " R </dev/tty
+     perguntar R "  Seguir assim mesmo? [s/N] "
      [ "$R" = "s" ] || [ "$R" = "S" ] || exit 1;;
 esac
 
