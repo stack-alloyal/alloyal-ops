@@ -32,7 +32,16 @@ CMD ["node", "apps/worker/dist/main.js"]
 
 # ─── superfície interna ────────────────────────────────────────────────────
 FROM base AS web-internal
-ENV NODE_ENV=production TZ=UTC PORT=3000
+# HOSTNAME=0.0.0.0 é OBRIGATÓRIO, e a razão é sutil: o servidor standalone do Next
+# usa `process.env.HOSTNAME` como endereço de bind, e o Docker define essa variável
+# com o ID do contêiner. O ID resolve para o IP da rede PRIMÁRIA — então, num
+# contêiner ligado a duas redes, o Next escuta em uma e recusa conexão na outra.
+#
+# Foi exatamente o que aconteceu: o app respondia 200 pela `pulse-net` e devolvia
+# "connection refused" ao NPM, que chega pela `proxy-net`. O sintoma final seria um
+# 502 Bad Gateway sem causa aparente — o contêiner de pé, o log limpo, e a porta
+# aberta quando testada de dentro da rede errada.
+ENV NODE_ENV=production TZ=UTC PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build /app/apps/web-internal/.next/standalone ./
 COPY --from=build /app/apps/web-internal/.next/static ./apps/web-internal/.next/static
 USER node
@@ -41,7 +50,16 @@ CMD ["node", "apps/web-internal/server.js"]
 
 # ─── superfície do cliente ─────────────────────────────────────────────────
 FROM base AS web-portal
-ENV NODE_ENV=production TZ=UTC PORT=3000
+# HOSTNAME=0.0.0.0 é OBRIGATÓRIO, e a razão é sutil: o servidor standalone do Next
+# usa `process.env.HOSTNAME` como endereço de bind, e o Docker define essa variável
+# com o ID do contêiner. O ID resolve para o IP da rede PRIMÁRIA — então, num
+# contêiner ligado a duas redes, o Next escuta em uma e recusa conexão na outra.
+#
+# Foi exatamente o que aconteceu: o app respondia 200 pela `pulse-net` e devolvia
+# "connection refused" ao NPM, que chega pela `proxy-net`. O sintoma final seria um
+# 502 Bad Gateway sem causa aparente — o contêiner de pé, o log limpo, e a porta
+# aberta quando testada de dentro da rede errada.
+ENV NODE_ENV=production TZ=UTC PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build /app/apps/web-portal/.next/standalone ./
 COPY --from=build /app/apps/web-portal/.next/static ./apps/web-portal/.next/static
 USER node

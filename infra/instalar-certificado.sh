@@ -1,122 +1,148 @@
 #!/usr/bin/env bash
 # Instala um Origin Certificate do Cloudflare no Nginx Proxy Manager.
 #
+# Segue a convenção da casa: os arquivos vivem em /etc/alloyal/origin-ca/ como
+# <produto>.crt (644) e <produto>.key (600, root).
+#
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ POR QUE UM SCRIPT E NÃO `cp` PARA /data/custom_ssl:                        │
 # │                                                                            │
 # │ O NPM indexa os certificados no banco dele (`/data/database.sqlite`) e      │
-# │ nomeia as pastas por ID — `custom_ssl/npm-{id}`. Copiar arquivo para lá     │
-# │ sem a linha no banco cria um certificado que o NPM não enxerga: ele não     │
-# │ aparece na lista, nenhum proxy host consegue selecioná-lo, e a config do    │
-# │ nginx nunca o referencia.                                                  │
+# │ nomeia as pastas por ID — `custom_ssl/npm-{id}`. Arquivo sem a linha no     │
+# │ banco cria um certificado que o NPM não enxerga: não aparece na lista,      │
+# │ nenhum proxy host o seleciona, e a config do nginx nunca o referencia.      │
 # │                                                                            │
-# │ Isso já aconteceu nesta instalação ao contrário: existe `custom_ssl/npm-3`  │
+# │ Esta instalação já tem esse estado ao contrário: existe `custom_ssl/npm-3`  │
 # │ no disco cujo registro foi APAGADO do banco, e a config antiga do nginx     │
-# │ ainda aponta para ele. Arquivo e banco fora de sincronia é um estado que    │
-# │ ninguém percebe até um handshake falhar.                                   │
+# │ ainda apontava para ele — foi o que me fez diagnosticar errado qual host    │
+# │ quebrava sob Full (Strict).                                                │
 # └───────────────────────────────────────────────────────────────────────────┘
 #
 # Uso:
-#   bash infra/instalar-certificado.sh pulse.alloyal.com.br \
-#        ~/pulse-origin.pem ~/pulse-origin.key
+#   sudo bash infra/instalar-certificado.sh pulse
+#   sudo bash infra/instalar-certificado.sh pulse pulse.alloyal.com.br   # se diferir
 #
-# A senha do NPM é lida sem eco e não fica no histórico do shell nem em variável
-# de ambiente exportada.
+# Precisa de root: as chaves em /etc/alloyal/origin-ca são 600 root:root, e o
+# upload é feito lendo direto de lá — sem cópia temporária, que seria uma janela
+# a mais com a chave privada em disco legível.
 
 set -euo pipefail
 
-HOSTNAME_CERT="${1:?uso: $0 <hostname> <cert.pem> <chave.key>}"
-ARQ_CERT="${2:?falta o caminho do certificado}"
-ARQ_CHAVE="${3:?falta o caminho da chave}"
+PRODUTO="${1:?uso: sudo bash $0 <produto> [hostname]}"
+HOST="${2:-$PRODUTO.alloyal.com.br}"
+DIR=/etc/alloyal/origin-ca
+CRT="$DIR/$PRODUTO.crt"
+KEY="$DIR/$PRODUTO.key"
 NPM_URL="${NPM_URL:-http://127.0.0.1:81}"
 
-for f in "$ARQ_CERT" "$ARQ_CHAVE"; do
-  [ -r "$f" ] || { echo "não consigo ler $f"; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "rode com sudo: as chaves em $DIR são 600 root:root"; exit 1; }
+
+for f in "$CRT" "$KEY"; do
+  [ -s "$f" ] || { echo "✗ $f não existe ou está vazio"; exit 1; }
 done
 
-# ── Confere ANTES de enviar: par que não casa é o erro mais comum, e o NPM
-#    aceita o upload e só falha no handshake, horas depois.
-echo "── conferindo o par certificado/chave"
-MOD_CERT=$(openssl x509 -noout -modulus -in "$ARQ_CERT" | openssl md5)
-MOD_CHAVE=$(openssl rsa -noout -modulus -in "$ARQ_CHAVE" 2>/dev/null | openssl md5 ||
-            openssl ec  -noout -text    -in "$ARQ_CHAVE" 2>/dev/null | openssl md5)
-if [ "$MOD_CERT" != "$MOD_CHAVE" ]; then
-  echo "✗ o certificado e a chave NÃO são um par."
-  echo "  O NPM aceitaria o upload e o erro só apareceria no handshake."
+# ── As duas falhas que JÁ aconteceram nesta VM ────────────────────────────────
+# `enable.key.bak-truncada` tinha 1703 bytes contra 1704 da boa — UM byte a menos.
+# `radar.key.bak-espaco` tinha 1705 — um a mais. As duas com 28 linhas, igual à
+# boa: contar linha não pega. Só pedir ao openssl para interpretar pega.
+echo "── a chave é interpretável?"
+if ! openssl pkey -in "$KEY" -noout 2>/dev/null; then
+  echo "✗ $KEY não é uma chave válida."
+  echo
+  echo "  Esta VM já teve as duas causas, e ambas foram de UM byte:"
+  echo "    · colagem truncada  — faltou um caractere no fim"
+  echo "    · espaço a mais     — o terminal ou o editor acrescentou um"
+  echo
+  echo "  Confira: $(wc -c < "$KEY") bytes, $(wc -l < "$KEY") linhas."
+  echo "  Uma chave RSA 2048 do Cloudflare Origin CA tem 1704 bytes e 28 linhas."
+  echo "  Recole usando o heredoc com <<'PEM' (aspas!), que impede substituição."
   exit 1
 fi
+echo "   ok"
 
-# ── E que o certificado cobre o hostname. Foi exatamente este o defeito que
-#    derruba o `hub` sob Full (Strict): certificado válido, hostname errado.
-SAN=$(openssl x509 -noout -ext subjectAltName -in "$ARQ_CERT" | grep -oE 'DNS:[^,]+' | sed 's/DNS://' | tr -d ' ')
-if ! echo "$SAN" | grep -qxE "$(echo "$HOSTNAME_CERT" | sed 's/\./\\./g')|\*\.$(echo "${HOSTNAME_CERT#*.}" | sed 's/\./\\./g')"; then
-  echo "✗ o certificado NÃO cobre $HOSTNAME_CERT."
-  echo "  Ele cobre: $(echo "$SAN" | tr '\n' ' ')"
+echo "── o certificado é interpretável?"
+openssl x509 -in "$CRT" -noout 2>/dev/null || { echo "✗ $CRT não é um certificado válido"; exit 1; }
+echo "   ok"
+
+# ── O par casa? O NPM aceita um par que não casa e só falha no handshake.
+echo "── certificado e chave são o mesmo par?"
+MOD_CRT=$(openssl x509 -noout -modulus -in "$CRT" | openssl md5)
+MOD_KEY=$(openssl rsa -noout -modulus -in "$KEY" 2>/dev/null | openssl md5 || echo 'ec')
+if [ "$MOD_KEY" = 'ec' ]; then
+  # Chave EC: compara a chave pública derivada, não o módulo.
+  MOD_CRT=$(openssl x509 -noout -pubkey -in "$CRT" | openssl md5)
+  MOD_KEY=$(openssl pkey -pubout -in "$KEY" | openssl md5)
+fi
+[ "$MOD_CRT" = "$MOD_KEY" ] || { echo "✗ o certificado e a chave NÃO são um par."; exit 1; }
+echo "   ok"
+
+# ── Cobre o hostname? É a causa de 526 sob Full (Strict), e já derruba um host
+#    desta instalação: o `hub` serve um autoassinado marcado como PLACEHOLDER.
+echo "── o certificado cobre $HOST?"
+SAN=$(openssl x509 -noout -ext subjectAltName -in "$CRT" 2>/dev/null |
+      grep -oE 'DNS:[^,]+' | sed 's/DNS://' | tr -d ' ')
+ESCAPADO=$(printf '%s' "$HOST" | sed 's/\./\\./g')
+CURINGA="\\*\\.$(printf '%s' "${HOST#*.}" | sed 's/\./\\./g')"
+if ! printf '%s\n' "$SAN" | grep -qxE "$ESCAPADO|$CURINGA"; then
+  echo "✗ NÃO cobre. Ele cobre: $(printf '%s' "$SAN" | tr '\n' ' ')"
   echo "  Sob Full (Strict) o Cloudflare valida o hostname e devolve 526."
   exit 1
 fi
+echo "   ok"
 
-EMISSOR=$(openssl x509 -noout -issuer -in "$ARQ_CERT")
-VALIDADE=$(openssl x509 -noout -enddate -in "$ARQ_CERT" | sed 's/notAfter=//')
-echo "   emissor:  ${EMISSOR:0:70}"
-echo "   cobre:    $(echo "$SAN" | tr '\n' ' ')"
-echo "   expira:   $VALIDADE"
-
-# ── Autenticação. `read -s` não ecoa, e a senha não vira variável exportada.
-read -rp "e-mail do admin do NPM [stack@alloyal.com.br]: " NPM_EMAIL
-NPM_EMAIL="${NPM_EMAIL:-stack@alloyal.com.br}"
-read -rsp "senha do NPM: " NPM_SENHA
+echo
+echo "   emissor: $(openssl x509 -noout -issuer -in "$CRT" | cut -c1-72)"
+echo "   cobre:   $(printf '%s' "$SAN" | tr '\n' ' ')"
+echo "   expira:  $(openssl x509 -noout -enddate -in "$CRT" | sed 's/notAfter=//')"
 echo
 
-TOKEN=$(curl -s -X POST "$NPM_URL/api/tokens" \
-  -H 'Content-Type: application/json' \
+# ── Autenticação no NPM. `read -s` não ecoa e a senha não vira variável exportada.
+read -rp "e-mail do admin do NPM [stack@alloyal.com.br]: " NPM_EMAIL </dev/tty
+NPM_EMAIL="${NPM_EMAIL:-stack@alloyal.com.br}"
+read -rsp "senha do NPM: " NPM_SENHA </dev/tty
+echo
+
+TOKEN=$(curl -s -X POST "$NPM_URL/api/tokens" -H 'Content-Type: application/json' \
   -d "$(printf '{"identity":"%s","secret":"%s"}' "$NPM_EMAIL" "$NPM_SENHA")" |
   sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 unset NPM_SENHA
-
-[ -n "$TOKEN" ] || { echo "✗ não autenticou no NPM. Confira e-mail e senha."; exit 1; }
+[ -n "$TOKEN" ] || { echo "✗ não autenticou no NPM."; exit 1; }
 echo "── autenticado"
 
-# ── Cria o registro. `provider: other` é o que o NPM chama de "Custom".
 ID=$(curl -s -X POST "$NPM_URL/api/nginx/certificates" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d "$(printf '{"provider":"other","nice_name":"%s Origin (Cloudflare)"}' "$HOSTNAME_CERT")" |
+  -d "$(printf '{"provider":"other","nice_name":"%s Origin (Cloudflare)"}' "$HOST")" |
   sed -n 's/.*"id":\([0-9]*\).*/\1/p' | head -1)
-
-[ -n "$ID" ] || { echo "✗ não criou o registro do certificado."; exit 1; }
+[ -n "$ID" ] || { echo "✗ não criou o registro."; exit 1; }
 echo "── registro criado: id $ID"
 
-# ── Sobe os arquivos. O NPM grava em /data/custom_ssl/npm-$ID e valida o par.
 RESP=$(curl -s -X POST "$NPM_URL/api/nginx/certificates/$ID/upload" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "certificate=@$ARQ_CERT" \
-  -F "certificate_key=@$ARQ_CHAVE")
+  -F "certificate=@$CRT" -F "certificate_key=@$KEY")
 
-if echo "$RESP" | grep -q '"error"'; then
-  echo "✗ o NPM recusou os arquivos:"
-  echo "$RESP" | head -c 400
-  echo
-  echo "  O registro id $ID ficou órfão — apague-o na tela para não virar o mesmo"
-  echo "  descompasso banco/arquivo que já existe nesta instalação."
+if printf '%s' "$RESP" | grep -q '"error"'; then
+  echo "✗ o NPM recusou:"
+  printf '%s\n' "$RESP" | head -c 400; echo
+  echo "  Apague o registro id $ID na tela — senão vira o mesmo descompasso"
+  echo "  banco/arquivo que já existe nesta instalação (npm-3)."
   exit 1
 fi
 
-echo "── arquivos enviados"
-sudo docker exec npm sh -c "ls -la /data/custom_ssl/npm-$ID" 2>/dev/null | sed 's/^/   /'
+echo "── enviado. Arquivos no NPM:"
+docker exec npm sh -c "ls -la /data/custom_ssl/npm-$ID" 2>/dev/null | tail -3 | sed 's/^/   /'
 
 cat <<FIM
 
-Certificado id $ID instalado para $HOSTNAME_CERT.
+Certificado id $ID instalado para $HOST.
 
-Falta ligar a um proxy host:
-  1. NPM → Hosts → Proxy Hosts → Add Proxy Host
-     Domain: $HOSTNAME_CERT   Forward: web-internal  porta 3000  (esquema http)
-  2. Aba SSL → escolha "$HOSTNAME_CERT Origin (Cloudflare)"
-     Marque Force SSL e HTTP/2.
+Falta ligar ao proxy host:
+  1. NPM → Proxy Hosts → Add Proxy Host
+     Domain: $HOST · Forward: web-internal · porta 3000 · esquema http
+  2. Aba SSL → "$HOST Origin (Cloudflare)" · Force SSL · HTTP/2
   3. Aba Advanced → cole infra/proxy-pulse.advanced.conf, TROCANDO
-     SUBSTITUIR_PELO_MESMO_VALOR_DE_PULSE_PROXY_SECRET pelo valor de
-     PULSE_PROXY_SECRET em infra/.env.
+     SUBSTITUIR_PELO_MESMO_VALOR_DE_PULSE_PROXY_SECRET pelo PULSE_PROXY_SECRET
+     de infra/.env
 
-APAGUE os arquivos depois — a chave privada vale 15 anos:
-  shred -u $ARQ_CERT $ARQ_CHAVE
+Os arquivos FICAM em $DIR — é a convenção da casa, e é deles que uma
+reinstalação futura vai partir. Não apague.
 FIM
