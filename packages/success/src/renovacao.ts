@@ -76,7 +76,7 @@ const COLUNAS = `
   r.cenario, r.estado,
   to_char(r.desfecho_em,'YYYY-MM-DD')   AS "desfechoEm",
   r.nota,
-  (r.vigencia_fim - current_date)       AS "diasParaVigencia",
+  (r.vigencia_fim - $HOJE$::date)       AS "diasParaVigencia",
   ct.aviso_previo_dias                  AS "avisoPrevioDias",
   r.criado_em                           AS "criadoEm"`
 
@@ -218,21 +218,29 @@ export async function perderPorSaida(
 export async function listar(
   db: pg.Pool,
   id: Identidade,
-  opts: { abertas?: boolean } = {},
+  /**
+   * `hoje` existe para o TESTE poder fixar a data, e a razão é concreta: a massa é
+   * criada com `vigencia_fim = hoje + N`, e a consulta calculava `- current_date`,
+   * a data real do banco. Os dois combinavam no dia em que o teste foi escrito e
+   * divergiam no seguinte — o teste passava e depois falhava sozinho, sem ninguém
+   * mexer em nada. Em produção o padrão continua sendo a data do banco.
+   */
+  opts: { abertas?: boolean; hoje?: string } = {},
 ): Promise<Renovacao[]> {
   if (id.permissoes.contas === 'nenhum') return []
   const daBase = id.permissoes.contas === 'base'
   const soAbertas = opts.abertas ?? false
+  const hoje = opts.hoje ?? null
 
   const { rows } = await db.query<Renovacao>(
-    `SELECT ${COLUNAS} ${DE}
+    `SELECT ${COLUNAS.replace('$HOJE$', 'COALESCE($4::date, current_date)')} ${DE}
       WHERE ($1::boolean OR a.csm_email = $2)
         AND (NOT $3::boolean OR r.estado IN ('aberta','em_negociacao'))
       -- Aberta primeiro, e dentro dela a que vence antes: é a única parte desta
       -- tela em que o tempo corre contra.
       ORDER BY (r.estado IN ('aberta','em_negociacao')) DESC, r.vigencia_fim,
                r.mrr_em_risco_centavos DESC`,
-    [daBase, id.email, soAbertas],
+    [daBase, id.email, soAbertas, hoje],
   )
   return rows.map((r) => ({ ...r, diasParaVigencia: Number(r.diasParaVigencia) }))
 }

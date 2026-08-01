@@ -47,22 +47,52 @@ export class SegredoCorrompidoError extends Error {
 }
 
 /**
- * A chave, validada.
+ * Valida e devolve uma chave em base64.
  *
  * Falha fechado e com mensagem acionável: uma chave de 16 bytes seria aceita pelo
  * `createCipheriv` de algumas versões e daria cifra mais fraca em silêncio.
  */
-function chaveMestra(): Buffer {
-  const bruta = process.env['PULSE_CHAVE_MESTRA']
-  if (!bruta) throw new ChaveMestraAusenteError()
+function validar(bruta: string, nomeDaVariavel: string): Buffer {
   const chave = Buffer.from(bruta, 'base64')
   if (chave.length !== 32) {
     throw new Error(
-      `PULSE_CHAVE_MESTRA tem ${chave.length} bytes depois do base64; AES-256 exige 32. ` +
+      `${nomeDaVariavel} tem ${chave.length} bytes depois do base64; AES-256 exige 32. ` +
         'Gere com `openssl rand -base64 32`.',
     )
   }
   return chave
+}
+
+function chaveMestra(): Buffer {
+  const bruta = process.env['PULSE_CHAVE_MESTRA']
+  if (!bruta) throw new ChaveMestraAusenteError()
+  return validar(bruta, 'PULSE_CHAVE_MESTRA')
+}
+
+/**
+ * A chave ANTERIOR, usada só durante uma rotação.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ Sem isto, trocar `PULSE_CHAVE_MESTRA` tornava TODO segredo gravado         │
+ * │ indecifrável — e sem volta, porque a chave velha não estava em lugar       │
+ * │ nenhum. O comentário deste arquivo prometia "uma v2 futura decifra v1 com  │
+ * │ a chave antiga e regrava"; a promessa não estava implementada, e uma       │
+ * │ rotação de rotina teria derrubado todas as integrações de uma vez.         │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Fica em variável SEPARADA e não numa lista dentro da mesma: assim "estamos no meio
+ * de uma rotação" é um estado visível, e `rotacaoPendente()` sabe responder quantos
+ * segredos ainda usam a chave velha.
+ */
+function chaveAnterior(): Buffer | null {
+  const bruta = process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+  if (!bruta) return null
+  return validar(bruta, 'PULSE_CHAVE_MESTRA_ANTERIOR')
+}
+
+/** Há rotação em curso? A tela usa para avisar que falta concluir. */
+export function rotacaoEmCurso(): boolean {
+  return !!process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
 }
 
 /** Há chave configurada? Para a tela dizer o que falta sem derrubar a página. */
@@ -114,14 +144,55 @@ export function decifrar(guardado: string): string {
     throw new SegredoCorrompidoError('iv ou tag com tamanho errado')
   }
 
+  const corpo = Buffer.from(cifrado64, 'base64url')
+  const tentar = (chave: Buffer): string | null => {
+    try {
+      const d = createDecipheriv(ALGORITMO, chave, iv)
+      d.setAuthTag(tag)
+      return Buffer.concat([d.update(corpo), d.final()]).toString('utf8')
+    } catch {
+      return null
+    }
+  }
+
+  const comAtual = tentar(chaveMestra())
+  if (comAtual !== null) return comAtual
+
+  // Só então a anterior. A ordem importa por desempenho (o caso comum é a chave
+  // atual) e por semântica: durante a rotação, um valor já regravado tem que
+  // decifrar com a nova, não continuar dependendo da velha.
+  const anterior = chaveAnterior()
+  if (anterior) {
+    const comAnterior = tentar(anterior)
+    if (comAnterior !== null) return comAnterior
+  }
+
+  // A exceção do GCM não diz nada de útil, e repassá-la vazaria detalhe de
+  // implementação para o log.
+  throw new SegredoCorrompidoError(
+    anterior
+      ? 'autenticação falhou com a chave atual e com a anterior'
+      : 'autenticação falhou',
+  )
+}
+
+/**
+ * Este texto cifrado decifra com a chave ATUAL?
+ *
+ * Serve à rotação para saber o que já foi regravado sem decifrar tudo de novo — e ao
+ * relatório de progresso, que precisa contar sem expor valor.
+ */
+export function cifradoComAChaveAtual(guardado: string): boolean {
+  const partes = guardado.split(':')
+  if (partes.length !== 4) return false
+  const [, iv64, tag64, cifrado64] = partes as [string, string, string, string]
   try {
-    const d = createDecipheriv(ALGORITMO, chaveMestra(), iv)
-    d.setAuthTag(tag)
-    return Buffer.concat([d.update(Buffer.from(cifrado64, 'base64url')), d.final()]).toString('utf8')
+    const d = createDecipheriv(ALGORITMO, chaveMestra(), Buffer.from(iv64, 'base64url'))
+    d.setAuthTag(Buffer.from(tag64, 'base64url'))
+    Buffer.concat([d.update(Buffer.from(cifrado64, 'base64url')), d.final()])
+    return true
   } catch {
-    // A exceção do GCM não diz nada de útil, e repassá-la vazaria detalhe de
-    // implementação para o log.
-    throw new SegredoCorrompidoError('autenticação falhou')
+    return false
   }
 }
 

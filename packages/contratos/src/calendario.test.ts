@@ -384,9 +384,11 @@ describe('calendário contratual', { skip: !ADMIN }, () => {
     await pool.query(
       `INSERT INTO contracts.document
          (account_id, tipo, versao, titulo, status_assinatura, carregado_por, criado_em)
+         -- Ancorado em HOJE, nao em now(): a consulta recebe data fixa, e massa
+         -- relativa ao relógio real fazia "40 dias" virar 39 na virada da meia-noite.
        VALUES ($1,'aditivo',1,'Aditivo 2 — ampliação de escopo','enviado','ju@alloyal.com.br',
-               now() - interval '40 days')`,
-      [c],
+               $2::date - interval '40 days')`,
+      [c, HOJE],
     )
     const a = (await datasCriticas(pool, JURIDICO, { hoje: HOJE })).find(
       (x) => x.tipo === 'aditivo_pendente',

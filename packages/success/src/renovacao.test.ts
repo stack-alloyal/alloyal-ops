@@ -96,7 +96,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('fora', 200, 2_000_000)
     const r = await abrirJanela(pool, { hoje: HOJE })
     assert.equal(r.abertas, 1)
-    const abertas = await listar(pool, LIDER)
+    const abertas = await listar(pool, LIDER, { hoje: HOJE })
     assert.equal(abertas.length, 1)
     assert.equal(abertas[0]?.conta, 'dentro')
   })
@@ -109,7 +109,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     const segunda = await abrirJanela(pool, { hoje: HOJE })
     assert.equal(segunda.abertas, 0)
     assert.equal(segunda.jaAbertas, 1)
-    assert.equal((await listar(pool, LIDER)).length, 1)
+    assert.equal((await listar(pool, LIDER, { hoje: HOJE })).length, 1)
   })
 
   test('contrato já encerrado não gera renovação', async () => {
@@ -135,7 +135,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     const c = await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
     await pool.query('UPDATE core.contract SET mrr_centavos = 5_000_000 WHERE account_id = $1', [c])
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     assert.equal(r?.mrrEmRiscoCentavos, '1000000')
   })
 
@@ -144,7 +144,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     // já poderia ter avisado.
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     assert.equal(r?.avisoPrevioDias, 60)
     assert.equal(r?.diasParaVigencia, 45)
   })
@@ -156,10 +156,10 @@ describe('renovação', { skip: !ADMIN }, () => {
     // de vencimentos de um pipeline.
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, ANA, r!.id, 'base', 'reunião marcada para dia 10')
 
-    const [depois] = await listar(pool, LIDER)
+    const [depois] = await listar(pool, LIDER, { hoje: HOJE })
     assert.equal(depois?.estado, 'em_negociacao')
     assert.equal(depois?.cenario, 'base')
     assert.match(String(depois?.nota), /dia 10/)
@@ -170,7 +170,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     // perder transforma todo erro em acerto.
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, ANA, r!.id, 'base')
     await darDesfecho(pool, ANA, r!.id, 'perdida')
     await assert.rejects(
@@ -182,7 +182,7 @@ describe('renovação', { skip: !ADMIN }, () => {
   test('fechar duas vezes é recusado', async () => {
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await darDesfecho(pool, ANA, r!.id, 'renovada')
     await assert.rejects(() => darDesfecho(pool, ANA, r!.id, 'perdida'), RenovacaoInvalidaError)
   })
@@ -190,7 +190,7 @@ describe('renovação', { skip: !ADMIN }, () => {
   test('quem não tem fila não conduz renovação', async () => {
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await assert.rejects(() => marcarCenario(pool, COMERCIAL, r!.id, 'base'), SemPermissaoRenovacao)
   })
 
@@ -202,7 +202,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('base', 40, 2_000_000)
     await conta('pessimista', 50, 4_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const rs = await listar(pool, LIDER)
+    const rs = await listar(pool, LIDER, { hoje: HOJE })
     const porNome = new Map(rs.map((r) => [r.conta, r.id]))
     await marcarCenario(pool, ANA, porNome.get('otimista')!, 'otimista')
     await marcarCenario(pool, ANA, porNome.get('base')!, 'base')
@@ -222,7 +222,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('avaliada', 30, 1_000_000)
     await conta('esquecida', 40, 3_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const rs = await listar(pool, LIDER)
+    const rs = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, ANA, rs.find((r) => r.conta === 'avaliada')!.id, 'base')
 
     const p = await previsao(pool, { hoje: HOJE })
@@ -234,7 +234,7 @@ describe('renovação', { skip: !ADMIN }, () => {
   test('renovação fechada sai da previsão', async () => {
     await conta('acme', 45, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await darDesfecho(pool, ANA, r!.id, 'renovada')
     assert.equal((await previsao(pool, { hoje: HOJE })).quantas, 0)
   })
@@ -247,7 +247,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('renovou', 30, 1_000_000)
     await conta('perdeu', 40, 2_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const rs = await listar(pool, LIDER)
+    const rs = await listar(pool, LIDER, { hoje: HOJE })
     for (const r of rs) await marcarCenario(pool, ANA, r.id, 'base')
     await darDesfecho(pool, ANA, rs.find((r) => r.conta === 'renovou')!.id, 'renovada')
     await darDesfecho(pool, ANA, rs.find((r) => r.conta === 'perdeu')!.id, 'perdida')
@@ -263,7 +263,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('renovou', 30, 1_000_000)
     await conta('perdeu', 40, 2_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const rs = await listar(pool, LIDER)
+    const rs = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, ANA, rs.find((r) => r.conta === 'renovou')!.id, 'base')
     await marcarCenario(pool, ANA, rs.find((r) => r.conta === 'perdeu')!.id, 'pessimista')
     await darDesfecho(pool, ANA, rs.find((r) => r.conta === 'renovou')!.id, 'renovada')
@@ -279,7 +279,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     // mostrar ∞ confundiria as duas.
     await conta('perdeu', 40, 2_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await darDesfecho(pool, ANA, r!.id, 'perdida')
     assert.equal((await acuracia(pool, { desde: '2026-01-01' })).erro, null)
   })
@@ -288,7 +288,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     // Uma em três vira "33%" e reprova quem fez duas chamadas certas.
     await conta('a', 30, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, ANA, r!.id, 'base')
     await darDesfecho(pool, ANA, r!.id, 'renovada')
     const a = await acuracia(pool, { desde: '2026-01-01' })
@@ -301,7 +301,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     // É o incentivo que importa: quem não avalia não pode aparecer com 100%.
     for (let i = 0; i < 5; i++) await conta(`c${i}`, 30 + i, 1_000_000)
     await abrirJanela(pool, { hoje: HOJE })
-    for (const r of await listar(pool, LIDER)) await darDesfecho(pool, ANA, r.id, 'renovada')
+    for (const r of await listar(pool, LIDER, { hoje: HOJE })) await darDesfecho(pool, ANA, r.id, 'renovada')
     const a = await acuracia(pool, { desde: '2026-01-01' })
     assert.equal(a.fechadas, 5)
     assert.equal(a.acertos, 0)
@@ -312,7 +312,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('da-ana', 30, 1_000_000, ANA.email)
     await conta('do-bruno', 40, 2_000_000, BRUNO.email)
     await abrirJanela(pool, { hoje: HOJE })
-    const rs = await listar(pool, LIDER)
+    const rs = await listar(pool, LIDER, { hoje: HOJE })
     await marcarCenario(pool, LIDER, rs.find((r) => r.conta === 'da-ana')!.id, 'base')
     await marcarCenario(pool, LIDER, rs.find((r) => r.conta === 'do-bruno')!.id, 'base')
     await darDesfecho(pool, LIDER, rs.find((r) => r.conta === 'da-ana')!.id, 'renovada')
@@ -334,7 +334,7 @@ describe('renovação', { skip: !ADMIN }, () => {
     const fechadas = await perderPorSaida(pool, c, 'fin@alloyal.com.br')
 
     assert.equal(fechadas, 1)
-    const [r] = await listar(pool, LIDER)
+    const [r] = await listar(pool, LIDER, { hoje: HOJE })
     assert.equal(r?.estado, 'perdida')
     assert.match(String(r?.nota), /saída encerrada por fin@alloyal.com.br/)
     assert.equal((await previsao(pool, { hoje: HOJE })).quantas, 0)
@@ -346,8 +346,8 @@ describe('renovação', { skip: !ADMIN }, () => {
     await conta('da-ana', 30, 1_000_000, ANA.email)
     await conta('do-bruno', 40, 2_000_000, BRUNO.email)
     await abrirJanela(pool, { hoje: HOJE })
-    assert.equal((await listar(pool, ANA)).length, 1)
-    assert.equal((await listar(pool, LIDER)).length, 2)
+    assert.equal((await listar(pool, ANA, { hoje: HOJE })).length, 1)
+    assert.equal((await listar(pool, LIDER, { hoje: HOJE })).length, 2)
   })
 
   test('o calendário agrupa por mês de vencimento', async () => {

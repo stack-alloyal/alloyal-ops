@@ -58,7 +58,7 @@ services:
       - -c
       - timezone=UTC
     volumes:
-      - postgres_ops_data:/var/lib/postgresql/data
+      - postgres_pulse_data:/var/lib/postgresql/data
     ports:
       # Só loopback, e em 5434: 5432 e 5433 já estão ocupados na VM pelo Postgres
       # compartilhado e pelo Supabase do Metas.
@@ -83,7 +83,7 @@ services:
       --requirepass ${REDIS_PULSE_PASSWORD:?defina no .env}
       --maxmemory 512mb --maxmemory-policy noeviction
     volumes:
-      - redis_ops_data:/data
+      - redis_pulse_data:/data
     networks:
       - pulse-net
     healthcheck:
@@ -204,8 +204,8 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_ops_data:
-  redis_ops_data:
+  postgres_pulse_data:
+  redis_pulse_data:
 
 networks:
   # Rede interna do projeto: banco e fila não são alcançáveis de outros apps.

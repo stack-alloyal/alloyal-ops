@@ -67,7 +67,17 @@ export interface OpcoesProxy {
   readonly dominio: string
   /** Resolve papéis a partir de `ops.user_role`. */
   readonly papeisDe: (email: string) => Promise<readonly string[]>
-  /** Prova primária. Comparada em tempo constante. */
+  /**
+   * Prova primária. Comparada em tempo constante.
+   *
+   * Aceita MAIS DE UM valor separado por vírgula, e é isso que torna a rotação
+   * possível sem derrubar ninguém: o segredo vive em dois lugares — o `.env` da
+   * aplicação e o Advanced Config do NPM — e trocá-lo é necessariamente uma mudança
+   * em dois passos. Com um valor só, todo mundo toma 401 no intervalo entre os dois.
+   *
+   * Com dois, a sequência é: põe o novo ao lado do velho aqui → troca no NPM →
+   * remove o velho daqui. Nenhum instante sem sobreposição.
+   */
   readonly segredoDoProxy?: string
   /** Prova alternativa, só onde o endereço do peer é real. */
   readonly faixasConfiaveis?: readonly string[]
@@ -138,7 +148,17 @@ export async function identidadeDaRequisicao(
   let provado = false
   if (temSegredo) {
     const enviado = primeiro(headers[HEADER_SEGREDO])
-    if (enviado && segredosIguais(enviado, opts.segredoDoProxy as string)) provado = true
+    if (enviado) {
+      // Compara com TODOS os aceitos, e sem sair no primeiro acerto: `some` curto-
+      // circuitaria, e o tempo de resposta passaria a revelar qual dos valores casou.
+      const aceitos = (opts.segredoDoProxy as string)
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0)
+      let casou = false
+      for (const aceito of aceitos) if (segredosIguais(enviado, aceito)) casou = true
+      if (casou) provado = true
+    }
   }
   if (!provado && temFaixas && ipDeOrigem) {
     if (opts.faixasConfiaveis!.some((faixa) => ipEmFaixa(ipDeOrigem, faixa))) provado = true

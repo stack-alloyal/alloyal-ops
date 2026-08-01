@@ -15,10 +15,12 @@ import {
   ChaveMestraAusenteError,
   SegredoCorrompidoError,
   chaveMestraConfigurada,
+  cifradoComAChaveAtual,
   cifrar,
   decifrar,
   dica,
   iguais,
+  rotacaoEmCurso,
 } from './cifra.js'
 
 // Chave só do teste. 32 bytes em base64, como a de produção exige.
@@ -35,6 +37,9 @@ beforeEach(() => {
 afterEach(() => {
   if (anterior === undefined) delete process.env['PULSE_CHAVE_MESTRA']
   else process.env['PULSE_CHAVE_MESTRA'] = anterior
+  // A variável de rotação some entre testes: deixá-la vazando faria um teste
+  // decifrar por causa do anterior e passar sem testar o que diz testar.
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
 })
 
 test('ida e volta preserva o valor', () => {
@@ -156,4 +161,74 @@ test('iguais compara valor e recusa tamanho diferente', () => {
   assert.equal(iguais('abc', 'abd'), false)
   // Tamanho diferente devolve false sem chamar timingSafeEqual, que lançaria.
   assert.equal(iguais('abc', 'abcd'), false)
+})
+
+// ── Rotação da chave mestra ─────────────────────────────────────────────────
+
+test('trocar a chave SEM a anterior torna o segredo indecifrável', () => {
+  // É o cenário que motivou tudo isto: alguém roda `openssl rand` e substitui
+  // PULSE_CHAVE_MESTRA achando que rotacionou. Sem a anterior, o que já estava
+  // gravado vira lixo — e não há volta, porque a chave velha não ficou em lugar nenhum.
+  const guardado = cifrar('token-cifrado-com-a-chave-original')
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+  assert.throws(() => decifrar(guardado), SegredoCorrompidoError)
+})
+
+test('com a anterior declarada, o segredo antigo continua legível', () => {
+  const guardado = cifrar('token-cifrado-com-a-chave-original')
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA_ANTERIOR'] = CHAVE
+  assert.equal(decifrar(guardado), 'token-cifrado-com-a-chave-original')
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+})
+
+test('depois de regravado, decifra com a NOVA e não depende mais da velha', () => {
+  const claro = 'token-que-sera-regravado-na-rotacao'
+  const antigo = cifrar(claro)
+
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA_ANTERIOR'] = CHAVE
+  const regravado = cifrar(decifrar(antigo)) // é o que `rotacionarSegredos` faz
+
+  // A prova de que a rotação TERMINOU: sem a anterior, o valor novo ainda abre.
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+  assert.equal(decifrar(regravado), claro)
+  // E o antigo, esse sim, deixou de abrir — como tem que ser.
+  assert.throws(() => decifrar(antigo), SegredoCorrompidoError)
+})
+
+test('cifradoComAChaveAtual distingue o que já foi regravado', () => {
+  const antigo = cifrar('valor-na-chave-velha')
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA_ANTERIOR'] = CHAVE
+  const novo = cifrar('valor-na-chave-nova')
+
+  // É o que responde "posso apagar a variável da chave anterior?".
+  assert.equal(cifradoComAChaveAtual(novo), true)
+  assert.equal(cifradoComAChaveAtual(antigo), false)
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+})
+
+test('rotacaoEmCurso reflete a variável, e a mensagem de erro diz que tentou as duas', () => {
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+  assert.equal(rotacaoEmCurso(), false)
+
+  const lixo = cifrar('valor-qualquer-para-o-teste')
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA_ANTERIOR'] = Buffer.alloc(32, 3).toString('base64')
+  assert.equal(rotacaoEmCurso(), true)
+  // Quem lê o log precisa saber que a chave anterior TAMBÉM não serviu — senão
+  // gasta a próxima hora procurando a variável que já estava lá.
+  assert.throws(() => decifrar(lixo), /atual e com a anterior/)
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
+})
+
+test('chave anterior com tamanho errado é recusada, não ignorada', () => {
+  // Ignorar em silêncio faria a rotação "funcionar" e deixar segredos para trás.
+  const guardado = cifrar('token-para-o-teste-de-tamanho')
+  process.env['PULSE_CHAVE_MESTRA'] = OUTRA
+  process.env['PULSE_CHAVE_MESTRA_ANTERIOR'] = Buffer.alloc(16, 1).toString('base64')
+  assert.throws(() => decifrar(guardado), /PULSE_CHAVE_MESTRA_ANTERIOR.*16 bytes/s)
+  delete process.env['PULSE_CHAVE_MESTRA_ANTERIOR']
 })

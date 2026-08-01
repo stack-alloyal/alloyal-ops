@@ -287,7 +287,7 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
       origem: 'cliente',
       dataLevantada: '2026-07-15',
     })
-    await reter(pool, CSM, id)
+    await reter(pool, CSM, id, undefined, '2026-07-20')
     const julho = await resumoChurn(pool, '2026-07-01')
     assert.equal(julho.contasQueLevantaram, 1, 'ela levantou a mão, e isso é um fato')
     assert.equal(julho.retidasDepois, 1, 'e foi revertida — o líquido é zero')
@@ -301,7 +301,7 @@ describe('fluxo de saída', { skip: !ADMIN }, () => {
       origem: 'cliente',
       dataLevantada: '2026-07-15',
     })
-    await reter(pool, CSM, id)
+    await reter(pool, CSM, id, undefined, '2026-07-20')
     await assert.rejects(
       () => encerrar(pool, FIN, id),
       (e: Error) => {

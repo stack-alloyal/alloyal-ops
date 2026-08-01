@@ -366,17 +366,26 @@ export async function reter(
   id: Identidade,
   saidaId: string,
   nota?: string,
+  /**
+   * A data da retenção. Padrão: a do banco.
+   *
+   * Existe para o teste poder fixá-la, e o motivo é concreto: a retenção é contada
+   * na competência de `retido_em`, e com `current_date` o mesmo teste caía em julho
+   * num dia e em agosto no seguinte — passava quando foi escrito e falhava sozinho
+   * depois, sem ninguém mexer em nada.
+   */
+  hoje?: string,
 ): Promise<void> {
   if (id.permissoes.fila === 'nenhum' && !id.permissoes.configurar) {
     throw new SemPermissaoError('registrar retenção exige acesso à fila de trabalho')
   }
   const { rowCount } = await db.query(
     `UPDATE success.cancellation
-        SET estado = 'retido', retido_em = current_date, retido_por = $2,
+        SET estado = 'retido', retido_em = COALESCE($5::date, current_date), retido_por = $2,
             motivo_detalhe = COALESCE($3, motivo_detalhe)
       WHERE id = $1 AND estado IN ('anunciado','em_aviso')
         AND ${recorteDaConta('success.cancellation.account_id', 4, 2)}`,
-    [saidaId, id.email, nota ?? null, veBaseDeContas(id)],
+    [saidaId, id.email, nota ?? null, veBaseDeContas(id), hoje ?? null],
   )
   if (rowCount === 0) {
     throw new TransicaoInvalidaError('só uma saída anunciada ou em aviso, de conta da sua carteira, pode ser retida')

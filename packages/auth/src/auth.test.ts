@@ -3,6 +3,7 @@ import { test } from 'node:test'
 
 import { PAPEIS, PERMISSOES, permissoesDe } from './papeis.js'
 import {
+  NaoAutenticadoError,
   ConfiguracaoInsegura,
   HEADER_EMAIL,
   HEADER_SEGREDO,
@@ -255,4 +256,74 @@ test('fora de produção, ela exige a variável explícita', () => {
   assert.equal(permiteIdentidadeDeDesenvolvimento(undefined, undefined), false)
   assert.equal(permiteIdentidadeDeDesenvolvimento('development', 'dev@alloyal.com.br'), true)
   assert.equal(permiteIdentidadeDeDesenvolvimento('test', 'dev@alloyal.com.br'), true)
+})
+
+// ── Rotação do segredo do proxy ─────────────────────────────────────────────
+
+test('durante a rotação, o segredo VELHO e o NOVO são aceitos', async () => {
+  // O segredo vive no `.env` da app E no Advanced Config do NPM. Trocá-lo é mudança
+  // em dois passos, e com um valor só todo mundo toma 401 no intervalo. Com dois,
+  // há sobreposição e ninguém percebe a troca.
+  const opts = {
+    dominio: 'alloyal.com.br',
+    segredoDoProxy: 'segredo-velho-aqui,segredo-novo-aqui',
+    papeisDe: async () => ['pulse-csm'],
+  }
+  for (const s of ['segredo-velho-aqui', 'segredo-novo-aqui']) {
+    const id = await identidadeDaRequisicao(
+      { 'x-pulse-proxy-secret': s, 'x-auth-request-email': 'ana@alloyal.com.br' },
+      undefined,
+      opts,
+    )
+    assert.equal(id.email, 'ana@alloyal.com.br', `recusou "${s}"`)
+  }
+})
+
+test('um terceiro valor continua sendo recusado', async () => {
+  await assert.rejects(
+    () =>
+      identidadeDaRequisicao(
+        { 'x-pulse-proxy-secret': 'segredo-de-terceiro', 'x-auth-request-email': 'ana@alloyal.com.br' },
+        undefined,
+        {
+          dominio: 'alloyal.com.br',
+          segredoDoProxy: 'segredo-velho-aqui,segredo-novo-aqui',
+          papeisDe: async () => ['pulse-csm'],
+        },
+      ),
+    NaoAutenticadoError,
+  )
+})
+
+test('espaço em volta da vírgula não quebra a rotação', async () => {
+  // Quem edita o `.env` à mão põe espaço. Sem o trim, o valor com espaço nunca casa e
+  // o sintoma é "rotacionei e caiu", que manda a pessoa reverter a mudança certa.
+  const id = await identidadeDaRequisicao(
+    { 'x-pulse-proxy-secret': 'novo', 'x-auth-request-email': 'ana@alloyal.com.br' },
+    undefined,
+    {
+      dominio: 'alloyal.com.br',
+      segredoDoProxy: ' velho , novo ',
+      papeisDe: async () => ['pulse-csm'],
+    },
+  )
+  assert.equal(id.email, 'ana@alloyal.com.br')
+})
+
+test('vírgula sozinha não vira segredo vazio que aceita tudo', async () => {
+  // `''.split(',')` daria [''] e um cabeçalho vazio casaria. É o modo de falha que
+  // transformaria um erro de digitação no `.env` em autenticação aberta.
+  await assert.rejects(
+    () =>
+      identidadeDaRequisicao(
+        { 'x-pulse-proxy-secret': '', 'x-auth-request-email': 'ana@alloyal.com.br' },
+        undefined,
+        {
+          dominio: 'alloyal.com.br',
+          segredoDoProxy: 'valido,,',
+          papeisDe: async () => ['pulse-csm'],
+        },
+      ),
+    NaoAutenticadoError,
+  )
 })

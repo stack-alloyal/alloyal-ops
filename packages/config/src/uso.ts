@@ -1,4 +1,4 @@
-import { decifrar } from '@pulse/auth'
+import { cifradoComAChaveAtual, cifrar, decifrar, type Identidade } from '@pulse/auth'
 import type pg from 'pg'
 
 /**
@@ -383,4 +383,108 @@ export const INTEGRACAO_DA_CHAVE: Readonly<Record<string, string>> = {
   'clevertap.region': 'clevertap',
   'omie.app_key': 'omie',
   'omie.app_secret': 'omie',
+}
+
+// ── Rotação da chave mestra ─────────────────────────────────────────────────
+
+export interface ProgressoDaRotacao {
+  readonly total: number
+  /** Já cifrados com a chave ATUAL. */
+  readonly naChaveNova: number
+  /** Ainda dependentes de `PULSE_CHAVE_MESTRA_ANTERIOR`. */
+  readonly naChaveAntiga: number
+  /** Nem uma nem outra decifra — precisa ser recadastrado. */
+  readonly ilegiveis: readonly string[]
+}
+
+/**
+ * Quantos segredos ainda dependem da chave anterior.
+ *
+ * Existe para responder "posso apagar `PULSE_CHAVE_MESTRA_ANTERIOR`?" sem chutar.
+ * Apagar cedo demais deixa segredo indecifrável e a integração cai na próxima
+ * execução do ciclo — que é de madrugada, e o alarme diz "C4 falhou".
+ */
+export async function progressoDaRotacao(db: pg.Pool): Promise<ProgressoDaRotacao> {
+  const { rows } = await db.query<{ chave: string; valor_cifrado: string }>(
+    'SELECT chave, valor_cifrado FROM ops.segredo ORDER BY chave',
+  )
+  let naChaveNova = 0
+  let naChaveAntiga = 0
+  const ilegiveis: string[] = []
+
+  for (const r of rows) {
+    if (cifradoComAChaveAtual(r.valor_cifrado)) {
+      naChaveNova++
+      continue
+    }
+    // Não decifra com a atual: ou é a anterior, ou é ilegível. `decifrar` já tenta as
+    // duas, então basta ver se ele consegue.
+    try {
+      decifrar(r.valor_cifrado)
+      naChaveAntiga++
+    } catch {
+      ilegiveis.push(r.chave)
+    }
+  }
+  return { total: rows.length, naChaveNova, naChaveAntiga, ilegiveis }
+}
+
+/**
+ * Regrava todo segredo com a chave ATUAL.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ Cada segredo em sua própria transação, de propósito. Numa transação só, um  │
+ * │ valor ilegível no meio abortaria a regravação dos anteriores — e a rotação  │
+ * │ ficaria pela metade sem ninguém saber quais tinham passado. Assim cada um   │
+ * │ avança ou falha sozinho, e o relatório diz exatamente quais faltam.         │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * `dica` e `usado_em` são preservados: a dica é derivada do valor claro, que não muda,
+ * e zerar `usado_em` faria a tela dizer "nunca usado" para uma integração que roda há
+ * meses — apagando justamente o sinal de que o segredo ainda serve.
+ *
+ * É idempotente: rodar de novo não muda nada além do texto cifrado (IV novo a cada
+ * chamada, o que é correto e esperado).
+ */
+export async function rotacionarSegredos(
+  db: pg.Pool,
+  id: Identidade,
+): Promise<{ regravados: string[]; falharam: { chave: string; motivo: string }[] }> {
+  const { rows } = await db.query<{ chave: string; valor_cifrado: string }>(
+    'SELECT chave, valor_cifrado FROM ops.segredo ORDER BY chave',
+  )
+  const regravados: string[] = []
+  const falharam: { chave: string; motivo: string }[] = []
+
+  for (const r of rows) {
+    try {
+      // Decifra com o que funcionar (atual ou anterior) e regrava com a atual.
+      const claro = decifrar(r.valor_cifrado)
+      await db.query(
+        `UPDATE ops.segredo SET valor_cifrado = $2, atualizado_por = $3, atualizado_em = now()
+          WHERE chave = $1`,
+        [r.chave, cifrar(claro), `${id.email} (rotação de chave)`],
+      )
+      regravados.push(r.chave)
+    } catch (err) {
+      falharam.push({
+        chave: r.chave,
+        // A mensagem de `SegredoCorrompidoError` não contém o valor — pode ir ao log.
+        motivo: err instanceof Error ? err.message : 'falha desconhecida',
+      })
+    }
+  }
+
+  if (regravados.length > 0) {
+    await db.query(
+      `INSERT INTO ops.mudanca (tipo, chave, quem, motivo)
+       VALUES ('segredo', 'rotacao-da-chave-mestra', $1, $2)`,
+      [
+        id.email,
+        `${regravados.length} segredo(s) regravado(s) com a chave nova` +
+          (falharam.length > 0 ? `; ${falharam.length} falhou/falharam` : ''),
+      ],
+    )
+  }
+  return { regravados, falharam }
 }
