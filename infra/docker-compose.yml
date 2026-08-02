@@ -174,8 +174,21 @@ services:
       - --cookie-csrf-per-request=true
       - --cookie-csrf-expire=5m
       - --set-xauthrequest=true
-      - --skip-provider-button=true
+      # ── A TELA DE ENTRADA ────────────────────────────────────────────────
+      # `--skip-provider-button=true` estava aqui e mandava direto ao Google:
+      # o visitante nunca via tela nenhuma do Pulse, só o consentimento da
+      # conta. Tirá-lo faz o oauth2-proxy servir a página de entrada, e o
+      # `--custom-templates-dir` diz qual — a mesma mecânica do Publi, em
+      # /opt/stack/apps/alloyal-publi/infra/oauth2-templates.
+      #
+      # O template é servido pelo oauth2-proxy, que responde ANTES da
+      # aplicação: a tela aparece mesmo com o Postgres fora do ar.
+      - --custom-templates-dir=/templates
       - --upstream=static://200
+    volumes:
+      # Somente leitura: o oauth2-proxy não tem motivo para escrever aqui, e
+      # é um processo exposto à internet.
+      - ./oauth2-templates:/templates:ro
     networks:
       - proxy-net
 

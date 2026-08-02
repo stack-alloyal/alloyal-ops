@@ -10,11 +10,13 @@
  * │ como entrar depois de hidratar. Numa tela de login isso é o defeito mais    │
  * │ caro possível: quem chega com JS lento ou bloqueado não vê porta nenhuma.   │
  * │                                                                            │
- * │ E o `rd` valia menos do que eu supunha. Com o oauth2-proxy à frente         │
- * │ (ADR-016), a requisição não autenticada nem chega ao Next: o proxy          │
- * │ intercepta, autentica e devolve à rota original por conta dele. Esta tela   │
- * │ é o fallback de quando o cabeçalho de identidade não veio — e nesse caso    │
- * │ não existe "rota original" confiável para voltar.                          │
+ * │ E o `rd` valia menos do que eu supunha ENQUANTO o proxy pulava esta tela.  │
+ * │ Não pula mais: o Advanced Config manda o não autenticado para cá com        │
+ * │ `error_page 401 = @login`, justamente para o desenho da porta de entrada    │
+ * │ existir num lugar só — este componente — em vez de num template Go do       │
+ * │ oauth2-proxy que divergiria dele. O `rd` voltou a valer, e agora ele nasce  │
+ * │ do `$request_uri`, ou seja, de quem NÃO está autenticado: por isso passa    │
+ * │ por `rotaInterna` antes de virar `href`.                                   │
  * └───────────────────────────────────────────────────────────────────────────┘
  *
  * O ícone é o do Google, nas cores oficiais deles — que vivem em `estilo.css` como
@@ -23,6 +25,8 @@
  * repintar, mas abrir exceção na regra "nenhum hex em componente" custaria mais: a
  * regra só é confiável se não tiver exceção.
  */
+
+import { rotaInterna } from './rotaInterna'
 
 const IconeGoogle = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -47,13 +51,17 @@ const IconeGoogle = () => (
 
 export function BotaoGoogle({
   rotulo = 'Entrar com Google',
-  /** Rota de retorno, quando quem chama sabe qual é. Sem ela o proxy decide. */
+  /**
+   * Rota de retorno. Chega crua — vem do caminho que o visitante pediu — e é
+   * filtrada aqui por `rotaInterna`, não por quem chama.
+   */
   rd,
 }: {
   rotulo?: string
-  rd?: string
+  rd?: string | null
 }) {
-  const destino = rd ? `/oauth2/start?rd=${encodeURIComponent(rd)}` : '/oauth2/start'
+  const seguro = rotaInterna(rd)
+  const destino = seguro ? `/oauth2/start?rd=${encodeURIComponent(seguro)}` : '/oauth2/start'
 
   return (
     <a

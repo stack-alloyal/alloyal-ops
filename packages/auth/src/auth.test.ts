@@ -11,7 +11,7 @@ import {
   ipEmFaixa,
   permiteIdentidadeDeDesenvolvimento,
   segredosIguais,
-} from './proxy.js'
+  SemPapelError,} from './proxy.js'
 import { emitirToken, hashToken, validarToken } from './magic-link.js'
 
 const FAIXAS = ['172.16.0.0/12', '127.0.0.1/32']
@@ -121,13 +121,45 @@ test('domínio de fora é recusado mesmo vindo do proxy', async () => {
   )
 })
 
-test('pessoa autenticada sem grupo recebe erro que diz como resolver', async () => {
+test('conta do domínio sem papel NÃO entra — é o papel que decide quem acessa', async () => {
+  // O oauth2-proxy filtra por domínio, então qualquer conta @alloyal.com.br
+  // chega com sessão válida. Esta é a linha que separa "trabalha na Alloyal" de
+  // "tem acesso ao Pulse".
   await assert.rejects(
     identidadeDaRequisicao({ [HEADER_EMAIL]: 'nova@alloyal.com.br' }, '172.18.0.5', {
       ...opts,
       papeisDe: async () => [],
     }),
-    /grupo pulse-\* no Google Workspace/,
+    SemPapelError,
+  )
+})
+
+test('sem papel é SemPapelError, e NÃO NaoAutenticadoError — senão vira laço de login', async () => {
+  // Herança aqui reintroduziria o defeito em silêncio: `catch (err instanceof
+  // NaoAutenticadoError) unauthorized()` devolveria a tela de login a quem
+  // acabou de autenticar, para sempre.
+  const erro = await identidadeDaRequisicao(
+    { [HEADER_EMAIL]: 'nova@alloyal.com.br' },
+    '172.18.0.5',
+    { ...opts, papeisDe: async () => [] },
+  ).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  assert.ok(erro instanceof SemPapelError)
+  assert.ok(!(erro instanceof NaoAutenticadoError), 'não pode herdar de NaoAutenticadoError')
+  assert.equal((erro as SemPapelError).email, 'nova@alloyal.com.br')
+})
+
+test('papel que não existe mais não vale como acesso', async () => {
+  // `filter(ehPapel)` descarta valor desconhecido. Uma linha órfã em
+  // ops.user_role — papel renomeado, por exemplo — não pode virar entrada.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'antiga@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => ['ops-csm', 'papel-inventado'],
+    }),
+    SemPapelError,
   )
 })
 

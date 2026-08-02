@@ -25,7 +25,8 @@ import { cn } from './base'
 
 export interface LoginProps {
   /** Rota de retorno depois do login, quando quem chama sabe qual é. */
-  readonly rd?: string
+  /** Rota de retorno crua; quem filtra é o `BotaoGoogle`, via `rotaInterna`. */
+  readonly rd?: string | null
   /** Título do painel de entrada. */
   readonly titulo?: string
   /** A frase do painel de marca. Duas linhas no máximo — é headline, não parágrafo. */
@@ -106,7 +107,7 @@ export function Login({
             <strong className="font-semibold text-ink">{dominio}</strong> para acessar.
           </p>
 
-          <BotaoGoogle {...(rd ? { rd } : {})} />
+          <BotaoGoogle rd={rd} />
 
           {/* Dito de novo, e de propósito: entrar com a conta pessoal é a causa nº 1
               de recusa, e quem já clicou não volta a ler o parágrafo de cima. */}
@@ -115,10 +116,15 @@ export function Login({
           </p>
 
           {/* O papel é a SEGUNDA barreira, e a que confunde: a pessoa entra no Google
-              com sucesso e ainda assim não vê nada. Dizer isso antes evita o ticket. */}
+              com sucesso e ainda assim não vê nada. Dizer isso antes evita o ticket.
+
+              NÃO diz mais "grupos pulse-* do Google Workspace", que era falso: papel
+              vive em `ops.user_role` e se concede em Configurações → Papéis. O texto
+              velho mandava pedir a quem administra o Workspace, que não tem como
+              resolver — o pedido morria lá. Mesmo defeito estava no forbidden.tsx. */}
           <p className="mt-6 border-t border-line pt-4 text-[11.5px] leading-relaxed text-ink-3">
-            O acesso a cada área vem dos grupos <code className="text-[11px]">pulse-*</code> do Google
-            Workspace. Autenticar sem estar num grupo mostra a tela de permissão, não um erro.
+            Entrar com o Google não basta: o acesso a cada área vem do papel cadastrado no Pulse.
+            Sem papel, a tela seguinte explica a quem pedir.
           </p>
         </div>
       </main>

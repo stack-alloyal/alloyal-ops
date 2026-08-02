@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alloyal Pulse — Entrar</title>
+<!--
+  Tela de entrada do Alloyal Pulse, servida pelo oauth2-proxy
+  (`--custom-templates-dir`). Mesmo mecanismo do Publi, em
+  /opt/stack/apps/alloyal-publi/infra/oauth2-templates/sign_in.html.
+
+  ┌───────────────────────────────────────────────────────────────────────────┐
+  │ POR QUE HEX LITERAL AQUI, E NÃO OS TOKENS:                                 │
+  │                                                                            │
+  │ Este arquivo é servido pelo oauth2-proxy, um binário Go que não conhece o  │
+  │ build do Tailwind nem o `estilo.css`. Não há como usar var() nem classe    │
+  │ utilitária: o CSS tem que ser inline e autossuficiente.                    │
+  │                                                                            │
+  │ A amarra contra divergência é um PORTÃO — `packages/ui/design-system.test  │
+  │ .mjs` compara cada hex daqui com os tokens de `estilo.css` e recusa cor    │
+  │ que não exista lá. Trocar um token sem trocar esta tela quebra o CI, em    │
+  │ vez de sair só no navegador de quem for entrar.                            │
+  └───────────────────────────────────────────────────────────────────────────┘
+
+  A cópia (título, chamada, etiquetas) é a MESMA de `packages/ui/src/Login.tsx`,
+  e o mesmo portão confere isso. Duas telas de login com textos diferentes é o
+  que já aconteceu entre o Publi e o Allvoice.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --roxo: #6a18e5; --laranja: #ff7a00; --ink: #16161a; --ink-2: #5b5b66; --ink-3: #9a9aa6; --escuro: #17171f; --surface-2: #fbfbfc; --line-strong: #e0e0e6; }
+  html, body { height: 100%; }
+  body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: var(--ink); background: #fff; }
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+
+  /* Painel de marca. O gradiente é o mesmo `.pulse-marca` de estilo.css. */
+  .marca { position: relative; overflow: hidden; background: var(--escuro); color: #fff; padding: 56px; display: flex; flex-direction: column; justify-content: space-between; }
+  .marca::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(900px 480px at 0% 0%, rgb(106 24 229 / 45%) 0%, transparent 52%),
+                radial-gradient(820px 460px at 100% 100%, rgb(255 122 0 / 38%) 0%, transparent 48%); }
+  .marca > * { position: relative; }
+  .topo { display: flex; align-items: center; gap: 12px; }
+  .topo svg { height: 24px; width: auto; }
+  .topo span { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+  .marca h1 { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -.03em; }
+  .marca p { margin-top: 16px; font-size: 15px; color: rgb(255 255 255 / 60%); line-height: 1.6; max-width: 28rem; }
+  .etiquetas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .etiquetas span { border: 1px solid rgb(255 255 255 / 15%); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; color: rgb(255 255 255 / 80%); }
+  .rodape { font-size: 12px; color: rgb(255 255 255 / 40%); }
+
+  /* Painel de entrada. */
+  .entrada { display: flex; align-items: center; justify-content: center; background: var(--surface-2); padding: 24px; }
+  .caixa { width: 100%; max-width: 360px; }
+  .marca-m { display: none; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .marca-m svg { height: 24px; width: auto; }
+  .marca-m span { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .caixa h2 { font-size: 25px; font-weight: 700; letter-spacing: -.02em; }
+  .sub { margin-top: 6px; font-size: 13.5px; color: var(--ink-2); line-height: 1.6; }
+  .sub b { color: var(--ink); font-weight: 600; }
+  .botao { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 24px; padding: 13px 20px;
+    border-radius: 6px; border: 1px solid var(--line-strong); background: #fff; color: var(--ink); font-size: 14.5px; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s; }
+  .botao:hover { background: var(--surface-2); }
+  .botao:focus-visible { outline: none; box-shadow: 0 0 0 2px #e3d2fb; border-color: var(--roxo); }
+  .nota { margin-top: 16px; font-size: 11.5px; color: var(--ink-3); text-align: center; }
+  .papel { margin-top: 24px; border-top: 1px solid #ececef; padding-top: 16px; font-size: 11.5px; color: var(--ink-3); line-height: 1.6; }
+
+  @media (max-width: 860px) {
+    /* Num celular o painel de marca comeria a tela e empurraria o botão para
+       fora do primeiro rolar. A marca reaparece do outro lado. */
+    .wrap { grid-template-columns: 1fr; }
+    .marca { display: none; }
+    .marca-m { display: flex; }
+  }
+</style>
+<!--
+  Gerado por `pnpm --filter @pulse/ui marca`. Não editar à mão: um portão em
+  design-system.test.mjs compara este bloco com o SVG e recusa a divergência.
+
+  Vai como DATA URI porque esta tela é servida pelo oauth2-proxy, que só entrega
+  os templates dele. Um href para /favicon.png cairia na `location /` do nginx,
+  exigiria sessão e devolveria ESTA PÁGINA em HTML no lugar da imagem — ícone
+  quebrado, sem erro em lugar nenhum.
+
+  ⚠ O oauth2-proxy carrega os templates NA PARTIDA. Editar o arquivo não basta:
+  `docker compose restart oauth2-proxy-pulse`.
+-->
+<!-- favicon:gerado -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJBbGxveWFsIFB1bHNlIj48dGl0bGU+QWxsb3lhbCBQdWxzZTwvdGl0bGU+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJmdW5kb1B1bHNlIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNkExOEU1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOEI1N0VGIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTMiIHJ5PSIxMTMiIGZpbGw9InVybCgjZnVuZG9QdWxzZSkiLz48ZyBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjQ0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIHN0cm9rZT0iI0ZGRkZGRiIgZD0iTTEwMCAyNTYgSDE5NiIvPjxwYXRoIHN0cm9rZT0iI0ZGRkZGRiIgZD0iTTMxMiAyNTYgSDQxMiIvPjxwYXRoIHN0cm9rZT0iI0ZGN0EwMCIgZD0iTTE5NiAyNTYgTDI1MCAxNDAgTDI5MiAzNzIgTDMxMiAyNTYiLz48L2c+PC9zdmc+">
+<!-- /favicon:gerado -->
+</head>
+<body>
+<div class="wrap">
+  <aside class="marca">
+    <!-- Wordmark no laranja + "Pulse" em branco: mesma leitura do Allvoice
+         ("Alloyal" + o produto no acento). O laranja tem contraste de sobra
+         sobre o escuro, e repintar de branco perderia a única cor da casa
+         neste painel. -->
+    <div class="topo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 114 38" fill="#ff7a00"><path d="M6.894 17.171c2.005 0 3.374.391 4.498 1.516V16.34s.098-1.32-1.124-1.32H2.249V9.299h11.637c3.765 0 3.912 4.058 3.912 4.058v15.842h-6.356v-1.858h-.098c-.733 1.711-2.591 2.494-4.743 2.494C2.591 29.786 0 27.292 0 23.527s2.738-6.356 6.894-6.356zm4.303 6.014c0-1.076-.88-1.809-2.347-1.809-1.369 0-2.347.684-2.347 1.809s.978 1.809 2.347 1.809c1.467.049 2.347-.684 2.347-1.809zM31.102 0h6.796v23.323 5.867h-6.796V0zM21.055 0h6.796v23.323 5.867h-6.796V0zm26.823 37.764c.684-.929 1.711-1.467 2.983-1.467s2.298.538 2.982 1.467h6.943c-1.223-4.254-4.987-7.089-9.925-7.089s-8.703 2.836-9.925 7.089h6.943zm18.491-5.632l8.361-.049a.98.98 0 0 0 .978-.978v-2.738h-.147c-.684.636-1.76 1.32-4.009 1.32-4.4 0-7.53-3.325-7.53-7.921V9.299h6.748v11.344c0 1.369 1.125 2.542 2.493 2.542s2.396-1.075 2.396-2.493V9.299h6.698l.049 26.648c0 .978-.929 2.053-2.053 2.053H66.369v-5.867zm25.758-14.961c2.005 0 3.374.391 4.498 1.516V16.34s.098-1.32-1.124-1.32h-8.068V9.299H99.07c3.764 0 3.911 4.058 3.911 4.058v15.842h-6.356v-1.858h-.098c-.733 1.711-2.591 2.494-4.743 2.494-4.009 0-6.601-2.543-6.601-6.259s2.787-6.405 6.943-6.405zm4.303 6.014c0-1.076-.88-1.809-2.347-1.809-1.369 0-2.347.684-2.347 1.809s.978 1.809 2.347 1.809c1.418.049 2.347-.684 2.347-1.809zM106.239 0h6.796v23.323 5.867h-6.796V0zM61.612 19.336c0 6.161-4.449 10.512-10.659 10.512s-10.659-4.352-10.659-10.512c0-6.112 4.449-10.463 10.659-10.463s10.659 4.352 10.659 10.463zm-14.717.147c0 2.787 1.613 4.645 4.058 4.645s4.058-1.858 4.058-4.645c0-2.885-1.614-4.792-4.058-4.792-2.494 0-4.058 1.907-4.058 4.792z"/></svg>
+      <span>Pulse</span>
+    </div>
+
+    <div>
+      <h1>O time interno opera o negócio<br>num só lugar.</h1>
+      <p>Fila de trabalho, carteira, receita, contratos e relatórios sobre uma base de dados única e governada.</p>
+      <div class="etiquetas">
+        <span>Fila de trabalho</span><span>Carteira</span><span>Receita</span><span>Contratos</span><span>Relatórios</span>
+      </div>
+    </div>
+
+    <div class="rodape">Alloyal · acesso restrito a colaboradores</div>
+  </aside>
+
+  <main class="entrada">
+    <div class="caixa">
+      <div class="marca-m">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 114 38" fill="#16161a"><path d="M6.894 17.171c2.005 0 3.374.391 4.498 1.516V16.34s.098-1.32-1.124-1.32H2.249V9.299h11.637c3.765 0 3.912 4.058 3.912 4.058v15.842h-6.356v-1.858h-.098c-.733 1.711-2.591 2.494-4.743 2.494C2.591 29.786 0 27.292 0 23.527s2.738-6.356 6.894-6.356zm4.303 6.014c0-1.076-.88-1.809-2.347-1.809-1.369 0-2.347.684-2.347 1.809s.978 1.809 2.347 1.809c1.467.049 2.347-.684 2.347-1.809zM31.102 0h6.796v23.323 5.867h-6.796V0zM21.055 0h6.796v23.323 5.867h-6.796V0zm26.823 37.764c.684-.929 1.711-1.467 2.983-1.467s2.298.538 2.982 1.467h6.943c-1.223-4.254-4.987-7.089-9.925-7.089s-8.703 2.836-9.925 7.089h6.943zm18.491-5.632l8.361-.049a.98.98 0 0 0 .978-.978v-2.738h-.147c-.684.636-1.76 1.32-4.009 1.32-4.4 0-7.53-3.325-7.53-7.921V9.299h6.748v11.344c0 1.369 1.125 2.542 2.493 2.542s2.396-1.075 2.396-2.493V9.299h6.698l.049 26.648c0 .978-.929 2.053-2.053 2.053H66.369v-5.867zm25.758-14.961c2.005 0 3.374.391 4.498 1.516V16.34s.098-1.32-1.124-1.32h-8.068V9.299H99.07c3.764 0 3.911 4.058 3.911 4.058v15.842h-6.356v-1.858h-.098c-.733 1.711-2.591 2.494-4.743 2.494-4.009 0-6.601-2.543-6.601-6.259s2.787-6.405 6.943-6.405zm4.303 6.014c0-1.076-.88-1.809-2.347-1.809-1.369 0-2.347.684-2.347 1.809s.978 1.809 2.347 1.809c1.418.049 2.347-.684 2.347-1.809zM106.239 0h6.796v23.323 5.867h-6.796V0zM61.612 19.336c0 6.161-4.449 10.512-10.659 10.512s-10.659-4.352-10.659-10.512c0-6.112 4.449-10.463 10.659-10.463s10.659 4.352 10.659 10.463zm-14.717.147c0 2.787 1.613 4.645 4.058 4.645s4.058-1.858 4.058-4.645c0-2.885-1.614-4.792-4.058-4.792-2.494 0-4.058 1.907-4.058 4.792z"/></svg>
+        <span>Pulse</span>
+      </div>
+
+      <h2>Entrar no Alloyal Pulse</h2>
+      <p class="sub">Use sua conta Google corporativa <b>@alloyal.com.br</b> para acessar.</p>
+
+      <a href="/oauth2/start?rd={{.Redirect}}" class="botao">
+        <!-- Cores oficiais do Google. Logotipo de terceiro não entra no nosso
+             tema, e as regras de marca deles proíbem repintar. -->
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        Entrar com Google
+      </a>
+
+      <!-- Dito duas vezes, e de propósito: entrar com a conta pessoal é a causa
+           nº 1 de recusa, e quem já clicou não volta a ler o parágrafo de cima. -->
+      <p class="nota">Acesso restrito a contas @alloyal.com.br</p>
+
+      <!-- A SEGUNDA barreira, e a que confunde: a pessoa entra no Google com
+           sucesso e mesmo assim não vê nada. Dizer antes evita o chamado. -->
+      <p class="papel">Entrar com o Google não basta: o acesso a cada área vem do papel cadastrado no Pulse. Sem papel, a tela seguinte explica a quem pedir.</p>
+    </div>
+  </main>
+</div>
+</body>
+</html>

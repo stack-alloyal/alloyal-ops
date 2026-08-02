@@ -54,6 +54,34 @@ export class NaoAutenticadoError extends Error {
   }
 }
 
+/**
+ * Autenticado no Google, sem papel no Pulse.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ CLASSE SEPARADA, E NÃO SUBCLASSE DE NaoAutenticadoError — de propósito.     │
+ * │                                                                            │
+ * │ Este caso já foi um `NaoAutenticadoError`, o que dava 401 e, com a tela de  │
+ * │ login servida pela aplicação, mandava a pessoa DE VOLTA para a tela de      │
+ * │ login logo depois de ela entrar com o Google. Sessão válida, tela de        │
+ * │ entrar: parece que o login falhou, e a pessoa tenta de novo para sempre.    │
+ * │                                                                            │
+ * │ Se herdasse, um `catch (err instanceof NaoAutenticadoError)` escrito antes  │
+ * │ desta classe existir voltaria a engoli-la em silêncio, e o laço voltaria    │
+ * │ sem ninguém notar. Sendo irmã, quem não a tratar recebe erro — que é o modo │
+ * │ de falha barulhento, e o certo aqui.                                       │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Quem chega aqui está autenticado: o e-mail é confiável e pode ser mostrado.
+ */
+export class SemPapelError extends Error {
+  readonly email: string
+  constructor(email: string) {
+    super(`Sem papel: ${email} autenticou mas não tem acesso ao Pulse`)
+    this.name = 'SemPapelError'
+    this.email = email
+  }
+}
+
 /** Configuração incompleta: erro de operação, não de autenticação. */
 export class ConfiguracaoInsegura extends Error {
   constructor(motivo: string) {
@@ -178,12 +206,16 @@ export async function identidadeDaRequisicao(
 
   const papeis = (await opts.papeisDe(email)).filter(ehPapel)
   if (papeis.length === 0) {
-    // Pessoa autenticada e sem grupo não é erro de infraestrutura: é alguém que
-    // ainda não foi adicionada a um grupo do Workspace. A mensagem tem que dizer
-    // isso, porque a alternativa é um 403 que ninguém sabe como resolver.
-    throw new NaoAutenticadoError(
-      `${email} autenticado mas sem papel. Adicione a pessoa a um grupo pulse-* no Google Workspace.`,
-    )
+    // Autenticada e sem papel não é falha de autenticação: é alguém de casa que
+    // ainda não foi cadastrada. Por isso `SemPapelError` e não
+    // `NaoAutenticadoError` — a diferença decide entre 403 e um laço de login.
+    //
+    // A mensagem NÃO manda pedir grupo no Google Workspace, como mandava antes: o
+    // papel vem de `ops.user_role`, e um admin o concede em Configurações →
+    // Papéis. A mensagem velha mandava a pessoa bater na porta de quem não podia
+    // resolver, e o `--email-domain` do oauth2-proxy deixa QUALQUER conta
+    // @alloyal.com.br chegar até aqui — é esta linha que decide quem entra.
+    throw new SemPapelError(email)
   }
 
   return { email, papeis, permissoes: permissoesDe(papeis) }

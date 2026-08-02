@@ -172,10 +172,17 @@ Configurações → Acessos, com motivo escrito e trilha.
 
 ```bash
 curl -sI https://pulse.alloyal.com.br | head -1
-# 302 para o Google = SSO funcionando
+# 200 = a TELA DE ENTRADA. Se der 302 para accounts.google.com, o `error_page`
+# ainda aponta para /oauth2/start em vez de /oauth2/sign_in — rode
+# `sudo bash infra/criar-proxy-host.sh`.
+
+curl -s https://pulse.alloyal.com.br | grep -c 'Entrar com Google'
+# 1. O botão vem no HTML, sem JavaScript nenhum.
 
 curl -sI https://pulse.alloyal.com.br | grep -icE '^strict-transport-security'
 # 1. Se der 2, proxy e aplicação estão ambos definindo o cabeçalho.
+# (Com o 302 antigo dava 0: a resposta de entrada era a única sem cabeçalho
+#  de segurança, porque vinha do nginx e não passava pela aplicação.)
 
 echo | openssl s_client -connect pulse.alloyal.com.br:443 \
   -servername pulse.alloyal.com.br 2>/dev/null | openssl x509 -noout -issuer
@@ -185,3 +192,87 @@ echo | openssl s_client -connect pulse.alloyal.com.br:443 \
 **525** significa handshake com a origem falhando — certificado ausente ou errado.
 **526** é certificado presente mas recusado pelo Strict: quase sempre hostname que não
 casa.
+
+## A tela de entrada
+
+`pulse.alloyal.com.br` sem sessão responde **200** com a tela de entrada do
+produto — painel de marca escuro à esquerda, botão do Google à direita.
+
+Quem serve é o **oauth2-proxy**, por `--custom-templates-dir=/templates`, lendo
+`infra/oauth2-templates/sign_in.html`. É a mesma mecânica do Publi
+(`/opt/stack/apps/alloyal-publi/infra/oauth2-templates/`).
+
+Duas coisas que fizeram a tela não aparecer, e que não são óbvias:
+
+1. **`--skip-provider-button=true`** manda direto ao Google. Removido.
+2. **`/oauth2/start` SEMPRE redireciona.** Quem serve a página é
+   `/oauth2/sign_in`. O `error_page 401` do Advanced Config apontava para
+   `start`; agora aponta para `sign_in`. Com o botão pulado ligado, nem `sign_in`
+   mostrava — as duas coisas precisavam mudar juntas.
+
+A rota de retorno viaja no cabeçalho `X-Auth-Request-Redirect`, que a
+`location /oauth2/` define com `$request_uri`. Conferido: pedir `/relatorios/42`
+sem sessão gera `href="/oauth2/start?rd=%2frelatorios%2f42"`.
+
+### O custo, e a amarra
+
+O desenho passa a existir em dois lugares: o `sign_in.html` e o
+`packages/ui/src/Login.tsx`. É exatamente assim que a tela do Publi e a do
+Allvoice divergiram.
+
+`packages/ui/design-system.test.mjs` compara os dois — cada cor do `:root` contra
+`estilo.css`, e título, chamada e etiquetas contra os padrões do `Login.tsx`.
+Mexer num sem mexer no outro quebra o CI.
+
+Em troca: a tela aparece mesmo com a aplicação ou o Postgres fora do ar, porque o
+oauth2-proxy responde antes deles.
+
+`apps/web-internal/app/(interno)/entrar/page.tsx` continua existindo, para quem
+alcança a aplicação sem passar pelo proxy. Ele é PÁGINA e não `unauthorized()`
+porque `unauthorized()` é uma interrupção que o Next resolve num boundary de
+suspense: medido nesta instalação, página normal = 17.209 bytes de HTML e 31
+âncoras; a mesma tela por `unauthorized()` = **0 âncoras**, ou seja, quem chega
+sem JS não vê porta nenhuma.
+
+### Aplicar
+
+```bash
+cd infra && docker compose up -d oauth2-proxy-pulse   # o template (já feito)
+sudo bash infra/criar-proxy-host.sh                   # o error_page → sign_in
+```
+
+O script **atualiza** o host se ele já existir (PUT), em vez de criar um segundo
+para o mesmo domínio — o nginx atenderia pelo primeiro que casasse e a edição
+pareceria não ter pegado.
+
+### Como esta instalação foi aplicada (01/08/2026)
+
+O `criar-proxy-host.sh` é o caminho canônico e pede a senha do NPM. Nesta vez a
+mudança foi aplicada **direto**, e fica registrado porque o estado difere um
+pouco do que o script produziria:
+
+1. `advanced_config` do host id 8 atualizado NO LUGAR, com um script `node`
+   rodando **dentro** do contêiner `npm` (ele tem `better-sqlite3`). Rodar
+   dentro evita copiar o banco para fora e de volta, que abriria janela para
+   perder escrita concorrente do NPM — e o banco dele serve os 7 hostnames.
+2. O SEGREDO não passou por fora: o script o extraiu do próprio valor que já
+   estava no banco (`X-Pulse-Proxy-Secret "..."`) e o reinjetou no arquivo novo,
+   que só tinha o placeholder.
+3. `/data/nginx/proxy_host/8.conf` recebeu a mesma troca de linha por `sed`,
+   seguido de `nginx -t` e `nginx -s reload` (recarga graciosa, sem derrubar os
+   outros seis sites).
+
+**Diferença conhecida:** o banco tem a versão COM os comentários novos; o
+`8.conf` tem os comentários antigos e só a linha trocada. Funcionalmente
+idênticos — conferido linha a linha. Na próxima vez que alguém salvar este host
+pelo NPM, o arquivo passa a ter os comentários também.
+
+**Backups**, dentro do contêiner, para apagar quando não fizerem mais falta:
+
+```bash
+docker exec npm rm -f /data/database.sqlite.antes-pulse-signin \
+                      /data/nginx/proxy_host/8.conf.antes-pulse-signin
+```
+
+Rodar `sudo bash infra/criar-proxy-host.sh` continua sendo o jeito certo daqui
+para a frente — ele agora atualiza o host existente em vez de duplicá-lo.

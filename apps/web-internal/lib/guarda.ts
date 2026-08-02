@@ -1,9 +1,16 @@
 import 'server-only'
 
-import { NaoAutenticadoError, type Escopo, type Identidade, type Permissoes } from '@pulse/auth'
-import { forbidden, unauthorized } from 'next/navigation'
+import {
+  NaoAutenticadoError,
+  SemPapelError,
+  type Escopo,
+  type Identidade,
+  type Permissoes,
+} from '@pulse/auth'
+import { forbidden, redirect, unauthorized } from 'next/navigation'
 
 import { identidade } from './identidade'
+import { dispositivoVerificado, verificacaoAtiva } from './verificacao'
 
 /**
  * Guarda de rota por permissão, não por papel.
@@ -17,18 +24,43 @@ export async function exigir(
   permissao: (p: Permissoes) => boolean,
   _descricao: string,
 ): Promise<Identidade> {
-  let id: Identidade
+  const id = await identidadeDaSessao()
+
+  // Segunda etapa: código enviado ao e-mail. Vem DEPOIS de resolver a identidade
+  // (é preciso saber para quem mandar) e ANTES de checar a permissão — quem ainda
+  // não provou ser quem diz não deve nem descobrir se teria acesso à tela.
+  if (verificacaoAtiva() && !(await dispositivoVerificado(id.email))) {
+    redirect('/verificar')
+  }
+
+  if (!permissao(id.permissoes)) forbidden()
+  return id
+}
+
+/**
+ * A identidade da sessão, sem exigir a verificação por e-mail.
+ *
+ * Existe para a PRÓPRIA tela de verificação poder saber para quem mandar o
+ * código. Se ela usasse `exigir`, o redirecionamento para `/verificar` apontaria
+ * para `/verificar` — laço fechado, e a pessoa nunca veria o campo do código.
+ *
+ * Não é fresta: quem chega aqui já passou pelo proxy, pelo Google e pela checagem
+ * de papel. O que falta é só a segunda etapa, e esta função não dá acesso a
+ * nenhum dado — só diz quem é.
+ */
+export async function identidadeDaSessao(): Promise<Identidade> {
   try {
-    id = await identidade()
+    return await identidade()
   } catch (err) {
     // Falha de autenticação é ESPERADA e não é erro de servidor. Deixá-la virar
     // 500 polui o monitoramento com ruído previsível — e é exatamente assim que
     // o 500 de verdade passa despercebido no meio.
+    // Autenticada sem papel é 403, NÃO 401: devolver a tela de login a quem
+    // acabou de entrar com o Google é um laço — sessão válida, tela de entrar.
+    if (err instanceof SemPapelError) forbidden()
     if (err instanceof NaoAutenticadoError) unauthorized()
     throw err
   }
-  if (!permissao(id.permissoes)) forbidden()
-  return id
 }
 
 export const temEscopo = (e: Escopo) => e !== 'nenhum'
@@ -52,7 +84,9 @@ export async function autenticado(): Promise<boolean> {
     await identidade()
     return true
   } catch (err) {
-    if (err instanceof NaoAutenticadoError) return false
+    // Sem papel também não ganha a casca: a sidebar lista as telas internas, e
+    // quem não tem acesso não precisa saber quais são.
+    if (err instanceof SemPapelError || err instanceof NaoAutenticadoError) return false
     throw err
   }
 }
