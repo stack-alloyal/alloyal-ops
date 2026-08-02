@@ -266,9 +266,23 @@ jobs:
       - name: Portão 7 — design system (sem banco, sem build)
         run: node --test packages/ui/design-system.test.mjs
 
+      - name: Portão 8 — todo teste é rodado por este arquivo
+        # Recusa teste que existe em disco e que nenhum job nomeia. A lista
+        # abaixo é escrita à mão, e lista duplicada diverge — mesma razão de
+        # papeis.test.ts e migracoes.test.ts existirem.
+        run: node --test packages/ui/testes-no-ci.test.mjs
+
+      - name: Rota de retorno da tela de login (sem build)
+        # Fica em @pulse/ui, que não emite dist; roda por remoção de tipos.
+        run: node --test --experimental-strip-types packages/ui/src/rotaInterna.test.ts
+
       - name: Testes das demais unidades
         run: |
-          pnpm --filter @pulse/auth build && node --test packages/auth/dist/auth.test.js
+          pnpm --filter @pulse/auth build
+          node --test packages/auth/dist/auth.test.js
+          node --test packages/auth/dist/cifra.test.js
+          node --test packages/auth/dist/verificacao.test.js
+          pnpm --filter @pulse/mail build && node --test packages/mail/dist/mailer.test.js
           pnpm --filter @pulse/contracts build && node --test packages/contracts/dist/contracts.test.js
           pnpm --filter @pulse/worker build
           node --test apps/worker/dist/cycle.test.js

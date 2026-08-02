@@ -29,15 +29,20 @@ db-migrate: ## Aplica migrations (usa DATABASE_URL_ADMIN)
 seed: ## Popula um banco descartável com massa sintética (recusa base com dado real)
 	pnpm --filter @pulse/db build && pnpm --filter @pulse/db seed
 
+PORTA_TESTE ?= 5434
+
 .PHONY: db-test
 db-test: ## Sobe Postgres descartável e roda o portão de isolamento de tenant
+# A porta é configurável porque 5434 é a do Postgres de PRODUÇÃO nesta VM: com a
+# stack de pé, o `docker run` falha com "port is already allocated" e o portão
+# simplesmente não roda. `make db-test PORTA_TESTE=5455` contorna.
 	@docker rm -f pulse-pg-test >/dev/null 2>&1 || true
 	@docker run -d --name pulse-pg-test -e POSTGRES_PASSWORD=teste -e POSTGRES_DB=pulse \
-		-p 127.0.0.1:5434:5432 postgres:16 >/dev/null
+		-p 127.0.0.1:$(PORTA_TESTE):5432 postgres:16 >/dev/null
 	@echo "aguardando o banco..."
 	@for i in $$(seq 1 45); do docker exec pulse-pg-test pg_isready -U postgres -d pulse >/dev/null 2>&1 && sleep 2 && break || sleep 1; done
 	@pnpm --filter @pulse/db build
-	@DATABASE_URL_ADMIN=postgres://postgres:teste@127.0.0.1:5434/pulse \
+	@DATABASE_URL_ADMIN=postgres://postgres:teste@127.0.0.1:$(PORTA_TESTE)/pulse \
 		node --test packages/db/dist/rls.test.js
 	@docker rm -f pulse-pg-test >/dev/null
 

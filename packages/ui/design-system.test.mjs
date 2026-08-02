@@ -219,3 +219,145 @@ test('todo tone= do Badge existe em base.tsx', () => {
   }
   assert.deepEqual(invalidos, [], `\n${invalidos.join('\n')}\n`)
 })
+
+/**
+ * As cores do e-mail não podem divergir dos tokens.
+ *
+ * `packages/mail/src/template.ts` precisa de hex literal: cliente de e-mail não
+ * resolve `var()`, e Gmail e Outlook descartam `<style>` inteiro. A exceção é
+ * legítima — mas exceção sem amarra é o começo da divergência, que é o defeito que
+ * este arquivo inteiro existe para pegar.
+ *
+ * Então em vez de PERMITIR o hex, aqui se COMPARA: cada cor do template tem que
+ * ser, byte a byte, um valor declarado em `estilo.css`. Trocar um token sem trocar
+ * o e-mail passa a quebrar o portão em vez de sair só no e-mail de alguém.
+ */
+test('as cores do template de e-mail são as mesmas de estilo.css', () => {
+  const template = readFileSync(join(RAIZ, 'packages', 'mail', 'src', 'template.ts'), 'utf8')
+  const estilo = readFileSync(join(RAIZ, 'packages', 'ui', 'src', 'estilo.css'), 'utf8')
+
+  const tokens = new Set(
+    (estilo.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).map((h) => h.toLowerCase()),
+  )
+  assert.ok(tokens.size > 5, 'não li os tokens de estilo.css — o caminho mudou?')
+
+  // Só o bloco COR: o resto do arquivo é `#fff` de texto sobre o gradiente e `#`
+  // de href neutralizado, que não são cor de tema.
+  const bloco = template.match(/const COR = \{([\s\S]*?)\} as const/)
+  assert.ok(bloco, 'não achei o bloco COR em template.ts')
+
+  for (const [, nome, hex] of bloco[1].matchAll(/(\w+):\s*'(#[0-9a-fA-F]{3,8})'/g)) {
+    assert.ok(
+      tokens.has(hex.toLowerCase()),
+      `a cor "${nome}" do e-mail é ${hex}, que não existe em estilo.css — ` +
+        `token trocado sem trocar o e-mail, ou aproximação em vez de cópia`,
+    )
+  }
+})
+
+/**
+ * A tela do oauth2-proxy não pode divergir da do produto.
+ *
+ * `infra/oauth2-templates/sign_in.html` é servido por um binário Go que não
+ * conhece o Tailwind nem o `estilo.css` — o CSS dele é inline e autossuficiente,
+ * e não há como evitar isso. O que dá para evitar é a DIVERGÊNCIA, que é o custo
+ * real dessa escolha: a tela do Publi e a do Allvoice já divergiram exatamente
+ * assim, cada uma com o seu hex.
+ *
+ * Então em vez de permitir, compara-se — cor contra `estilo.css`, e o texto
+ * contra os padrões do `Login.tsx`. Mexer num sem mexer no outro quebra o CI, em
+ * vez de sair só no navegador de quem for entrar.
+ */
+const SIGN_IN = join(RAIZ, 'infra', 'oauth2-templates', 'sign_in.html')
+
+test('as cores da tela do oauth2-proxy são as mesmas de estilo.css', () => {
+  const html = readFileSync(SIGN_IN, 'utf8')
+  const estilo = readFileSync(join(RAIZ, 'packages', 'ui', 'src', 'estilo.css'), 'utf8')
+  const tokens = new Set((estilo.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).map((h) => h.toLowerCase()))
+
+  // Só o bloco `:root`, que é onde moram as cores do tema. Fora dele há as
+  // quatro do Google (marca de terceiro, proibido repintar) e `#fff`.
+  const raiz = html.match(/:root \{([^}]*)\}/)
+  assert.ok(raiz, 'não achei o bloco :root em sign_in.html')
+
+  for (const [, nome, hex] of raiz[1].matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{3,8})/g)) {
+    assert.ok(
+      tokens.has(hex.toLowerCase()),
+      `a variável "${nome}" da tela de entrada é ${hex}, que não existe em estilo.css`,
+    )
+  }
+})
+
+test('o texto da tela do oauth2-proxy é o mesmo do Login.tsx', () => {
+  const html = readFileSync(SIGN_IN, 'utf8')
+  const login = readFileSync(join(RAIZ, 'packages', 'ui', 'src', 'Login.tsx'), 'utf8')
+
+  // Os padrões do componente: é o que o usuário vê quando ninguém passa prop.
+  const titulo = login.match(/titulo = '([^']+)'/)?.[1]
+  const chamada = [...(login.match(/chamada = \[([^\]]+)\]/)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(
+    (m) => m[1],
+  )
+  const etiquetas = [
+    ...(login.match(/etiquetas = \[([^\]]+)\]/)?.[1] ?? '').matchAll(/'([^']+)'/g),
+  ].map((m) => m[1])
+
+  assert.ok(titulo && chamada.length && etiquetas.length, 'não li os padrões do Login.tsx')
+
+  assert.ok(html.includes(titulo), `a tela de entrada não traz o título "${titulo}"`)
+  for (const linha of chamada) {
+    assert.ok(html.includes(linha), `a tela de entrada não traz a chamada "${linha}"`)
+  }
+  for (const e of etiquetas) {
+    assert.ok(html.includes(`<span>${e}</span>`), `a tela de entrada não traz a etiqueta "${e}"`)
+  }
+})
+
+/**
+ * A marca do Pulse: cores do ícone, e o favicon embutido na tela de entrada.
+ */
+import { enxugar, linkDoFavicon } from './marca/gerar.mjs'
+
+const ARTES = ['marca/pulse-icone.svg', 'marca/pulse-icone-maskable.svg']
+
+test('as cores do ícone são as da marca', () => {
+  const estilo = readFileSync(join(RAIZ, 'packages', 'ui', 'src', 'estilo.css'), 'utf8')
+  const tokens = new Set((estilo.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).map((h) => h.toLowerCase()))
+  // O claro do gradiente não é token de tema — ele só existe dentro do ícone, e
+  // foi MEDIDO no do Allvoice. Fica declarado aqui para não virar cor solta.
+  const doIcone = new Set(['#8b57ef', '#ffffff'])
+
+  for (const arte of ARTES) {
+    // `enxugar` tira os comentários. Sem isso a asserção lê a PROSA do arquivo —
+    // que cita as cores para explicá-las — em vez do desenho.
+    const svg = enxugar(readFileSync(join(RAIZ, 'packages', 'ui', arte), 'utf8'))
+    for (const hex of svg.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []) {
+      const h = hex.toLowerCase()
+      assert.ok(
+        tokens.has(h) || doIcone.has(h),
+        `${arte} usa ${hex}, que não é token de estilo.css nem cor declarada do ícone`,
+      )
+    }
+  }
+})
+
+test('o ícone tem UM acento laranja — a proporção é o que faz a família', () => {
+  // No Allvoice o laranja é um ponto entre três. Laranja demais e o ícone deixa
+  // de parecer irmão dos outros produtos da casa.
+  for (const arte of ARTES) {
+    const svg = enxugar(readFileSync(join(RAIZ, 'packages', 'ui', arte), 'utf8'))
+    const laranja = (svg.match(/#FF7A00/gi) ?? []).length
+    assert.equal(laranja, 1, `${arte} tem ${laranja} usos de laranja; o desenho prevê 1`)
+  }
+})
+
+test('o favicon embutido na tela de entrada é o ícone ATUAL', () => {
+  // A tela de entrada é servida pelo oauth2-proxy e carrega o ícone como data
+  // URI — cópia, e cópia envelhece. Mexer no SVG sem rodar `pnpm --filter
+  // @pulse/ui marca` deixaria a aba com o desenho velho, sem erro nenhum.
+  const svg = readFileSync(join(RAIZ, 'packages', 'ui', 'marca', 'pulse-icone.svg'), 'utf8')
+  const html = readFileSync(join(RAIZ, 'infra', 'oauth2-templates', 'sign_in.html'), 'utf8')
+  assert.ok(
+    html.includes(linkDoFavicon(svg)),
+    'o favicon da tela de entrada não corresponde ao SVG — rode `pnpm --filter @pulse/ui marca`',
+  )
+})
