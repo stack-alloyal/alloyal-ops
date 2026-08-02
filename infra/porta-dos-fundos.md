@@ -108,60 +108,48 @@ caminhos.
 sintoma de lista velha é tráfego **legítimo** levando 403 — vale conferir ao
 investigar acesso negado inexplicável.
 
-## Por que NÃO Authenticated Origin Pulls (mTLS)
+## Segunda camada: mTLS, armado e à espera de um clique
 
-O Cloudflare apresenta um **certificado de cliente** ao falar com a origem. Quem
-não tem esse certificado não completa o handshake. É **por proxy host**, então
-vale só onde é declarado — os três diretos não são tocados.
+Mais forte que o allowlist e **soma** a ele: o allowlist confia numa lista de IPs,
+o mTLS confia numa chave privada que só o Cloudflare tem. Quem quiser passar
+precisa furar as duas.
 
-O interruptor é de **ZONA**, e a zona `alloyal.com.br` atende aplicações **fora
-desta VM**, sem visibilidade sobre elas. Ligar seria decidir por sistemas que não
-se conhece — e a decisão foi não fazer isso.
+**Está em `optional`** — pede o certificado e aceita a conexão de qualquer jeito,
+sem bloquear ninguém. Falta um clique:
 
-Fica como **segunda camada** para quando/se der: é mais forte que o allowlist,
-porque não confia numa lista de IPs e sim numa chave privada que só o Cloudflare
-tem. A CA já está em `/data/cloudflare/origin-pull-ca.pem`.
+> Cloudflare → SSL/TLS → Origin Server → **Authenticated Origin Pulls → ON**
 
-### Se um dia der para ligar, a ordem importa e inverter derruba o site
-
-1. **Painel do Cloudflare:** SSL/TLS → Origin Server → **Authenticated Origin
-   Pulls → ON**.
-
-   Isso é **inócuo sozinho**: faz o Cloudflare *oferecer* o certificado, e origem
-   que não confere simplesmente ignora. Não afeta Publi, Radar, Enable, Allvoice
-   nem Hub — nenhum deles exige o certificado.
-
-2. **Só então**, trocar `optional` por `on` em
-   `infra/proxy-pulse.advanced.conf`.
-
-Fazer o 2 antes do 1 dá **400 em tudo, para todo mundo**.
-
-### Como conferir, no dia, se o painel já foi ligado
-
-Sem bloquear ninguém: `ssl_verify_client optional` PEDE o certificado e aceita a
-conexão de qualquer jeito, e `add_header X-Sonda-Mtls $ssl_client_verify always;`
-mostra o resultado.
+Depois disso, um comando liga:
 
 ```bash
-curl -sI https://pulse.alloyal.com.br | grep -i x-sonda-mtls
+bash infra/ligar-mtls.sh
 ```
 
-`NONE` = painel desligado. `SUCCESS` = pode trocar por `on`.
+Ele **recusa se a sonda não disser SUCCESS**, faz backup, testa o nginx, e
+**reverte sozinho** se o caminho normal parar de responder 200. Testado com o
+painel desligado: recusou e não alterou nada.
 
-Essa sonda **rodou em 02/08/2026 e respondeu NONE**; foi removida depois, porque o
-allowlist já resolveu e ela adicionava um cabeçalho em toda resposta e um pedido
-de certificado em todo handshake.
+### O medo de ligar no painel, medido
 
-### Depois de trocar para `on`, o teste que prova
+O interruptor é de zona, e a zona atende aplicações fora desta VM. A preocupação é
+legítima, mas o risco é nulo, e dá para demonstrar:
 
-```bash
-curl -k --resolve pulse.alloyal.com.br:443:144.33.13.117 https://pulse.alloyal.com.br
-# esperado: erro de handshake TLS — e não o 403 do allowlist, que é uma camada
-# depois
+**Em TLS, o certificado de cliente só é transmitido quando o SERVIDOR o
+solicita.** Origem que não configura `ssl_verify_client` nunca o recebe, e o
+handshake dela é byte a byte idêntico com ou sem o interruptor.
 
-curl -sI https://pulse.alloyal.com.br | head -1
-# esperado: 200 — o caminho normal segue funcionando
-```
+Conferido em 02/08/2026, perguntando a cada origem se ela pede certificado:
+
+| hostname | pede certificado de cliente? |
+|---|---|
+| publi | não |
+| hub | não |
+| enable | não |
+| allvoice | não |
+| radar | não |
+| **pulse** | **sim** (é o único configurado para isso) |
+
+Ligar no painel não tem como quebrar quem não pede — nem nesta VM nem fora dela.
 
 ## O que fica de fora, e por quê
 

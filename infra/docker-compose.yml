@@ -173,6 +173,18 @@ services:
       - --cookie-secure=true
       - --cookie-csrf-per-request=true
       - --cookie-csrf-expire=5m
+      # ── Duração da sessão ────────────────────────────────────────────────
+      # O padrão do oauth2-proxy é 168h — SETE DIAS — e é o que Publi, Hub e
+      # Radar usam. Aqui é menos, e a razão é o que está atrás da porta: o Pulse
+      # dá acesso a carteira, receita, contratos e relatório de cliente. Um
+      # notebook esquecido aberto vale uma semana de acesso com 168h; vale um dia
+      # com 12h.
+      #
+      # `--cookie-refresh` renova enquanto a pessoa USA, então quem trabalha o dia
+      # inteiro não é interrompido — o que expira é sessão parada. Sem ele, 12h
+      # seria 12h de relógio e derrubaria gente no meio do expediente.
+      - --cookie-expire=12h
+      - --cookie-refresh=1h
       - --set-xauthrequest=true
       # ── A TELA DE ENTRADA ────────────────────────────────────────────────
       # `--skip-provider-button=true` estava aqui e mandava direto ao Google:
