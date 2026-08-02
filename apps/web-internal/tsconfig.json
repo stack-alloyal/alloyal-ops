@@ -35,6 +35,9 @@
   "references": [
     {
       "path": "../../packages/config"
+    },
+    {
+      "path": "../../packages/mail"
     }
   ]
 }

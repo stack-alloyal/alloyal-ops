@@ -1,5 +1,5 @@
 {
-  "name": "@pulse/config",
+  "name": "@pulse/mail",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,16 +11,10 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'sem teste próprio; ver config.test.ts'"
-  },
-  "dependencies": {
-    "@pulse/auth": "workspace:*",
-    "pg": "^8.13.0",
-    "@pulse/mail": "workspace:*"
+    "test": "node --test dist/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "@types/pg": "^8.11.0",
     "typescript": "^5.7.0"
   }
 }
