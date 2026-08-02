@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Alloyal Pulse">
+  <title>Alloyal Pulse</title>
+  <!--
+    Versão *maskable* (Android/PWA). Duas diferenças em relação a
+    `pulse-icone.svg`, e as duas são exigência do formato, não gosto:
+
+      · SANGRA até a borda, sem canto arredondado. Quem arredonda é o sistema,
+        com a forma dele — círculo, squircle, gota, o que o fabricante quiser.
+        Entregar já arredondado deixa uma casquinha do fundo aparecendo em
+        volta do ícone.
+      · O conteúdo encolhe para 83,6% e fica na "zona segura": o sistema pode
+        recortar até 20% de cada lado.
+
+    O fator 0,836 não é chute — é a razão medida entre o branco do
+    `icon-maskable-512.png` do Allvoice (61,5% do lado) e o do normal (73,6%).
+
+    A transformação é uma só, em volta do centro: escala tudo junto, então
+    traço e batida guardam a mesma proporção entre si.
+  -->
+  <defs>
+    <linearGradient id="fundoPulseMask" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6A18E5"/>
+      <stop offset="1" stop-color="#8B57EF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#fundoPulseMask)"/>
+
+  <g transform="translate(256 256) scale(0.836) translate(-256 -256)">
+    <g fill="none" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="#FFFFFF" d="M100 256 H196"/>
+      <path stroke="#FFFFFF" d="M312 256 H412"/>
+      <path stroke="#FF7A00" d="M196 256 L250 140 L292 372 L312 256"/>
+    </g>
+  </g>
+</svg>

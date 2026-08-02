@@ -5,7 +5,33 @@ import type { ReactNode } from 'react'
 import { Casca } from './casca'
 import { autenticado } from '../../lib/guarda'
 
-export const metadata = { title: 'Alloyal Pulse', description: 'Ferramentas de operação' }
+/**
+ * Os ícones apontam para `public/`, e NÃO usam a convenção `app/icon.png` do Next.
+ *
+ * A convenção geraria caminhos com hash (`/icon.abc123.png`), que só a aplicação
+ * conhece — e a tela de entrada NÃO é servida por ela: quem a serve é o
+ * oauth2-proxy, a partir de `infra/oauth2-templates/sign_in.html`. Caminho fixo em
+ * `public/` é o que os dois lados conseguem referenciar.
+ *
+ * Arte em `packages/ui/marca/pulse-icone.svg`; os PNG saem dela por
+ * `packages/ui/marca/gerar.mjs`.
+ */
+export const metadata = {
+  title: 'Alloyal Pulse',
+  description: 'Ferramentas de operação',
+  icons: {
+    icon: [
+      // SVG primeiro: o navegador que o entende usa ele em qualquer tamanho, e
+      // não há versão borrada em tela de alta densidade.
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '256x256' }],
+  },
+  manifest: '/manifest.webmanifest',
+}
 
 /**
  * Layout raiz da superfície interna.

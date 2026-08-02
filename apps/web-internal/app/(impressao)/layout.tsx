@@ -2,6 +2,8 @@ import '@pulse/ui/estilo.css'
 
 import type { ReactNode } from 'react'
 
+// Sem ícone de propósito: esta raiz vira PDF que o cliente recebe, e favicon não
+// aparece em PDF nenhum. Declarar aqui só acrescentaria requisição.
 export const metadata = { title: 'Relatório Alloyal', description: 'Versão de impressão' }
 
 /**

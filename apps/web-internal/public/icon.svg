@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Alloyal Pulse">
+  <title>Alloyal Pulse</title>
+  <!--
+    Ícone do Alloyal Pulse, na família do Allvoice.
+
+    ┌───────────────────────────────────────────────────────────────────────┐
+    │ O QUE VEIO DO ALLVOICE, MEDIDO e não estimado no olho. A fonte é       │
+    │ ~/alloyal-chat/alloyal-chat/public/icon-512.png:                       │
+    │                                                                        │
+    │   lado 512 · raio do canto 113 (22,1%)                                 │
+    │   gradiente #6A18E5 → #8B57EF na diagonal                              │
+    │   exatamente UM acento laranja #FF7A00                                 │
+    │                                                                        │
+    │ Copiar a proporção é o que faz os ícones parecerem da mesma casa — a   │
+    │ mesma regra do design system: copiado do vizinho, nunca aproximado.    │
+    └───────────────────────────────────────────────────────────────────────┘
+
+    O QUE NÃO VEIO: o retângulo branco de fundo. O Allvoice precisa dele
+    porque o balão de fala É a forma; aqui a forma é a linha, e um mostrador
+    em volta só rouba área dela. Sem a caixa, a arte ocupa 78% da largura em
+    vez de 54%, e é isso que a salva no tamanho de favicon.
+
+    ┌───────────────────────────────────────────────────────────────────────┐
+    │ O DESENHO FOI DECIDIDO EM 32px, NÃO EM 512.                            │
+    │                                                                        │
+    │ Versões anteriores ficaram boas grandes e viraram borrão no tamanho de │
+    │ favicon, que é onde este arquivo passa 99% da vida:                    │
+    │                                                                        │
+    │   · onda com batida secundária antes do pico → ilegível a 32px         │
+    │   · linha + ponto laranja no pico → lia como "bolinha com rabisco", e  │
+    │     com o ponto no vértice exato ele FLUTUA acima da linha             │
+    │   · traço de 52 → o pico empasta num bloco só                          │
+    │                                                                        │
+    │ O que sobrou: uma batida só, encontrando o repouso NA LINHA DE BASE     │
+    │ dos dois lados — sem cotovelo e sem trecho vertical solto.             │
+    └───────────────────────────────────────────────────────────────────────┘
+
+    Centragem conferida no PNG renderizado, não no papel: margens 78/78 na
+    horizontal e 118/118 na vertical.
+  -->
+  <defs>
+    <linearGradient id="fundoPulse" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6A18E5"/>
+      <stop offset="1" stop-color="#8B57EF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="113" ry="113" fill="url(#fundoPulse)"/>
+
+  <g fill="none" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Repouso. -->
+    <path stroke="#FFFFFF" d="M100 256 H196"/>
+    <path stroke="#FFFFFF" d="M312 256 H412"/>
+    <!-- A batida. Começa e termina exatamente em y=256, que é o que a faz
+         emendar no repouso sem degrau visível. -->
+    <path stroke="#FF7A00" d="M196 256 L250 140 L292 372 L312 256"/>
+  </g>
+</svg>
