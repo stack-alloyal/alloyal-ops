@@ -65,13 +65,64 @@ feita **por IPs da Let's Encrypt** — que não são do Cloudflare:
 Uma regra de firewall na 80 não daria erro nenhum no dia. Ela quebraria a
 renovação, e o sintoma apareceria semanas depois, como certificado vencido.
 
-## A saída certa: Authenticated Origin Pulls (mTLS)
+## A saída escolhida: allowlist DENTRO do proxy host
+
+`allow`/`deny` no server block do Pulse. Vale **só para ele** — os três diretos
+não são tocados, e nada fora da VM é afetado.
+
+```nginx
+include /data/cloudflare/faixas.conf;   # allow das faixas + deny all
+```
+
+A lista é gerada por `infra/faixas-cloudflare.sh` e mora fora da configuração do
+proxy host de propósito: as faixas do Cloudflare mudam algumas vezes por ano, e
+atualizar passa a ser rodar o script — sem reabrir o campo onde vive o segredo.
+
+O script **recusa gravar lista suspeita**: vazia, curta demais, sem as faixas
+conhecidas ou com HTML no lugar do texto. Uma resposta ruim do Cloudflare não pode
+virar `deny all` sozinha, que é o modo de falha que derruba o site.
+
+Se o arquivo sumir, o `include` falha e o nginx **não recarrega** — melhor recusar
+a recarga do que subir sem a proteção.
+
+### Provado em 02/08/2026, depois de aplicar
+
+| hostname | pelo caminho normal | direto no IP |
+|---|---|---|
+| **pulse** | **200** | **403 ← fechado** |
+| hub | 307 | 307 |
+| publi | 200 | 200 |
+| radar | 403 | 403 |
+| enable | 200 | 200 |
+| allvoice | 200 | 200 |
+| metas | 307 | 307 |
+| evolution | 200 | 200 |
+| supabase-metas | 401 | 401 |
+
+Só o Pulse mudou. Os oito outros respondem exatamente como antes, pelos dois
+caminhos.
+
+### Manutenção
+
+`sudo bash infra/faixas-cloudflare.sh` quando o Cloudflare publicar faixa nova. O
+sintoma de lista velha é tráfego **legítimo** levando 403 — vale conferir ao
+investigar acesso negado inexplicável.
+
+## Por que NÃO Authenticated Origin Pulls (mTLS)
 
 O Cloudflare apresenta um **certificado de cliente** ao falar com a origem. Quem
 não tem esse certificado não completa o handshake. É **por proxy host**, então
 vale só onde é declarado — os três diretos não são tocados.
 
-### A ordem importa, e inverter derruba o site
+O interruptor é de **ZONA**, e a zona `alloyal.com.br` atende aplicações **fora
+desta VM**, sem visibilidade sobre elas. Ligar seria decidir por sistemas que não
+se conhece — e a decisão foi não fazer isso.
+
+Fica como **segunda camada** para quando/se der: é mais forte que o allowlist,
+porque não confia numa lista de IPs e sim numa chave privada que só o Cloudflare
+tem. A CA já está em `/data/cloudflare/origin-pull-ca.pem`.
+
+### Se um dia der para ligar, a ordem importa e inverter derruba o site
 
 1. **Painel do Cloudflare:** SSL/TLS → Origin Server → **Authenticated Origin
    Pulls → ON**.
@@ -85,27 +136,28 @@ vale só onde é declarado — os três diretos não são tocados.
 
 Fazer o 2 antes do 1 dá **400 em tudo, para todo mundo**.
 
-### Onde está hoje
+### Como conferir, no dia, se o painel já foi ligado
 
-A sonda já está no ar, e **não bloqueia ninguém**: `ssl_verify_client optional`
-pede o certificado e aceita a conexão de qualquer jeito. O resultado sai no
-cabeçalho `X-Sonda-Mtls`:
+Sem bloquear ninguém: `ssl_verify_client optional` PEDE o certificado e aceita a
+conexão de qualquer jeito, e `add_header X-Sonda-Mtls $ssl_client_verify always;`
+mostra o resultado.
 
 ```bash
 curl -sI https://pulse.alloyal.com.br | grep -i x-sonda-mtls
 ```
 
-- `NONE` → o passo 1 ainda não foi feito. É o estado em 02/08/2026.
-- `SUCCESS` → o Cloudflare está mandando o certificado; pode trocar para `on`.
+`NONE` = painel desligado. `SUCCESS` = pode trocar por `on`.
 
-Conferido depois de ligar a sonda: os nove hostnames respondem igual, e o
-navegador completa o handshake normalmente.
+Essa sonda **rodou em 02/08/2026 e respondeu NONE**; foi removida depois, porque o
+allowlist já resolveu e ela adicionava um cabeçalho em toda resposta e um pedido
+de certificado em todo handshake.
 
 ### Depois de trocar para `on`, o teste que prova
 
 ```bash
 curl -k --resolve pulse.alloyal.com.br:443:144.33.13.117 https://pulse.alloyal.com.br
-# esperado: erro de handshake TLS, não 200
+# esperado: erro de handshake TLS — e não o 403 do allowlist, que é uma camada
+# depois
 
 curl -sI https://pulse.alloyal.com.br | head -1
 # esperado: 200 — o caminho normal segue funcionando
@@ -116,7 +168,11 @@ curl -sI https://pulse.alloyal.com.br | head -1
 Os três hostnames diretos continuam sem Cloudflare na frente. Isso é decisão
 deles, não do Pulse, e mudar exige:
 
-- ligar o proxy (nuvem laranja) no DNS de cada um;
+- ligar o proxy (nuvem laranja) no DNS de cada um — o que, de quebra, **para de
+  publicar o IP da VM em DNS público**, que é hoje a forma mais fácil de alguém
+  descobrir a origem. Isso não fecha porta nenhuma sozinho: quem já tem o IP,
+  por histórico de DNS, continua tendo. Vale pelo que protege os três, não como
+  substituto do allowlist;
 - trocar o certificado de Let's Encrypt para Origin CA (o `metas` **já tem um**
   preparado no NPM, id 6, `metas-cf-origin`, e não está em uso);
 - conferir se algum cliente deles depende de falar direto com a origem — o
