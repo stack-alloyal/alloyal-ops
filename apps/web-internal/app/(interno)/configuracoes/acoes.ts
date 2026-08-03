@@ -10,7 +10,9 @@ import {
   gravarSegredo,
   revogar,
   testarConexao,
-} from '@pulse/config'
+  definirAtivo,
+  registrarPessoa,
+  UltimoAcessoAtivoError,} from '@pulse/config'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'
@@ -41,7 +43,10 @@ function mensagemDe(err: unknown): string | null {
   if (
     err instanceof ValorInvalidoError ||
     err instanceof MotivoObrigatorioError ||
-    err instanceof UltimoAdminError
+    err instanceof UltimoAdminError ||
+    // Sem esta linha a trava do último admin ATIVO sobe como 500 em vez de virar
+    // mensagem na tela — e quem tentou suspender não descobre por que não pôde.
+    err instanceof UltimoAcessoAtivoError
   ) {
     return err.message
   }
@@ -157,4 +162,48 @@ export async function verificarConexao(dados: FormData): Promise<void> {
     r.estado === 'ok' ? 'ok' : 'erro',
     `${integracao}: ${r.diagnostico} (${r.duracaoMs} ms)`,
   )
+}
+
+export async function cadastrarPessoa(dados: FormData): Promise<void> {
+  const id = await exigir((p) => p.configurar, 'gestão de usuários')
+  const email = String(dados.get('email') ?? '')
+  const nome = String(dados.get('nome') ?? '')
+  try {
+    await registrarPessoa(pool(), id.email, email, nome)
+    voltar(
+      '/configuracoes/usuarios',
+      'ok',
+      `${email.trim().toLowerCase()} cadastrada. Ela ainda NÃO tem acesso — falta dar um papel.`,
+    )
+  } catch (err) {
+    const m = mensagemDe(err)
+    if (m) voltar('/configuracoes/usuarios', 'erro', m)
+    throw err
+  }
+}
+
+/**
+ * Suspende ou reativa.
+ *
+ * O motivo é obrigatório na camada de dados, e é de propósito: suspensão é a única
+ * mudança de acesso que não deixa rastro no papel — sem o motivo escrito, ninguém
+ * descobre depois por que a pessoa parou de entrar.
+ */
+export async function alternarAcesso(dados: FormData): Promise<void> {
+  const id = await exigir((p) => p.configurar, 'gestão de usuários')
+  const email = String(dados.get('email') ?? '')
+  const ativar = String(dados.get('ativar') ?? '') === '1'
+  const motivo = String(dados.get('motivo') ?? '')
+  try {
+    await definirAtivo(pool(), id, email, ativar, motivo)
+    voltar(
+      '/configuracoes/usuarios',
+      'ok',
+      `${email.trim().toLowerCase()} ${ativar ? 'reativada' : 'suspensa'}.`,
+    )
+  } catch (err) {
+    const m = mensagemDe(err)
+    if (m) voltar('/configuracoes/usuarios', 'erro', m)
+    throw err
+  }
 }

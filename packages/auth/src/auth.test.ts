@@ -11,7 +11,8 @@ import {
   ipEmFaixa,
   permiteIdentidadeDeDesenvolvimento,
   segredosIguais,
-  SemPapelError,} from './proxy.js'
+  SemPapelError,
+  AcessoSuspensoError,} from './proxy.js'
 import { emitirToken, hashToken, validarToken } from './magic-link.js'
 
 const FAIXAS = ['172.16.0.0/12', '127.0.0.1/32']
@@ -358,4 +359,72 @@ test('vírgula sozinha não vira segredo vazio que aceita tudo', async () => {
       ),
     NaoAutenticadoError,
   )
+})
+
+// ─── Suspensão ───────────────────────────────────────────────────────────────
+
+test('pessoa SUSPENSA não entra, mesmo com papel válido', async () => {
+  // É o ponto todo da suspensão: os papéis ficam, o acesso não.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'ferias@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => ['pulse-admin'],
+      estadoDaPessoa: async () => 'suspensa',
+    }),
+    AcessoSuspensoError,
+  )
+})
+
+test('suspensa é AcessoSuspensoError e NÃO SemPapelError — a mensagem decide o que a pessoa faz', async () => {
+  // "Você não tem papel" manda pedir acesso; "seu acesso está suspenso" manda
+  // perguntar por quê. Confundir os dois manda a pessoa para a conversa errada.
+  const erro = await identidadeDaRequisicao(
+    { [HEADER_EMAIL]: 'ferias@alloyal.com.br' },
+    '172.18.0.5',
+    { ...opts, papeisDe: async () => ['pulse-admin'], estadoDaPessoa: async () => 'suspensa' },
+  ).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  assert.ok(erro instanceof AcessoSuspensoError)
+  assert.ok(!(erro instanceof SemPapelError), 'não pode ser confundida com falta de papel')
+  assert.ok(!(erro instanceof NaoAutenticadoError), 'não pode virar laço de login')
+  assert.equal((erro as AcessoSuspensoError).email, 'ferias@alloyal.com.br')
+})
+
+test('a suspensão é checada ANTES do papel', async () => {
+  // Suspensa E sem papel: tem que ouvir "suspenso". Se a ordem invertesse, ela
+  // ouviria "sem papel" e pediria acesso que já tem.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'ferias@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => [],
+      estadoDaPessoa: async () => 'suspensa',
+    }),
+    AcessoSuspensoError,
+  )
+})
+
+test('pessoa ATIVA com papel entra normalmente', async () => {
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', {
+    ...opts,
+    estadoDaPessoa: async () => 'ativa',
+  })
+  assert.equal(id.email, 'ana@alloyal.com.br')
+})
+
+test('`inexistente` NÃO barra quem tem papel — trancar por escrita parcial seria pior', async () => {
+  // Papel sem registro de pessoa é anomalia (inserção manual, escrita parcial).
+  // Barrar aqui trancaria alguém para fora por um estado que ninguém pediu; a
+  // checagem de papel logo abaixo já recusa quem não tem papel.
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', {
+    ...opts,
+    estadoDaPessoa: async () => 'inexistente',
+  })
+  assert.equal(id.email, 'ana@alloyal.com.br')
+})
+
+test('sem o resolvedor de estado, nada muda — é o que mantém o resto da suíte válido', async () => {
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', opts)
+  assert.equal(id.email, 'ana@alloyal.com.br')
 })

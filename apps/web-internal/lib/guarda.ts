@@ -1,6 +1,7 @@
 import 'server-only'
 
 import {
+  AcessoSuspensoError,
   NaoAutenticadoError,
   SemPapelError,
   type Escopo,
@@ -57,6 +58,11 @@ export async function identidadeDaSessao(): Promise<Identidade> {
     // o 500 de verdade passa despercebido no meio.
     // Autenticada sem papel é 403, NÃO 401: devolver a tela de login a quem
     // acabou de entrar com o Google é um laço — sessão válida, tela de entrar.
+    // Suspenso e sem papel são 403 pelos mesmos motivos. A tela é a MESMA, e não
+    // distingue os dois: `forbidden()` do Next não carrega dado do erro. Por isso
+    // o texto dela cobre os três casos que chegam ali — sem papel, suspenso e sem
+    // permissão para a tela. Prometer distinção que não existe seria pior.
+    if (err instanceof AcessoSuspensoError) forbidden()
     if (err instanceof SemPapelError) forbidden()
     if (err instanceof NaoAutenticadoError) unauthorized()
     throw err
@@ -86,7 +92,12 @@ export async function autenticado(): Promise<boolean> {
   } catch (err) {
     // Sem papel também não ganha a casca: a sidebar lista as telas internas, e
     // quem não tem acesso não precisa saber quais são.
-    if (err instanceof SemPapelError || err instanceof NaoAutenticadoError) return false
+    if (
+      err instanceof AcessoSuspensoError ||
+      err instanceof SemPapelError ||
+      err instanceof NaoAutenticadoError
+    )
+      return false
     throw err
   }
 }

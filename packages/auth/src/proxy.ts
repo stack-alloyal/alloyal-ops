@@ -90,11 +90,43 @@ export class ConfiguracaoInsegura extends Error {
   }
 }
 
+/**
+ * Acesso SUSPENSO: a pessoa existe, tem papel, e alguém a desativou.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ POR QUE NÃO REAPROVEITAR `SemPapelError`:                                  │
+ * │                                                                            │
+ * │ Porque a mensagem decide o que a pessoa faz em seguida. "Você não tem       │
+ * │ papel" manda pedir acesso; "seu acesso está suspenso" manda perguntar por   │
+ * │ que — e são conversas diferentes, com pessoas diferentes.                   │
+ * │                                                                            │
+ * │ Classe IRMÃ e não subclasse, pela mesma razão de `SemPapelError`: um        │
+ * │ `catch (err instanceof SemPapelError)` escrito antes desta classe existir   │
+ * │ não deve engoli-la em silêncio.                                            │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ */
+export class AcessoSuspensoError extends Error {
+  readonly email: string
+  constructor(email: string) {
+    super(`Acesso suspenso: ${email} tem papel, mas está desativada`)
+    this.name = 'AcessoSuspensoError'
+    this.email = email
+  }
+}
+
+/** Como a pessoa está cadastrada. `inexistente` é diferente de `suspensa`. */
+export type EstadoDaPessoa = 'ativa' | 'suspensa' | 'inexistente'
+
 export interface OpcoesProxy {
   /** Domínio obrigatório do e-mail. Segunda barreira, além do proxy. */
   readonly dominio: string
   /** Resolve papéis a partir de `ops.user_role`. */
   readonly papeisDe: (email: string) => Promise<readonly string[]>
+  /**
+   * Resolve o estado em `ops.pessoa`. Opcional: sem ele, a suspensão não é
+   * checada — é o que mantém os testes antigos válidos sem reescrevê-los.
+   */
+  readonly estadoDaPessoa?: (email: string) => Promise<EstadoDaPessoa>
   /**
    * Prova primária. Comparada em tempo constante.
    *
@@ -202,6 +234,17 @@ export async function identidadeDaRequisicao(
 
   if (!email.endsWith(`@${opts.dominio}`)) {
     throw new NaoAutenticadoError(`domínio não autorizado: ${email}`)
+  }
+
+  // A suspensão vem ANTES dos papéis, e a ordem é a mensagem: quem está suspenso
+  // e tem papel deve ouvir "suspenso", não "sem papel".
+  //
+  // `inexistente` NÃO barra aqui. Ela cai na checagem de papel logo abaixo, que
+  // recusa quem não tem papel de qualquer forma — e quem tem papel sem registro
+  // de pessoa (escrita parcial, inserção manual) continua entrando em vez de
+  // ficar trancado para fora por um estado que ninguém pediu.
+  if (opts.estadoDaPessoa) {
+    if ((await opts.estadoDaPessoa(email)) === 'suspensa') throw new AcessoSuspensoError(email)
   }
 
   const papeis = (await opts.papeisDe(email)).filter(ehPapel)

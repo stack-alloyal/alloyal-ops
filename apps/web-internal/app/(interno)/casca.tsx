@@ -3,8 +3,13 @@ import { BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { nomeDaPessoa } from '@pulse/config'
+
 import { itemAtivo } from './menu'
 import { Nav } from './nav'
+import { Perfil } from './perfil'
+import { pool } from '../../lib/db'
+import { identidadeDaSessao } from '../../lib/guarda'
 
 /**
  * Sidebar e topbar — a casca do Publi, portada.
@@ -49,8 +54,16 @@ export function Casca({ children }: { children: ReactNode }) {
  * correto sem estado de cliente. O `proposito` não é enfeite — é a frase que
  * responde "o que esta tela decide", e telas de operação sem essa frase viram
  * painéis que ninguém sabe para que abre.
+ *
+ * O PERFIL é resolvido AQUI, e não passado por `acoes`. São 16 telas usando este
+ * componente: pedir a cada uma que monte o próprio perfil garantiria que alguma
+ * esquecesse, e o sintoma seria uma tela sem como sair.
+ *
+ * Por isso o componente é `async`: ele lê a identidade. Só renderiza em tela já
+ * autenticada — a página chamou `exigir` antes —, então a leitura não pode falhar
+ * por falta de sessão.
  */
-export function Topo({
+export async function Topo({
   href,
   titulo,
   proposito,
@@ -66,6 +79,8 @@ export function Topo({
 }) {
   const item = itemAtivo(href)
   const Icone = icone ?? item?.icone ?? BarChart3
+  const eu = await identidadeDaSessao()
+  const nome = await nomeDaPessoa(pool(), eu.email)
   return (
     <>
       <header className="sticky top-0 z-30 flex h-[62px] shrink-0 items-center gap-3 border-b border-line bg-surface px-4 md:px-7">
@@ -83,6 +98,7 @@ export function Topo({
         </div>
         <div className="flex-1" />
         {acoes}
+        <Perfil id={eu} nome={nome} />
       </header>
       {/* Menu horizontal no mobile, onde a sidebar não aparece. */}
       <Nav variante="topo" />

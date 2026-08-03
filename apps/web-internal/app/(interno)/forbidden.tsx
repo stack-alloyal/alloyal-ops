@@ -8,12 +8,18 @@ import Link from 'next/link'
  * "acesso negado" sem dizer o caminho devolve a pessoa ao ponto de partida, e é
  * o que faz alguém abrir um ticket para o time errado.
  *
- * Cobre DOIS casos, e o texto precisa servir aos dois:
+ * Cobre TRÊS casos, e o texto precisa servir aos três:
  *
  *   · autenticou e não tem papel nenhum — `SemPapelError`, quem nunca foi
  *     cadastrado. QUALQUER conta @alloyal.com.br chega até aqui, porque o
  *     oauth2-proxy filtra só por domínio; quem barra de fato é o papel.
- *   · tem papel, mas não este acesso — `exigir()` recusou a permissão.
+ *   · tem papel, mas o acesso está SUSPENSO — `AcessoSuspensoError`, alguém
+ *     desativou a pessoa em Configurações → Usuários. Os papéis continuam lá.
+ *   · tem papel ativo, mas não este acesso — `exigir()` recusou a permissão.
+ *
+ * `forbidden()` do Next não carrega dado do erro, então esta tela não sabe QUAL
+ * dos três aconteceu. O texto cobre os três em vez de adivinhar um — dizer "você
+ * não tem papel" a quem está suspenso manda a pessoa para a conversa errada.
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
  * │ A versão anterior mandava pedir inclusão num grupo `pulse-*` do Google      │
@@ -28,12 +34,16 @@ export default function SemPermissao() {
       <AlloyalLogo className="mb-6 h-7" />
       <Card title="Sem acesso a esta área">
         <p className="text-[13.5px] leading-relaxed text-ink-2">
-          Você entrou com a sua conta Alloyal, mas ela não tem papel que dê acesso a esta tela.
+          Você entrou com a sua conta Alloyal, mas ela não está com acesso a esta tela. Pode ser
+          que ainda não tenha papel, que o papel não cubra esta área, ou que o acesso esteja
+          suspenso.
         </p>
         <p className="mt-3 text-[13.5px] leading-relaxed text-ink-2">
-          Quem administra o Pulse concede o papel em{' '}
-          <strong className="font-semibold text-ink">Configurações → Papéis</strong>. Peça a
-          liberação dizendo qual tela você precisa usar — o papel certo depende disso.
+          Quem administra o Pulse resolve os três casos em{' '}
+          <strong className="font-semibold text-ink">Configurações</strong> — papel em{' '}
+          <strong className="font-semibold text-ink">Papéis</strong>, suspensão em{' '}
+          <strong className="font-semibold text-ink">Usuários</strong>. Peça dizendo qual tela
+          você precisa usar: o papel certo depende disso.
         </p>
         <Link
           href="/"
