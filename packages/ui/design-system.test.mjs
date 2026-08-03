@@ -72,6 +72,14 @@ function temExcecao(texto, indice) {
  * `type="hidden"` fica de fora: não tem aparência, e embrulhá-lo num rótulo seria
  * pior. `base.tsx` é a definição dos componentes — é onde os elementos crus devem
  * estar.
+ *
+ * A varredura ignora COMENTÁRIO, pelo mesmo motivo já registrado na regra de cor:
+ * um `<button>` citado em prosa não desenha botão nenhum. Sem isto, o arquivo que
+ * explica POR QUE o `<summary>` do menu de novidades não pode ser um `<Btn>` era
+ * acusado duas vezes — e o único jeito de passar seria parar de nomear o elemento
+ * de que o texto trata. Portão que obriga a escrever comentário pior está ensinando
+ * a coisa errada. Código comentado também deixa de acusar, e é o certo: ele não
+ * renderiza. O teste seguinte prova que a regra continua pegando código de verdade.
  */
 test('nenhuma tela usa elemento de formulário cru', () => {
   const COMPONENTE = { textarea: 'TextArea', select: 'Select', input: 'Field', button: 'Btn' }
@@ -79,8 +87,10 @@ test('nenhuma tela usa elemento de formulário cru', () => {
 
   for (const { caminho, texto } of ARQUIVOS) {
     if (caminho === relative(RAIZ, BASE)) continue
+    // `temExcecao` continua lendo o texto ORIGINAL: o marcador vive num comentário.
+    const codigo = semComentarios(texto)
     for (const [el, comp] of Object.entries(COMPONENTE)) {
-      for (const m of texto.matchAll(new RegExp(`<${el}\\b[^>]*`, 'gs'))) {
+      for (const m of codigo.matchAll(new RegExp(`<${el}\\b[^>]*`, 'gs'))) {
         if (el === 'input' && m[0].includes('type="hidden"')) continue
         if (temExcecao(texto, m.index)) continue
         const linha = texto.slice(0, m.index).split('\n').length
@@ -90,6 +100,22 @@ test('nenhuma tela usa elemento de formulário cru', () => {
   }
 
   assert.deepEqual(faltas, [], `\n${faltas.join('\n')}\n`)
+})
+
+test('a regra de elemento cru ainda pega botão em código, não só em comentário', () => {
+  // O par da asserção equivalente da regra de cor: ignorar comentário só é seguro
+  // enquanto o que sobra continua sendo varrido. Sem isto, um erro em
+  // `semComentarios` apagaria o arquivo inteiro e o portão passaria vazio.
+  const fingido = [
+    '// um <button> citado em prosa não desenha botão',
+    '/* nem <input> em bloco */',
+    "const x = <button className='a' />",
+    '<textarea rows={3} />',
+  ].join('\n')
+  const achados = [...semComentarios(fingido).matchAll(/<(button|input|textarea)\b/g)].map(
+    (m) => m[1],
+  )
+  assert.deepEqual(achados, ['button', 'textarea'])
 })
 
 /**

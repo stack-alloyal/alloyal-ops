@@ -8,6 +8,8 @@ import { nomeDaPessoa } from '@pulse/config'
 import { itemAtivo } from './menu'
 import { Nav } from './nav'
 import { Perfil } from './perfil'
+import { NovidadesDoRadar } from './radar/novidades'
+import { PainelDoRadar } from './radar/painel'
 import { pool } from '../../lib/db'
 import { identidadeDaSessao } from '../../lib/guarda'
 
@@ -98,6 +100,12 @@ export async function Topo({
         </div>
         <div className="flex-1" />
         {acoes}
+        {/* Radar: reportar (🐛) e novidades (✨). Ficam AQUI pelo mesmo motivo do
+            Perfil — são 16 telas, e pedir que cada uma monte os próprios garantiria
+            que alguma esquecesse. A tela onde a pessoa esbarra no defeito é
+            justamente a que não pode ser a esquecida. */}
+        <NovidadesDoRadar />
+        <PainelDoRadar />
         <Perfil id={eu} nome={nome} />
       </header>
       {/* Menu horizontal no mobile, onde a sidebar não aparece. */}

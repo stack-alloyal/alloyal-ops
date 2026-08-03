@@ -33,6 +33,14 @@ declare -A MINIMO=(
   [PULSE_CHAVE_MESTRA]=44
 )
 
+# Chaves internas OPCIONAIS: a integração pode estar desligada, e aí vazio é o
+# estado certo — o Pulse roda sem o Radar, só sem o 🐛 e o ✨ na topbar. Ligada, o
+# valor é gerado por NÓS, então vale o mesmo mínimo das outras internas. Vazio
+# passa; fraco, não.
+declare -A MINIMO_SE_PRESENTE=(
+  [RADAR_SERVICE_TOKEN]=32
+)
+
 # Chaves EXTERNAS: podem estar vazias legitimamente (esperando acesso de terceiro).
 # Vazio é estado declarado; placeholder é armadilha. A distinção é o ponto.
 EXTERNAS='REPLICA_URL|HUBSPOT_|CLEVERTAP_|OMIE_|EVOLUTION_|SMTP_URL|GOOGLE_'
@@ -52,6 +60,20 @@ for chave in "${!MINIMO[@]}"; do
     # A mensagem NÃO repete o valor: este script roda em CI, e log com segredo
     # dentro é vazamento — mesmo sendo um placeholder hoje.
     echo "✗ $chave é PLACEHOLDER — cifrado, mas é palavra de dicionário"
+    falhas=$((falhas + 1))
+  elif [ "${#valor}" -lt "$minimo" ]; then
+    echo "✗ $chave tem ${#valor} caracteres, mínimo $minimo"
+    falhas=$((falhas + 1))
+  fi
+done
+
+for chave in "${!MINIMO_SE_PRESENTE[@]}"; do
+  valor=$(sops -d --extract "[\"$chave\"]" "$ARQUIVO" 2>/dev/null || echo '')
+  [ -z "$valor" ] && continue
+  minimo=${MINIMO_SE_PRESENTE[$chave]}
+
+  if echo "$valor" | grep -qiE "$PLACEHOLDER"; then
+    echo "✗ $chave é PLACEHOLDER — deixe VAZIA para desligar a integração"
     falhas=$((falhas + 1))
   elif [ "${#valor}" -lt "$minimo" ]; then
     echo "✗ $chave tem ${#valor} caracteres, mínimo $minimo"

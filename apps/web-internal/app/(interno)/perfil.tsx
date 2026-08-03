@@ -54,13 +54,17 @@ export function Perfil({ id, nome }: { id: Identidade; nome: string | null }) {
   return (
     <details className="relative [&[open]>summary>svg]:rotate-180">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-purple-100">
+        {/* 36px (`h-9 w-9`) e iniciais em `text-xs`: a medida do `Avatar` do Publi,
+            que é a mesma dos controles de ícone da topbar. Estava em 30px, o que
+            deixava o perfil menor que os ícones ao lado — divergência que só
+            aparece com as duas topbars lado a lado. */}
         <span
-          className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-purple-50 text-[11.5px] font-semibold text-purple-700"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-purple-50 text-xs font-semibold text-purple-700"
           aria-hidden="true"
         >
           {iniciais(nome, id.email)}
         </span>
-        <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-ink sm:inline">
+        <span className="hidden max-w-[140px] truncate text-sm font-medium text-ink sm:inline">
           {tratamento(nome, id.email)}
         </span>
       </summary>
