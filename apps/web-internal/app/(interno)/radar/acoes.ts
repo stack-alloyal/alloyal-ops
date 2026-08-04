@@ -8,6 +8,7 @@ import {
   MAX_ANEXOS,
   MAX_DESCRICAO,
   MAX_TITULO,
+  urlDoRadar,
   type Demanda,
   type Novidade,
   type RespostaDoReport,
@@ -36,9 +37,11 @@ export async function novidadesDoRadar(): Promise<Novidade[]> {
   return listarNovidades()
 }
 
-export async function reportsDoRadar(): Promise<{ itens: Demanda[]; eu: string }> {
+export async function reportsDoRadar(): Promise<{ itens: Demanda[]; eu: string; radar: string }> {
   const eu = await identidadeDaSessao()
-  return { itens: await listarDemandas(), eu: eu.email }
+  // A base do Radar vai junto: o painel mostra o que está aguardando retorno, e
+  // responder é lá — sem o endereço, a pessoa descobre a pendência e não o caminho.
+  return { itens: await listarDemandas(), eu: eu.email, radar: urlDoRadar() }
 }
 
 export async function reportar(dados: FormData): Promise<RespostaDoReport> {

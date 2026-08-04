@@ -4,7 +4,8 @@ import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
 import { alternarAcesso, cadastrarPessoa } from '../acoes'
-import { Corpo, Topo } from '../../casca'
+import { Topo } from '../../casca'
+import { CorpoDeConfiguracao } from '../submenu'
 import { exigir } from '../../../../lib/guarda'
 import { pool } from '../../../../lib/db'
 
@@ -65,7 +66,7 @@ export default async function Usuarios({
           </Link>
         }
       />
-      <Corpo className="grid gap-5">
+      <CorpoDeConfiguracao atual="/configuracoes/usuarios">
         {q.erro && (
           <Aviso tom="erro" papel="alert">
             {q.erro}
@@ -194,7 +195,7 @@ export default async function Usuarios({
             {semNome.length > 0 && ` — e ${semNome.length} pessoa(s) hoje aparecem pelo e-mail, por falta de nome`}.
           </p>
         </Card>
-      </Corpo>
+      </CorpoDeConfiguracao>
     </>
   )
 }

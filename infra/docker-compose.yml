@@ -140,6 +140,11 @@ services:
       # recusa autenticar — e é assim que se quer que ela falhe.
       PULSE_PROXY_SECRET: ${PULSE_PROXY_SECRET:?defina no .env}
       AUTH_DOMINIO: ${AUTH_DOMINIO:-alloyal.com.br}
+      # Só para ENFILEIRAR o "rodar agora" da tela de Sincronização. Quem EXECUTA o
+      # ciclo é o worker — mesma fila, mesmo executor, mesmo registro em
+      # ops.cycle_run. Um ciclo com dois lugares de execução tem dois modos de
+      # falha, e o painel só enxerga um deles.
+      REDIS_URL: redis://:${REDIS_PULSE_PASSWORD:?defina no .env}@redis-pulse:6379
     # NENHUMA porta publicada. A identidade chega por cabeçalho, e cabeçalho é
     # falsificável por quem fala direto com a aplicação. Defesa em duas camadas:
     # sem porta exposta, e a aplicação só aceita o cabeçalho de identidade quando

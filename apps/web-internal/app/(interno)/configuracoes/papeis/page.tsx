@@ -5,7 +5,8 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 import { darPapel, tirarPapel } from '../acoes'
-import { Corpo, Topo } from '../../casca'
+import { Topo } from '../../casca'
+import { CorpoDeConfiguracao } from '../submenu'
 import { pool } from '../../../../lib/db'
 import { exigir } from '../../../../lib/guarda'
 
@@ -82,7 +83,7 @@ export default async function Acessos({
           </Link>
         }
       />
-      <Corpo className="grid gap-5">
+      <CorpoDeConfiguracao atual="/configuracoes/papeis">
         {q.erro && (
           <Aviso tom="erro" papel="alert">
             {q.erro}
@@ -243,7 +244,7 @@ export default async function Acessos({
             coluna “o que isso dá” da tabela de cima mostra o resultado e não os papéis.
           </p>
         </Card>
-      </Corpo>
+      </CorpoDeConfiguracao>
     </>
   )
 }

@@ -286,6 +286,7 @@ jobs:
           node --test packages/auth/dist/verificacao.test.js
           pnpm --filter @pulse/mail build && node --test packages/mail/dist/mailer.test.js
           pnpm --filter @pulse/config build && node --test packages/config/dist/core-lecupon.test.js
+          node --test packages/config/dist/sincronizacao.test.js
           pnpm --filter @pulse/contracts build && node --test packages/contracts/dist/contracts.test.js
           pnpm --filter @pulse/worker build
           node --test apps/worker/dist/cycle.test.js

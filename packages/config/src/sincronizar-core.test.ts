@@ -61,7 +61,18 @@ describe('de-para com o HubSpot', { skip: !ADMIN }, () => {
    */
   const limpar = async () => {
     await db.query("UPDATE core.account SET parent_account_id = NULL WHERE brand_id LIKE 'zzt-%'")
-    await db.query("DELETE FROM core.account WHERE brand_id LIKE 'zzt-%'")
+    // O gatilho da migration 0024 recusa DELETE em core.account. A saída é
+    // DECLARAR que este é banco descartável — e declarar é o ponto: o teste diz em
+    // voz alta que está apagando o que ele mesmo criou.
+    const c = await db.connect()
+    try {
+      await c.query('BEGIN')
+      await c.query("SET LOCAL pulse.banco_descartavel = 'sim'")
+      await c.query("DELETE FROM core.account WHERE brand_id LIKE 'zzt-%'")
+      await c.query('COMMIT')
+    } finally {
+      c.release()
+    }
   }
 
   test('vínculo NÃO ambíguo vai para a coluna única', async () => {
@@ -124,13 +135,39 @@ describe('de-para com o HubSpot', { skip: !ADMIN }, () => {
     assert.deepEqual(agora.rows.map((r) => r.modulo), ['cashback'], 'giftcard saiu')
   })
 
-  test('cliente ausente da carga NÃO é apagado nem desativado', async () => {
+  test('cliente ausente é INATIVADO, e nunca apagado', async () => {
     const depois = new Date(AGORA.getTime() + 172_800_000)
     const r = await sincronizarCadastro(db, [neg('zzt-1', { hubspot_company_id: 'hs-solo' })], depois, false)
     assert.ok(r.ausentes >= 1, 'os outros contam como ausentes')
+    assert.ok(r.inativados >= 1, 'e foram inativados')
     const { rows } = await db.query("SELECT ativo FROM core.account WHERE brand_id = 'zzt-4'")
-    assert.equal(rows.length, 1, 'continua existindo')
-    assert.equal(rows[0].ativo, true, 'e continua ativo — ausência não é desativação')
+    assert.equal(rows.length, 1, 'CONTINUA EXISTINDO — a linha não é apagada')
+    assert.equal(rows[0].ativo, false, 'e passou a inativa')
+  })
+
+  test('leitura PARCIAL não inativa ninguém', async () => {
+    // O caso que mais importa: ausente numa leitura truncada provavelmente só não
+    // foi lido. Inativar ali desligaria cliente que está no ar.
+    const t = new Date(AGORA.getTime() + 300_000_000)
+    await sincronizarCadastro(db, [neg('zzt-4')], t, false) // reativa o zzt-4
+    const antes = await db.query("SELECT ativo FROM core.account WHERE brand_id = 'zzt-4'")
+    assert.equal(antes.rows[0].ativo, true)
+
+    const t2 = new Date(t.getTime() + 60_000)
+    const r = await sincronizarCadastro(db, [neg('zzt-1')], t2, /* parcial */ true)
+    assert.ok(r.ausentes >= 1, 'ainda conta os ausentes')
+    assert.equal(r.inativados, 0, 'mas NÃO inativa nenhum')
+    const depois = await db.query("SELECT ativo FROM core.account WHERE brand_id = 'zzt-4'")
+    assert.equal(depois.rows[0].ativo, true, 'segue ativo')
+  })
+
+  test('o banco RECUSA apagar conta, com mensagem que ensina o caminho', async () => {
+    await assert.rejects(
+      db.query("DELETE FROM core.account WHERE brand_id = 'zzt-4'"),
+      /não aceita DELETE.*INATIVA/s,
+    )
+    const { rows } = await db.query("SELECT count(*)::int n FROM core.account WHERE brand_id = 'zzt-4'")
+    assert.equal(rows[0].n, 1, 'continua lá')
   })
 
   test('a hierarquia liga filial à matriz', async () => {

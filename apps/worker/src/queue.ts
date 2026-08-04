@@ -11,6 +11,7 @@ import type pg from 'pg'
 
 import type { Ciclo } from './cycle.js'
 import { todosOsCiclos } from './cycle.js'
+import { ehCasca } from './registro.js'
 import { executarCiclo, type Alarme, type DepsRunner } from './runner.js'
 
 export const FILA = 'ops-ciclos'
@@ -32,9 +33,32 @@ export interface DepsFila {
   readonly log?: (msg: string) => void
 }
 
-function agendaveis(): readonly Ciclo[] {
+/**
+ * Quais ciclos entram na agenda.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ CASCA NÃO SE AGENDA, e isto é correção de um defeito observado.             │
+ * │                                                                            │
+ * │ Antes, todo ciclo com `agenda` entrava — inclusive os declarados sem        │
+ * │ implementação. Eles lançam por desenho, então C1 e C5 falhavam a cada 15    │
+ * │ minutos: 96 falhas por dia cada, alarme disparado por algo que ninguém      │
+ * │ escreveu ainda, e o histórico da tela de Sincronização com 90% de ruído     │
+ * │ soterrando falha de verdade.                                               │
+ * │                                                                            │
+ * │ A detecção é a MESMA de `registrarDeclaracoes` (`ehCasca`), e é de           │
+ * │ propósito: duas regras para "este ciclo está implementado?" divergem, e a   │
+ * │ divergência apareceria como um ciclo marcado implementado na tela e não     │
+ * │ agendado no Redis.                                                         │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ */
+async function agendaveis(): Promise<readonly Ciclo[]> {
   // Ciclo de webhook não tem agenda: ele é acordado pela fonte.
-  return todosOsCiclos().filter((c) => c.agenda !== null)
+  const comAgenda = todosOsCiclos().filter((c) => c.agenda !== null)
+  const saida: Ciclo[] = []
+  for (const c of comAgenda) {
+    if (!(await ehCasca(c))) saida.push(c)
+  }
+  return saida
 }
 
 /**
@@ -49,7 +73,7 @@ export async function registrarAgendas(deps: DepsFila): Promise<Queue> {
   const fila = new Queue(FILA, { connection: deps.conexao })
 
   const declarados = new Set<string>()
-  for (const c of agendaveis()) {
+  for (const c of await agendaveis()) {
     declarados.add(c.id)
     await fila.upsertJobScheduler(
       c.id,

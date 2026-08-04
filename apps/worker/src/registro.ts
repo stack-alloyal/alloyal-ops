@@ -12,7 +12,18 @@ import { todosOsCiclos } from './cycle.js'
 /** Ciclo cuja implementação ainda é casca. */
 const MARCA_NAO_IMPLEMENTADO = 'declarado e não implementado'
 
-async function ehCasca(ciclo: { executar: (ctx: never) => unknown }): Promise<boolean> {
+/**
+ * O ciclo é casca?
+ *
+ * EXPORTADA para o agendador usar a MESMA regra. Ela estava privada, e o resultado
+ * apareceu na tela de Sincronização: `registrarDeclaracoes` marcava C1 e C5 como não
+ * implementados, e `registrarAgendas` os agendava de qualquer forma — os dois
+ * falhavam a cada 15 minutos, 96 vezes por dia cada um, e o histórico virou 90% de
+ * ruído que soterrava falha de verdade.
+ *
+ * Duas regras para a mesma pergunta divergem. Uma só, aqui.
+ */
+export async function ehCasca(ciclo: { executar: (ctx: never) => unknown }): Promise<boolean> {
   // A casca lança uma mensagem conhecida sem tocar em nada. Chamar é seguro e
   // é a única forma de saber, do lado de fora, se há implementação de verdade.
   try {

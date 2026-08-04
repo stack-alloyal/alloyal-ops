@@ -4,7 +4,8 @@ import { KeyRound, ShieldCheck, ScrollText, Users } from 'lucide-react'
 import Link from 'next/link'
 
 import { salvarAjuste } from './acoes'
-import { Corpo, Topo } from '../casca'
+import { Topo } from '../casca'
+import { CorpoDeConfiguracao } from './submenu'
 import { pool } from '../../../lib/db'
 import { exigir } from '../../../lib/guarda'
 
@@ -85,7 +86,7 @@ export default async function Configuracoes({
           </span>
         }
       />
-      <Corpo className="grid gap-5">
+      <CorpoDeConfiguracao atual="/configuracoes">
         {q.erro && (
           <Aviso tom="erro" papel="alert">
             {q.erro}
@@ -179,7 +180,7 @@ export default async function Configuracoes({
             </Card>
           )
         })}
-      </Corpo>
+      </CorpoDeConfiguracao>
     </>
   )
 }

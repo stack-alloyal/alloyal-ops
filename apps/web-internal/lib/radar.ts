@@ -37,7 +37,13 @@ const PRAZO_MS = 6000
 
 export type TipoDeReport = 'bug' | 'melhoria' | 'feature'
 export type Criticidade = 'baixa' | 'media' | 'alta' | 'urgente'
-export type StatusDaDemanda = 'aberto' | 'em_andamento' | 'realizado' | 'recusado'
+export type StatusDaDemanda =
+  | 'aberto'
+  | 'em_andamento'
+  /** Parada esperando uma definição de quem abriu — a bola está com ela. */
+  | 'aguardando_retorno'
+  | 'realizado'
+  | 'recusado'
 
 /** Os limites são os do Radar (`lib/demandas.ts` e `lib/anexos.ts` lá). */
 export const MAX_TITULO = 200
@@ -65,6 +71,9 @@ export interface Demanda {
   previsaoSolucao: string | null
   notaDeRelease: string | null
   detalheResolucao: string | null
+  /** O que o time aguarda de quem abriu, e a resposta já dada. */
+  pendencia: string | null
+  devolutiva: string | null
   createdAt: string
   updatedAt: string
 }
@@ -93,6 +102,16 @@ function configuracao(): { url: string; token: string } | null {
 
 export function radarConfigurado(): boolean {
   return configuracao() !== null
+}
+
+/**
+ * A base do Radar, para montar o link de uma demanda.
+ *
+ * O painel só LÊ o que está pendente; responder é lá — e sem o link a pessoa
+ * descobre que precisa responder e não descobre onde.
+ */
+export function urlDoRadar(): string {
+  return configuracao()?.url ?? RADAR_PADRAO
 }
 
 async function ler<T>(caminho: string, revalidar: number | false): Promise<T[]> {

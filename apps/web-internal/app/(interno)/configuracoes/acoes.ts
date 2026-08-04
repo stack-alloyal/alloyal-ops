@@ -207,3 +207,51 @@ export async function alternarAcesso(dados: FormData): Promise<void> {
     throw err
   }
 }
+
+/**
+ * Enfileira um ciclo para rodar agora.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ ENFILEIRA, e não executa. O ciclo roda no WORKER, que é onde ele já roda    │
+ * │ pela agenda — mesma fila, mesmo executor, mesmo registro em                 │
+ * │ `ops.cycle_run`. Executar aqui dentro criaria um segundo caminho: um ciclo   │
+ * │ com dois lugares de execução tem dois modos de falha, e o painel só enxerga  │
+ * │ um deles.                                                                  │
+ * │                                                                            │
+ * │ E a web-internal NÃO alcança o Postgres do worker com privilégio de escrita  │
+ * │ nas tabelas de fato — `pulse_api` não tem. Rodar aqui exigiria abrir isso.  │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * O `jobId` com o instante impede o BullMQ de deduplicar dois pedidos legítimos
+ * seguidos — sem ele, clicar duas vezes em cinco minutos enfileira uma vez só, e a
+ * segunda parece ter funcionado sem ter.
+ */
+export async function dispararCiclo(dados: FormData): Promise<void> {
+  await exigir((p) => p.configurar, 'sincronização')
+  const ciclo = String(dados.get('ciclo') ?? '').trim()
+  if (!/^C\d{1,3}$/.test(ciclo)) {
+    voltar('/configuracoes/sincronizacao', 'erro', `"${ciclo}" não é um id de ciclo.`)
+  }
+
+  const url = process.env['REDIS_URL']
+  if (!url) {
+    voltar(
+      '/configuracoes/sincronizacao',
+      'erro',
+      'REDIS_URL não está configurada nesta instância — sem fila, não há como pedir a carga.',
+    )
+  }
+
+  const { Queue } = await import('bullmq')
+  const fila = new Queue('ops-ciclos', { connection: { url } })
+  try {
+    await fila.add(ciclo, { ciclo }, { attempts: 1, removeOnComplete: 100, jobId: `manual-${ciclo}-${Date.now()}` })
+    voltar(
+      '/configuracoes/sincronizacao',
+      'ok',
+      `${ciclo} enfileirado. Ele roda no worker; recarregue em alguns segundos para ver o resultado.`,
+    )
+  } finally {
+    await fila.close()
+  }
+}

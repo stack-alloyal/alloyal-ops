@@ -20,6 +20,11 @@ export interface ResumoDaSincronizacao {
   readonly hierarquiaLigada: number
   readonly ausentes: number
   /**
+   * Quantos passaram a `ativo = false` por não vierem na carga. Zero numa leitura
+   * PARCIAL, sempre — ver o comentário na função.
+   */
+  readonly inativados: number
+  /**
    * Quantos negócios têm hubspot_company_id COMPARTILHADO com outro. Reportado, e
    * não escondido: é decisão humana se são dois programas sob um contrato ou id
    * colado errado, e daqui os dois casos são indistinguíveis.
@@ -201,41 +206,54 @@ export async function sincronizarCadastro(
     cliente.release()
   }
 
-  // ── Ausentes: contados, NUNCA apagados ─────────────────────────────────────
+  // ── Ausentes: INATIVADOS, nunca apagados ───────────────────────────────────
   //
   // ┌─────────────────────────────────────────────────────────────────────────┐
-  // │ Cliente que estava no Pulse e não veio na carga NÃO é apagado, e não é   │
-  // │ marcado como inativo. Três motivos, em ordem de probabilidade:           │
+  // │ A REGRA: cliente sai de circulação por `ativo = false`. DELETE é recusado │
+  // │ por gatilho (migration 0024), porque o histórico em fact.activity,       │
+  // │ fact.mrr_event, core.contract e metrics.daily_snapshot aponta para a      │
+  // │ linha.                                                                   │
   // │                                                                          │
-  // │  1. leitura PARCIAL — o teto de páginas cortou, e o ausente só não foi    │
-  // │     lido;                                                                │
-  // │  2. o escopo da credencial mudou, e o cliente saiu da visão sem sair da  │
-  // │     base;                                                                │
-  // │  3. o cliente foi de fato removido no core.                              │
+  // │ E SÓ INATIVA QUANDO A LEITURA FOI COMPLETA. Numa leitura PARCIAL o        │
+  // │ ausente provavelmente só não foi lido — inativar ali desligaria clientes  │
+  // │ que estão no ar por causa de um teto de paginação. O ciclo então CONTA e  │
+  // │ diz que não mexeu.                                                       │
   // │                                                                          │
-  // │ Só o terceiro justifica mexer, e os três são indistinguíveis daqui. Então │
-  // │ o ciclo REPORTA o número e deixa a decisão para quem sabe — que é o       │
-  // │ padrão de "recorte pequeno é suprimido e EXPLICADO, nunca omitido".      │
+  // │ Fica um caso que esta função não resolve: mudança de ESCOPO da credencial.│
+  // │ Se o escopo encolher, os clientes que saíram da visão são inativados como │
+  // │ se tivessem saído da base. É por isso que o número vai no resumo e no log │
+  // │ — inativação em massa é sinal de escopo, não de churn.                   │
   // └─────────────────────────────────────────────────────────────────────────┘
   const { rows: aus } = await db.query<{ n: string }>(
     `SELECT count(*)::text AS n
        FROM core.account
-      WHERE brand_id IS NOT NULL AND (sincronizado_em IS NULL OR sincronizado_em < $1)`,
+      WHERE brand_id IS NOT NULL
+        AND (sincronizado_em IS NULL OR sincronizado_em < $1)`,
     [agora],
   )
   const ausentes = Number(aus[0]?.n ?? 0)
-  if (hubspotAmbiguos > 0) {
-    log(
-      `${hubspotAmbiguos} negócio(s) compartilham hubspot_company_id com outro — o vínculo ` +
-        'foi gravado em core.account_hubspot e NÃO na coluna única. Ver a view ' +
-        'core.hubspot_ambiguo; raizes > 1 precisa de decisão humana.',
+  let inativados = 0
+
+  if (ausentes > 0 && !parcial) {
+    const r = await db.query(
+      `UPDATE core.account
+          SET ativo = false, atualizado_em = $1
+        WHERE brand_id IS NOT NULL
+          AND (sincronizado_em IS NULL OR sincronizado_em < $1)
+          AND ativo`,
+      [agora],
     )
-  }
-  if (ausentes > 0) {
+    inativados = r.rowCount ?? 0
     log(
-      `${ausentes} cliente(s) já gravados NÃO vieram nesta carga` +
-        (parcial ? ' — mas a leitura foi PARCIAL, então provavelmente só não foram lidos' : '') +
-        '. Nada foi apagado.',
+      `${ausentes} cliente(s) já gravados NÃO vieram nesta carga; ${inativados} passaram a ` +
+        'ativo = false. Nenhum foi apagado — DELETE é recusado por gatilho. ' +
+        'Número alto aqui é sinal de mudança de ESCOPO da credencial, não de churn.',
+    )
+  } else if (ausentes > 0) {
+    log(
+      `${ausentes} cliente(s) já gravados NÃO vieram nesta carga, mas a leitura foi ` +
+        'PARCIAL — NADA foi inativado. Ausente numa leitura truncada provavelmente só ' +
+        'não foi lido.',
     )
   }
 
@@ -251,6 +269,7 @@ export async function sincronizarCadastro(
     modulosGravados,
     hierarquiaLigada,
     ausentes,
+    inativados,
     hubspotAmbiguos,
   }
 }

@@ -28,6 +28,7 @@ const EMOJI_DO_TIPO: Record<string, string> = { bug: '🐛', melhoria: '⚡', fe
 const ROTULO_DO_STATUS: Record<string, string> = {
   aberto: 'Em aberto',
   em_andamento: 'Em andamento',
+  aguardando_retorno: 'Aguardando retorno',
   realizado: 'Realizado',
   recusado: 'Recusado',
 }
@@ -35,6 +36,9 @@ const ROTULO_DO_STATUS: Record<string, string> = {
 const TOM_DO_STATUS: Record<string, Tom> = {
   aberto: 'amber',
   em_andamento: 'blue',
+  // Roxo, o mesmo do Radar: a bola está com quem abriu, e isso tem que saltar no
+  // meio de uma lista de âmbares e azuis.
+  aguardando_retorno: 'indigo',
   realizado: 'green',
   recusado: 'slate',
 }
@@ -84,6 +88,7 @@ export function PainelDoRadar() {
 
   const [itens, setItens] = useState<Demanda[]>([])
   const [eu, setEu] = useState('')
+  const [radar, setRadar] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState('todos')
   const [filtroAutoria, setFiltroAutoria] = useState('todos')
@@ -150,6 +155,7 @@ export function PainelDoRadar() {
       .then((r) => {
         setItens(r.itens)
         setEu(r.eu)
+        setRadar(r.radar)
       })
       .finally(() => setCarregando(false))
   }, [])
@@ -372,6 +378,7 @@ export function PainelDoRadar() {
               <option value="todos">Status: todos</option>
               <option value="aberto">Em aberto</option>
               <option value="em_andamento">Em andamento</option>
+              <option value="aguardando_retorno">Aguardando retorno</option>
               <option value="realizado">Realizado</option>
               <option value="recusado">Recusado</option>
             </Select>
@@ -422,6 +429,26 @@ export function PainelDoRadar() {
                       {d.autor.split('@')[0]} · {dia(d.createdAt)}
                     </span>
                   </div>
+                  {/* Aguardando retorno é o único status que pede algo de volta —
+                      e por isso o único que mostra a pergunta aqui, com o caminho
+                      para respondê-la. Responder é no Radar: é lá que a devolutiva
+                      é escrita e que o histórico da demanda vive. */}
+                  {d.status === 'aguardando_retorno' && (
+                    <div className="mt-2 rounded-md bg-purple-50 px-2.5 py-2 text-[12px] leading-snug text-ink-2">
+                      <p className="font-medium text-purple-700">⏳ O time aguarda um retorno</p>
+                      {d.pendencia && <p className="mt-1 whitespace-pre-wrap">{d.pendencia}</p>}
+                      {radar && (
+                        <a
+                          href={`${radar}/demandas/${d.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block font-medium text-purple-700 hover:underline"
+                        >
+                          Responder no Radar →
+                        </a>
+                      )}
+                    </div>
+                  )}
                   {d.notaDeRelease && (
                     <p className="mt-2 rounded-md bg-green-50 px-2.5 py-1.5 text-[12px] leading-snug text-green">
                       ✨ {d.notaDeRelease}

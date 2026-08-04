@@ -57,6 +57,9 @@ importers:
       '@pulse/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      bullmq:
+        specifier: ^5.34.0
+        version: 5.81.2
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.8)

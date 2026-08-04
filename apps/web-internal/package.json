@@ -22,7 +22,8 @@
     "server-only": "^0.0.1",
     "@pulse/contratos": "workspace:*",
     "@pulse/config": "workspace:*",
-    "@pulse/mail": "workspace:*"
+    "@pulse/mail": "workspace:*",
+    "bullmq": "^5.34.0"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",
