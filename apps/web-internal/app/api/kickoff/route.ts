@@ -92,7 +92,17 @@ export async function GET(): Promise<Response> {
        FROM ops.kickoff_registro
       ORDER BY criado_em ASC`,
   )
-  return Response.json(agrupar(rows), {
+  // ┌───────────────────────────────────────────────────────────────────────────┐
+  // │ TODO MUNDO VÊ TUDO: não há filtro por área nem por autor nesta consulta, e   │
+  // │ é o ponto do documento — o kickoff é o levantamento da empresa, não o de     │
+  // │ cada time em separado.                                                      │
+  // │                                                                            │
+  // │ `eu` e `podeApagarTudo` viajam junto para o documento poder mostrar o botão  │
+  // │ de remover só onde ele vai funcionar. Sem isso a tela oferece "remover" em   │
+  // │ registro de outra área e entrega 404 depois do clique — o que parece defeito │
+  // │ e é a regra funcionando.                                                    │
+  // └───────────────────────────────────────────────────────────────────────────┘
+  return Response.json({ eu: r.quem.email, podeApagarTudo: r.quem.podeApagarTudo, ...agrupar(rows) }, {
     // A resposta depende de quem pediu (o campo `autor` decide o botão de remover),
     // e muda a cada registro. Cache compartilhado aqui serviria o preenchimento de
     // uma pessoa para outra.

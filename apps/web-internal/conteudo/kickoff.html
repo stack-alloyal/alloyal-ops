@@ -1026,6 +1026,8 @@ body.presenting .cons-tools{display:none}
         <button class="btn btn-ghost" type="button" id="expMd">Exportar Markdown</button>
         <button class="btn btn-ghost" type="button" id="impBtn">Importar JSON</button>
         <input type="file" id="impFile" accept="application/json,.json" hidden>
+        <button class="btn btn-ghost" type="button" id="reloadBtn">Atualizar</button>
+        <button class="btn btn-ghost" type="button" id="rescueBtn">Recuperar deste navegador</button>
         <span class="formnote" id="storeStatus"></span>
       </div>
 
@@ -1168,7 +1170,6 @@ body.presenting .cons-tools{display:none}
    CAMADA COLABORATIVA — persistência, render e exportação
    ============================================================ */
 (function(){
-  var KEY = 'squad_dados_registros_v1';
   var DB = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[] };
   var TEAMS = { comercial:'Comercial', financeiro:'Financeiro', operacoes:'Operações / CS', juridico:'Jurídico', todos:'Todas as áreas' };
   var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes'];
@@ -1193,6 +1194,17 @@ body.presenting .cons-tools{display:none}
   var API = '/api/kickoff'
   var LOCAL_CHAVE = 'squad_dados_rascunho_v2'
   var compartilhado = true   // vira false quando a API não responde
+
+  /* A chave da versão anterior, quando o preenchimento vivia SÓ no navegador. Ela é
+     lida uma vez para RESGATAR o que cada pessoa já havia digitado — sem isto, a
+     mudança para o depósito compartilhado apagaria da tela tudo o que os times
+     preencheram antes, o que para quem usa é indistinguível de perda de dado. */
+  var CHAVE_ANTIGA = 'squad_dados_registros_v1'
+  var MARCA_RESGATE = 'squad_dados_resgatado_v2'
+
+  var EU = ''                 // e-mail de quem está lendo, dito pela API
+  var PODE_APAGAR_TUDO = false
+  var enviando = 0            // POSTs em voo: a recarga automática espera por eles
 
   function guardarRascunho(){
     try{ window.localStorage.setItem(LOCAL_CHAVE, JSON.stringify(DB)) }catch(e){}
@@ -1299,18 +1311,81 @@ body.presenting .cons-tools{display:none}
     return out;
   }
 
-  function mensagemDeArmazenamento(){
-    if(compartilhado) return 'Compartilhado: todas as áreas veem o mesmo preenchimento.'
-    return 'A API não respondeu — o que você digitar fica NESTA aba e ainda não chegou às outras áreas.'
+  function doisDigitos(n){ return (n < 10 ? '0' : '') + n }
+  function horaAgora(){
+    var d = new Date()
+    return doisDigitos(d.getHours()) + ':' + doisDigitos(d.getMinutes())
   }
 
-  async function load(){
+  var vistoEm = ''
+  function mensagemDeArmazenamento(){
+    if(!compartilhado){
+      return 'A API não respondeu — o que você digitar fica NESTA aba e ainda não chegou às outras áreas.'
+    }
+    var total = KINDS.reduce(function(s,k){ return s + DB[k].length }, 0)
+    var areas = {}
+    KINDS.forEach(function(k){ DB[k].forEach(function(r){ if(r.time) areas[r.time] = 1 }) })
+    var n = Object.keys(areas).length
+    if(total === 0){
+      return 'Compartilhado: todas as áreas veem o mesmo preenchimento. Nada registrado ainda — o primeiro registro aparece para todos.'
+    }
+    return 'Compartilhado: todas as áreas veem o mesmo preenchimento · ' + total
+      + (total === 1 ? ' registro' : ' registros') + ' de ' + n + (n === 1 ? ' área' : ' áreas')
+      + ' · atualizado às ' + vistoEm
+  }
+
+  /**
+   * Traz o preenchimento do servidor.
+   *
+   * `silenciosa` é a recarga automática: ela não pode roubar o foco nem contar
+   * história diferente da manual, então só troca o dado e redesenha.
+   */
+  /**
+   * Um id de servidor é uuid; o gerado nesta aba por `uid()` não é.
+   *
+   * É assim que se sabe se um registro CHEGOU ao servidor, sem depender de comparar
+   * listas: quando o POST volta, o id local é substituído pelo do banco.
+   */
+  function ehUuid(id){
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id == null ? '' : id))
+  }
+  function naoEnviadosEm(obj){
+    var fora = []
+    if(!obj) return fora
+    KINDS.forEach(function(k){
+      obj[k].forEach(function(r){ if(!ehUuid(r.id)) fora.push({ kind:k, reg:r }) })
+    })
+    return fora
+  }
+
+  async function load(silenciosa){
     var status = document.getElementById('storeStatus')
     try{
-      var r = await fetch(API, { headers: { Accept: 'application/json' } })
+      var r = await fetch(API, { headers: { Accept: 'application/json' }, cache: 'no-store' })
       if(!r.ok) throw new Error('HTTP ' + r.status)
-      DB = normalize(await r.json())
+      var corpo = await r.json()
+      // Quem está lendo, dito pelo servidor. Nunca digitado, nunca deduzido do
+      // navegador: é o que decide de quem é cada registro.
+      if(typeof corpo.eu === 'string') EU = corpo.eu
+      PODE_APAGAR_TUDO = corpo.podeApagarTudo === true
+
+      // ┌─────────────────────────────────────────────────────────────────────────┐
+      // │ O QUE FOI DIGITADO E NÃO CHEGOU AO SERVIDOR NÃO PODE SAIR DA TELA.        │
+      // │                                                                          │
+      // │ Antes, a resposta do servidor substituía o rascunho inteiro. Quem digitou  │
+      // │ enquanto a API estava fora tinha o registro guardado na aba — e a primeira │
+      // │ carga bem-sucedida o apagava da tela E do rascunho, em silêncio. O mesmo   │
+      // │ defeito de sempre, um nível mais fundo: dado que existe e ninguém vê.     │
+      // │                                                                          │
+      // │ Agora ele volta para a lista, é reenviado por `resgatarLocal()`, e enquanto │
+      // │ não chega aparece marcado como pendente.                                  │
+      // └─────────────────────────────────────────────────────────────────────────┘
+      var pendentes = naoEnviadosEm(lerRascunho())
+      DB = normalize(corpo)
+      pendentes.forEach(function(p){ DB[p.kind].push(p.reg) })
+
       compartilhado = true
+      vistoEm = horaAgora()
       guardarRascunho()
     }catch(e){
       compartilhado = false
@@ -1320,6 +1395,88 @@ body.presenting .cons-tools{display:none}
       if(local) DB = local
     }
     if(status) status.textContent = mensagemDeArmazenamento()
+    if(silenciosa) render()
+  }
+
+  /* ---------- resgate do preenchimento antigo ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ POR QUE ISTO EXISTE: até a versão anterior o preenchimento vivia em         │
+     │ `localStorage`, POR NAVEGADOR. Ao passar para o depósito compartilhado, tudo │
+     │ o que os times já tinham digitado sumiu da tela — o dado continuava no       │
+     │ navegador de cada pessoa, invisível, porque ninguém mais lia aquela chave.   │
+     │                                                                            │
+     │ Aqui ele é enviado ao servidor UMA vez por navegador e passa a ser visto por │
+     │ todas as áreas. A marca de resgate impede o reenvio a cada carga, que        │
+     │ duplicaria o levantamento a cada F5.                                        │
+     │                                                                            │
+     │ A chave antiga NÃO é apagada: se o envio falhar no meio, o que sobrou ainda  │
+     │ está lá para uma próxima tentativa.                                        │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  async function resgatarLocal(forcado){
+    if(!compartilhado){
+      if(forcado) toast('A API não respondeu — tente de novo em instantes.')
+      return
+    }
+
+    var pendentes = []
+    var antigo = null   // o conteúdo da chave anterior, se houver
+
+    /* 1) A CHAVE DA VERSÃO ANTERIOR. Cada registro que chega é RISCADO dela na hora:
+          se o envio parar no meio — aba fechada, rede caindo — a próxima tentativa
+          manda só o que faltou, em vez de duplicar o que já subiu.
+
+          `forcado` ignora a marca: é o botão "Recuperar deste navegador", para quem
+          precisa conferir com os próprios olhos que nada ficou para trás. Forçar não
+          duplica, porque o que já subiu foi riscado da chave. */
+    try{
+      if(forcado || !window.localStorage.getItem(MARCA_RESGATE)){
+        var bruto = window.localStorage.getItem(CHAVE_ANTIGA)
+        if(bruto){
+          antigo = normalize(JSON.parse(bruto))
+          KINDS.forEach(function(k){
+            antigo[k].forEach(function(r){ pendentes.push({ kind:k, reg:r, antiga:true }) })
+          })
+        }else{
+          // Sem nada a resgatar: marca, para não reabrir a chave a cada carga.
+          window.localStorage.setItem(MARCA_RESGATE, '1')
+        }
+      }
+    }catch(e){}
+
+    /* 2) O QUE ESTÁ NA TELA E NÃO TEM ID DE SERVIDOR — digitado enquanto a API não
+          respondia, em qualquer momento. */
+    naoEnviadosEm(DB).forEach(function(p){ pendentes.push(p) })
+
+    if(!pendentes.length){
+      // No modo forçado o silêncio é a pior resposta: quem apertou o botão precisa
+      // saber que nada ficou guardado nesta máquina, e não ficar em dúvida.
+      if(forcado) toast('Nada guardado só neste navegador — tudo o que existe aqui já está no depósito comum.')
+      return
+    }
+
+    toast('Enviando ' + pendentes.length + ' registro(s) desta aba para as outras áreas…')
+    var ok = 0
+    // EM SÉRIE: um resgate não deve abrir dezenas de conexões de uma vez.
+    for(var i = 0; i < pendentes.length; i++){
+      var p = pendentes[i]
+      // O `time` pode faltar em registro antigo: sem área o servidor recusa, e
+      // "todas as áreas" é a leitura honesta de um registro sem dono declarado.
+      if(!p.reg.time) p.reg.time = myTeam() || 'todos'
+      if(!(await enviarRegistro(p.kind, p.reg, true))) continue
+      ok++
+      if(p.antiga && antigo){
+        antigo[p.kind] = antigo[p.kind].filter(function(x){ return x !== p.reg })
+        try{ window.localStorage.setItem(CHAVE_ANTIGA, JSON.stringify(antigo)) }catch(e){}
+      }
+    }
+    // A chave antiga só é dada por resgatada quando esvazia. Marcar antes deixaria
+    // registro para trás sem ninguém para reenviá-lo.
+    if(antigo && !KINDS.some(function(k){ return antigo[k].length })){
+      try{ window.localStorage.setItem(MARCA_RESGATE, '1') }catch(e){}
+    }
+    await load()
+    render()
+    toast(ok + ' de ' + pendentes.length + ' registro(s) agora visíveis para todas as áreas.')
   }
 
   /**
@@ -1329,8 +1486,9 @@ body.presenting .cons-tools{display:none}
    * removido se o servidor recusar. Esperar a ida e volta antes de mostrar faria a
    * pessoa clicar duas vezes numa conexão lenta.
    */
-  async function enviarRegistro(kind, registro){
+  async function enviarRegistro(kind, registro, quieto){
     guardarRascunho()
+    enviando++
     try{
       var r = await fetch(API, {
         method: 'POST',
@@ -1351,11 +1509,13 @@ body.presenting .cons-tools{display:none}
       return true
     }catch(e){
       compartilhado = false
-      toast('Não chegou às outras áreas: ' + e.message + '. Continua nesta aba.')
+      if(!quieto) toast('Não chegou às outras áreas: ' + e.message + '. Continua nesta aba.')
       var status = document.getElementById('storeStatus')
       if(status) status.textContent = mensagemDeArmazenamento()
       render()
       return false
+    }finally{
+      enviando--
     }
   }
 
@@ -1521,6 +1681,34 @@ body.presenting .cons-tools{display:none}
     return t ? '<span class="team ' + esc(t) + '">' + esc(TEAMS[t] || t) + '</span>' : '';
   }
 
+  /**
+   * Quem registrou. Aparece em TODO cartão, de propósito: numa tela em que as áreas
+   * veem o preenchimento uma da outra, "quem escreveu isto" é a diferença entre um
+   * levantamento que se pode conferir e uma lista anônima que ninguém confirma.
+   *
+   * Só a parte antes do @ — o domínio é o mesmo para todos e só ocuparia a linha.
+   */
+  function autoria(r){
+    if(!r.autor) return '<span class="rec-meta" style="opacity:.7">enviando…</span>'
+    return '<span class="rec-meta">por ' + esc(String(r.autor).split('@')[0]) + '</span>'
+  }
+
+  /**
+   * O botão de remover, e só quando ele vai funcionar: no próprio registro, ou para
+   * quem administra o Pulse.
+   *
+   * Mostrar em tudo entregaria 404 depois do clique — a regra funcionando com cara
+   * de defeito. Registro ainda sem `autor` é o otimista que acabou de ser digitado
+   * nesta aba: removível, senão um erro de digitação ficaria preso na tela.
+   */
+  function podeRemover(r){
+    return PODE_APAGAR_TUDO || !r.autor || r.autor === EU
+  }
+  function botaoRemover(kind, r){
+    if(!podeRemover(r)) return ''
+    return '<button class="btn-danger" data-del="' + kind + '" data-id="' + esc(r.id) + '">remover</button>'
+  }
+
   function cardDor(r){
     return '<div class="rec"><div class="rec-main">'
       + '<div class="rec-top">' + teamTag(r.time)
@@ -1529,7 +1717,8 @@ body.presenting .cons-tools{display:none}
       + '<div class="rec-title">' + esc(r.dor) + '</div>'
       + '<div class="rec-meta">Deveria estar em <b>' + esc(r.sistema) + '</b>'
       + (r.contorno ? ' · Hoje se contorna assim: ' + esc(r.contorno) : '') + '</div>'
-      + '</div><button class="btn-danger" data-del="dores" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('dores', r) + '</div>';
   }
 
   function cardDado(r){
@@ -1540,7 +1729,8 @@ body.presenting .cons-tools{display:none}
       + '<span class="pill">' + esc(r.fonte) + '</span></div>'
       + '<div class="rec-title">' + esc(r.campo) + '</div>'
       + (r.uso ? '<div class="rec-meta">' + esc(r.uso) + '</div>' : '')
-      + '</div><button class="btn-danger" data-del="dados" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('dados', r) + '</div>';
   }
 
   function cardPlanilha(r){
@@ -1559,7 +1749,8 @@ body.presenting .cons-tools{display:none}
       + '<div class="rec-meta">' + meta.join(' · ') + '</div>'
       + (r.quebra ? '<div class="rec-meta">Se parar: ' + esc(r.quebra) + '</div>' : '')
       + (url ? '<div class="rec-meta"><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(url) + '</a></div>' : '')
-      + '</div><button class="btn-danger" data-del="planilhas" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('planilhas', r) + '</div>';
   }
 
   function areaTag(a){
@@ -1578,7 +1769,8 @@ body.presenting .cons-tools{display:none}
       + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
       + (r.decisao ? '<div class="rec-meta" style="margin-top:6px">Sustenta a decisão: ' + esc(r.decisao) + '</div>' : '')
       + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Sugerido por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
-      + '</div><button class="btn-danger" data-del="metricas" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('metricas', r) + '</div>';
   }
 
   function cardJornada(r){
@@ -1590,7 +1782,8 @@ body.presenting .cons-tools{display:none}
       + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
       + (r.perde ? '<div class="rec-meta" style="margin-top:6px">' + esc(r.perde) + '</div>' : '')
       + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Apontado por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
-      + '</div><button class="btn-danger" data-del="jornadas" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('jornadas', r) + '</div>';
   }
 
   function cardAutomacao(r){
@@ -1603,7 +1796,8 @@ body.presenting .cons-tools{display:none}
       + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
       + (r.esperado ? '<div class="rec-meta" style="margin-top:6px">Deveria funcionar assim: ' + esc(r.esperado) + '</div>' : '')
       + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Proposto por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
-      + '</div><button class="btn-danger" data-del="automacoes" data-id="' + esc(r.id) + '">remover</button></div>';
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('automacoes', r) + '</div>';
   }
 
   var CARD = { dores:cardDor, dados:cardDado, planilhas:cardPlanilha,
@@ -1834,8 +2028,58 @@ body.presenting .cons-tools{display:none}
     toast(on ? 'Formulários ocultos — pronto para projetar.' : 'Formulários visíveis.');
   });
 
+  /* ---------- botão de atualizar ---------- */
+  var btnAtualizar = document.getElementById('reloadBtn')
+  if(btnAtualizar) btnAtualizar.addEventListener('click', async function(){
+    btnAtualizar.disabled = true
+    await load()
+    render()
+    btnAtualizar.disabled = false
+    toast(compartilhado ? 'Atualizado com o que as outras áreas registraram.' : 'A API não respondeu.')
+  })
+
+  /* ---------- resgate manual ----------
+     Existe para a pessoa poder CONFERIR, e não confiar na minha palavra: o botão varre
+     este navegador e diz em voz alta o que achou — inclusive quando não achou nada. */
+  var btnResgate = document.getElementById('rescueBtn')
+  if(btnResgate) btnResgate.addEventListener('click', async function(){
+    btnResgate.disabled = true
+    await load()
+    await resgatarLocal(true)
+    render()
+    btnResgate.disabled = false
+  })
+
+  /* ---------- recarga automática ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ SEM ISTO O DOCUMENTO PARECE NÃO SER COMPARTILHADO. O dado já era comum, mas  │
+     │ a tela só o buscava na carga: numa sessão ao vivo, Comercial registrava e     │
+     │ Operações continuava vendo a tela de antes até apertar F5 — exatamente o     │
+     │ sintoma de "uma área não vê a outra".                                       │
+     │                                                                            │
+     │ 20 s é o intervalo. Duas condições cancelam a rodada:                       │
+     │  • aba escondida — ninguém está olhando, e uma aba aberta por horas somaria  │
+     │    milhares de consultas inúteis ao banco;                                  │
+     │  • envio em voo — trocar o DB no meio de um POST apagaria da tela o registro │
+     │    otimista que ainda não voltou do servidor.                               │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  setInterval(function(){
+    if(document.hidden || enviando > 0) return
+    void load(true)
+  }, 20000)
+
+  // Voltar para a aba é o momento em que a pessoa quer ver o que mudou.
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && enviando === 0) void load(true)
+  })
+
   render();
-  load().then(render);
+  load().then(function(){
+    render()
+    // Depois da primeira carga: o que ficou preso na chave antiga deste navegador
+    // sobe para o depósito comum e passa a ser visto por todas as áreas.
+    void resgatarLocal()
+  });
 })();
 
 </script>
