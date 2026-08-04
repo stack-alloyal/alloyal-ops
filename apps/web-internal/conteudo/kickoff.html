@@ -1169,39 +1169,40 @@ body.presenting .cons-tools{display:none}
    ============================================================ */
 (function(){
   var KEY = 'squad_dados_registros_v1';
-  var MYTEAM_KEY = 'squad_dados_meu_time';
   var DB = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[] };
   var TEAMS = { comercial:'Comercial', financeiro:'Financeiro', operacoes:'Operações / CS', juridico:'Jurídico', todos:'Todas as áreas' };
   var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes'];
 
   /* ---------- onde os registros ficam ----------
-     Este documento nasceu como artefato do Claude, onde `window.storage` guarda
-     o preenchimento COMPARTILHADO entre pessoas. Servido pelo Pulse, esse objeto
-     não existe — e sem substituto o preenchimento sumiria a cada recarga, sem
-     aviso nenhum.
+     COMPARTILHADO, num endpoint do Pulse (`/api/kickoff`), gravando em
+     `ops.kickoff_registro`.
 
-     O substituto é o `localStorage`: o preenchimento sobrevive à recarga, mas
-     vive NO NAVEGADOR DE CADA PESSOA. Juntar as áreas é o fluxo que o próprio
-     documento já tem — cada um exporta o JSON, alguém importa tudo na tela
-     Consolidado. A mensagem em `#storeStatus` diz isso, em vez de prometer
-     compartilhamento que não existe. */
-  var LOCAL = {
-    get: function(k){
-      try{ var v = window.localStorage.getItem(k); return v == null ? null : { value:v }; }
-      catch(e){ return null; }
-    },
-    set: function(k, v){
-      try{ window.localStorage.setItem(k, v); return true; }
-      catch(e){ return false; }
-    }
-  };
-  var COMPARTILHADO = !!(window.storage && typeof window.storage.get === 'function');
-  var STORE = COMPARTILHADO ? window.storage : LOCAL;
-  var temStore = (function(){
-    if(COMPARTILHADO) return true;
-    try{ window.localStorage.setItem('__t','1'); window.localStorage.removeItem('__t'); return true; }
-    catch(e){ return false; }
-  })();
+     Este documento nasceu como artefato do Claude, onde `window.storage` guardava o
+     preenchimento compartilhado. Servido pelo Pulse, esse objeto não existe — e o
+     primeiro substituto foi `localStorage`, que é POR NAVEGADOR: cada área via só o
+     que ela mesma digitou, num documento cujo texto promete "o que os times já
+     registraram". Consolidar por exportar/importar JSON funcionava e não era o que a
+     tela dizia acontecer.
+
+     `localStorage` continua como REDE DE SEGURANÇA, e só isso: se a API não
+     responder, o que a pessoa digitou não se perde na aba, e o aviso diz que o
+     registro ainda não chegou às outras áreas. Nunca é a fonte — na carga, o que vem
+     da API substitui o que estava guardado.
+
+     O portão é o mesmo do documento: sessão do Google basta, papel não é exigido. */
+  var API = '/api/kickoff'
+  var LOCAL_CHAVE = 'squad_dados_rascunho_v2'
+  var compartilhado = true   // vira false quando a API não responde
+
+  function guardarRascunho(){
+    try{ window.localStorage.setItem(LOCAL_CHAVE, JSON.stringify(DB)) }catch(e){}
+  }
+  function lerRascunho(){
+    try{
+      var v = window.localStorage.getItem(LOCAL_CHAVE)
+      return v ? normalize(JSON.parse(v)) : null
+    }catch(e){ return null }
+  }
 
   function chips(name){
     var nodes = document.querySelectorAll('[data-chipset="' + name + '"] input:checked');
@@ -1299,36 +1300,84 @@ body.presenting .cons-tools{display:none}
   }
 
   function mensagemDeArmazenamento(){
-    if(COMPARTILHADO) return 'Salvo automaticamente e visível para todas as áreas.';
-    if(temStore) return 'Salvo neste navegador. Para juntar as áreas: cada pessoa exporta o JSON e alguém importa aqui.';
-    return 'Sem salvamento neste navegador — exporte o JSON antes de fechar a aba.';
+    if(compartilhado) return 'Compartilhado: todas as áreas veem o mesmo preenchimento.'
+    return 'A API não respondeu — o que você digitar fica NESTA aba e ainda não chegou às outras áreas.'
   }
 
   async function load(){
-    var status = document.getElementById('storeStatus');
-    if(status) status.textContent = mensagemDeArmazenamento();
-    if(!temStore) return;
+    var status = document.getElementById('storeStatus')
     try{
-      var r = await STORE.get(KEY, true);
-      if(r && r.value) DB = normalize(JSON.parse(r.value));
-    }catch(e){ /* nada gravado ainda */ }
-    try{
-      var t = await STORE.get(MYTEAM_KEY, false);
-      if(t && t.value){
-        var sel = document.getElementById('teamSel');
-        if(sel) sel.value = t.value;
-      }
-    }catch(e){ /* ainda não escolheu área */ }
+      var r = await fetch(API, { headers: { Accept: 'application/json' } })
+      if(!r.ok) throw new Error('HTTP ' + r.status)
+      DB = normalize(await r.json())
+      compartilhado = true
+      guardarRascunho()
+    }catch(e){
+      compartilhado = false
+      // Cai para o rascunho local. Não é a fonte — é o que impede a pessoa de
+      // perder o que digitou enquanto a API não volta.
+      var local = lerRascunho()
+      if(local) DB = local
+    }
+    if(status) status.textContent = mensagemDeArmazenamento()
   }
 
-  async function save(){
-    render();
-    if(!temStore) return;
+  /**
+   * Grava UM registro. Devolve true quando chegou ao servidor.
+   *
+   * Otimista de propósito: o registro aparece na tela antes da confirmação, e é
+   * removido se o servidor recusar. Esperar a ida e volta antes de mostrar faria a
+   * pessoa clicar duas vezes numa conexão lenta.
+   */
+  async function enviarRegistro(kind, registro){
+    guardarRascunho()
     try{
-      var ok = await STORE.set(KEY, JSON.stringify(DB), true);
-      if(ok === false) throw new Error('recusado');
+      var r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: kind, time: registro.time, dados: registro }),
+      })
+      if(!r.ok){
+        var corpo = await r.json().catch(function(){ return {} })
+        throw new Error(corpo.erro || ('HTTP ' + r.status))
+      }
+      var criado = await r.json()
+      // O id do banco substitui o do navegador: é ele que a remoção usa.
+      registro.id = criado.id
+      registro.autor = criado.autor
+      compartilhado = true
+      guardarRascunho()
+      render()
+      return true
     }catch(e){
-      toast('Não foi possível salvar. Exporte o JSON para não perder o preenchimento.');
+      compartilhado = false
+      toast('Não chegou às outras áreas: ' + e.message + '. Continua nesta aba.')
+      var status = document.getElementById('storeStatus')
+      if(status) status.textContent = mensagemDeArmazenamento()
+      render()
+      return false
+    }
+  }
+
+  async function removerRegistro(kind, id){
+    var antes = DB[kind]
+    DB[kind] = DB[kind].filter(function(r){ return r.id !== id })
+    guardarRascunho()
+    render()
+    try{
+      var r = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE' })
+      if(!r.ok){
+        var corpo = await r.json().catch(function(){ return {} })
+        throw new Error(corpo.erro || ('HTTP ' + r.status))
+      }
+      toast('Registro removido.')
+    }catch(e){
+      // Devolve à tela: apagar só aqui e não no servidor faria o registro
+      // reaparecer na próxima carga, o que parece defeito e é o contrário.
+      DB[kind] = antes
+      guardarRascunho()
+      render()
+      toast('Não foi possível remover: ' + e.message)
     }
   }
 
@@ -1339,10 +1388,14 @@ body.presenting .cons-tools{display:none}
   }
   var teamSel = document.getElementById('teamSel');
   if(teamSel){
-    teamSel.addEventListener('change', async function(){
-      if(temStore && teamSel.value){
-        try{ await STORE.set(MYTEAM_KEY, teamSel.value, false); }catch(e){}
-      }
+    // A área escolhida é preferência de QUEM preenche, não dado do kickoff: fica no
+    // navegador de propósito e não vai para o servidor.
+    try{
+      var salva = window.localStorage.getItem('squad_dados_meu_time');
+      if(salva) teamSel.value = salva;
+    }catch(e){}
+    teamSel.addEventListener('change', function(){
+      try{ window.localStorage.setItem('squad_dados_meu_time', teamSel.value); }catch(e){}
       if(teamSel.value) toast('Registros serão marcados como ' + TEAMS[teamSel.value] + '.');
     });
   }
@@ -1450,13 +1503,16 @@ body.presenting .cons-tools{display:none}
         if(status) status.textContent = 'O link precisa começar com https://';
         return;
       }
-      DB[kind].push(cfg.build());
+      var registro = cfg.build();
+      DB[kind].push(registro);
       clear(cfg.fields);
       if(cfg.chipset) clearChips(cfg.chipset);
       if(status) status.textContent = 'Registrado.';
       setTimeout(function(){ if(status && status.textContent === 'Registrado.') status.textContent=''; }, 2400);
-      save();
-      toast('Registro adicionado.');
+      render()
+      void enviarRegistro(kind, registro).then(function(ok){
+        if(ok) toast('Registro adicionado — visível para todas as áreas.')
+      })
     });
   });
 
@@ -1604,9 +1660,7 @@ body.presenting .cons-tools{display:none}
       okLabel:'Remover', danger:true
     }).then(function(sim){
       if(!sim) return;
-      DB[kind] = DB[kind].filter(function(r){ return r.id !== id; });
-      save();
-      toast('Registro removido.');
+      void removerRegistro(kind, id)
     });
   });
 
@@ -1754,8 +1808,20 @@ body.presenting .cons-tools{display:none}
         DB[k].push(r);
       });
     });
-    save();
-    toast(total + ' registro(s) importado(s).');
+    render()
+    toast(total + ' registro(s) importado(s) — enviando ao servidor…')
+    void (async function(){
+      var ok = 0, falhou = 0
+      for (var i = 0; i < KINDS.length; i++) {
+        for (var j = 0; j < DB[KINDS[i]].length; j++) {
+          var r = DB[KINDS[i]][j]
+          if(r.enviado) continue
+          if(!r.time) r.time = myTeam() || 'todos'
+          if(await enviarRegistro(KINDS[i], r)){ r.enviado = true; ok++ } else falhou++
+        }
+      }
+      toast(falhou === 0 ? ok + ' compartilhado(s).' : ok + ' enviado(s); ' + falhou + ' não chegaram.')
+    })()
     if(impFile) impFile.value = '';
   }
 
