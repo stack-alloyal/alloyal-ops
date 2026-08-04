@@ -35,9 +35,15 @@ Conferido em 04/08/2026 — HTTP 200 em `/businesses`. Ela devolve, por cliente:
 | `main_business_id` | hierarquia matriz ↔ filial |
 | `contact_email` | contato do cliente |
 
-Escopo conferido: 30 registros, **28 raízes de CNPJ distintas** — empresas não
+Escopo conferido: **28 raízes de CNPJ distintas** na primeira página — empresas não
 relacionadas, e não um grupo só. `Tenant-id` vai vazio, então o retorno é o escopo
 inteiro da credencial.
+
+⚠️ **CORREÇÃO de uma medição minha.** A primeira leitura dizia "30 registros" e
+concluía base pequena. Errado: a API devolve **30 por página e IGNORA `per_page`** —
+testado com 30, 100 e 200, sempre 30. O espelho do Allvoice tem **3.245 linhas**, o
+que dá **~108 páginas por carga cheia**. Isso invalida a frase "carga cheia
+aceitável em 30 clientes" que estava neste documento.
 
 ## Decisão proposta
 
@@ -100,10 +106,59 @@ réplica.** O que continua travado é o transacional.
    recorte deste `X-ClientEmployee`? Se for recorte, o Pulse precisa de credencial
    com escopo de plataforma — e essa é a pergunta a fazer a quem opera o core.
 2. **Carga incremental.** Não foi achado filtro por data de atualização em
-   `/businesses`. Sem ele, o ciclo é carga cheia — aceitável em 30 clientes,
-   caro em milhares.
+   `/businesses`, e a página é fixa em 30. Carga cheia = ~108 requisições. Isso
+   define a CADÊNCIA: é ciclo de uma ou duas vezes por dia, não de 15 minutos.
+   Se o core expuser filtro por `updated_at`, vale perguntar antes de aceitar
+   carga cheia como definitiva.
 3. **Credencial própria do Pulse.** Reaproveitar a do Allvoice acopla rotação dos
    dois, e é a mesma razão que fez o Pulse ter client OAuth próprio.
 4. **Limite de chamada.** O `access-validation.service.ts` do Allvoice tem
    `LECUPON_MAX_CHECKS_PER_MIN` (600) porque tratou isso como risco de DoS
    direcionado. O ciclo do Pulse precisa do mesmo respeito.
+
+
+## Adendo — dois crons ou um? (a pergunta original)
+
+**Hoje não existe cron nenhum.** Conferido em 04/08/2026: nada no crontab do
+usuário, nada no do root, nada em `/etc/cron.d`. O sync do Allvoice é
+`POST /sync-businesses` com `@Roles('admin')` — botão de tela. O espelho tem 3.245
+linhas e o último sync foi às 06:42 de hoje porque alguém clicou.
+
+Então a pergunta não é "dois crons ou um": é **quem ganha o primeiro**.
+
+### Decisão proposta: um cron, no Pulse. O Allvoice fica como está.
+
+**O Pulse tem O cron.** É a única ingestão agendada. ~108 páginas por carga cheia
+→ cadência diária, não de minutos.
+
+**O espelho do Allvoice continua o dele, e alimentado pelo botão dele.** Três
+razões, e nenhuma é preguiça:
+
+- **Não é a mesma forma de dado.** `alloyal_businesses` é por `tenantId`, carrega
+  `logoUrl` de um segundo endpoint (`/businesses/{id}/business_app`) e existe para
+  a busca de projeto do atendente e para o fan-out pai→filho. O Pulse não tem
+  conceito de tenant e não precisa de logo.
+- **O caminho crítico do Allvoice não usa o espelho.** A validação de acesso chama
+  a API AO VIVO. O espelho é conveniência de busca. Trocar a fonte dele não melhora
+  a decisão de acesso.
+- **Nenhum dos dois é autoritativo.** Os dois leem o mesmo dono. O custo da
+  duplicação aqui é CHAMADA DE API, não divergência de verdade — e o Allvoice
+  chama sob demanda, quando um admin pede.
+
+### O que NÃO fazer: o Allvoice ler o banco do Pulse
+
+O QA de 01/08 verificou e registrou que `postgres-pulse` só existe na `pulse-net`,
+inalcançável por contêiner de outro produto. Abrir esse banco para o Allvoice desfaz
+uma barreira que hoje protege dado de cliente — e por um ganho que é conveniência de
+busca, não correção de dado.
+
+Se um dia o Allvoice precisar de algo do Pulse, é por **API do Pulse**, não por
+banco. E só em caminho não crítico, para o Pulse cair sem derrubar o portão de
+acesso dele.
+
+### O único ponto de unificação que vale
+
+Quando o de-para de chaves existir no Pulse, o Allvoice pode ler
+`hubspot_company_id` de um endpoint do Pulse em vez de manter campo customizado
+próprio. É leitura, é enriquecimento, e não é o caminho do portão de acesso — então
+Pulse fora do ar degrada um campo, não bloqueia atendimento.
