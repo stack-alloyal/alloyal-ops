@@ -243,6 +243,8 @@ jobs:
           node --test packages/db/dist/papeis.test.js
           node --test packages/metrics/dist/gatilhos.test.js
           pnpm --filter @pulse/success build && node --test packages/success/dist/calibracao.test.js
+          pnpm --filter @pulse/config build
+          node --test --test-concurrency=1 packages/config/dist/sincronizar-core.test.js
           node --test packages/success/dist/idor.test.js
           pnpm --filter @pulse/config build
           node --test packages/config/dist/catalogo.test.js
@@ -283,6 +285,7 @@ jobs:
           node --test packages/auth/dist/cifra.test.js
           node --test packages/auth/dist/verificacao.test.js
           pnpm --filter @pulse/mail build && node --test packages/mail/dist/mailer.test.js
+          pnpm --filter @pulse/config build && node --test packages/config/dist/core-lecupon.test.js
           pnpm --filter @pulse/contracts build && node --test packages/contracts/dist/contracts.test.js
           pnpm --filter @pulse/worker build
           node --test apps/worker/dist/cycle.test.js

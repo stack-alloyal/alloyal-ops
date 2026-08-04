@@ -33,6 +33,8 @@ import { calcularBenchmark } from '@pulse/success'
 import { avaliarDatasContratuais } from '../contratual.js'
 import { consolidar } from '../consolidacao.js'
 import { avaliarFila } from '../fila.js'
+import { credencialDoAmbiente, lerNegocios, sincronizarCadastro } from '@pulse/config'
+
 import { defineCycle } from '../cycle.js'
 import { poolDoWorker } from '../db.js'
 
@@ -84,6 +86,72 @@ export const c1Transacoes = defineCycle({
   emFalha: { tentativas: 3, backoff: 'exponencial', alarmeApos: 2, degradacao: 'reprocessa' },
   fase: 'F1',
   executar: naoImplementado('C1'),
+})
+
+/**
+ * C18 — cadastro de cliente da API do core (Lecupon v3).
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ POR QUE UM CICLO NOVO, E NÃO O C2:                                         │
+ * │                                                                            │
+ * │ O C2 é `fonte: 'replica'` e continua sendo — ele trata base elegível e      │
+ * │ ativada a partir do banco. Este lê do CORE por API. Fontes diferentes têm   │
+ * │ disponibilidade, latência e modo de falha diferentes, e o painel de         │
+ * │ pipeline mostra por fonte: juntá-los faria "a réplica está atrasada" e "a   │
+ * │ API do core recusou a credencial" aparecerem como o mesmo problema.        │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ `metodo: 'full'` E NÃO `incremental_watermark` — não é escolha, é medição.  │
+ * │                                                                            │
+ * │ A API não tem filtro por data de atualização e a página é fixa em 30. Ler   │
+ * │ só o que mudou é impossível; o que o ciclo faz é ler tudo e GRAVAR só o que │
+ * │ mudou. Declarar `incremental_watermark` aqui seria mentir no contrato que   │
+ * │ alimenta o painel.                                                        │
+ * │                                                                            │
+ * │ ~3.245 clientes ÷ 30 por página = ~108 requisições por rodada. É isso que  │
+ * │ faz a agenda ser 02:00 diária: uma vez por dia, na madrugada.              │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Sem credencial configurada o ciclo NÃO falha: devolve zero e diz o motivo. Ciclo
+ * que quebra por falta de configuração enche o alarme de ruído previsível — é a
+ * mesma razão da trava anti-lockout do step-up de e-mail.
+ */
+export const c18CadastroDoCore = defineCycle({
+  id: 'C18',
+  descricao: 'Cadastro de cliente e configuração de programa (API do core)',
+  fonte: 'core',
+  metodo: 'full',
+  agenda: '0 2 * * *',
+  janela: 'estado_atual',
+  chaveNatural: ['brand_id'],
+  emFalha: { tentativas: 3, backoff: 'exponencial', alarmeApos: 2, degradacao: 'snapshot_parcial' },
+  fase: 'F1',
+  executar: async (ctx) => {
+    const cred = credencialDoAmbiente(process.env)
+    if (!cred) {
+      ctx.log('sem LECUPON_CLIENT_EMPLOYEE_TOKEN/EMAIL — ciclo inerte, nada lido')
+      return { linhasLidas: 0, linhasGravadas: 0, detalhe: { motivo: 'sem_credencial' } }
+    }
+
+    const { negocios, paginas, parcial } = await lerNegocios(cred, { log: ctx.log })
+    ctx.log(`${negocios.length} cliente(s) em ${paginas} página(s)${parcial ? ' — PARCIAL' : ''}`)
+
+    const r = await sincronizarCadastro(poolDoWorker(), negocios, ctx.agora, parcial, ctx.log)
+    ctx.log(
+      `criados ${r.criados} · atualizados ${r.atualizados} · inalterados ${r.inalterados} · ` +
+        `módulos ${r.modulosGravados} · hierarquia ${r.hierarquiaLigada} · ` +
+        `com hubspot_company_id ${r.comHubspot} · sem CNPJ ${r.semCnpj}`,
+    )
+
+    return {
+      linhasLidas: r.lidos,
+      linhasGravadas: r.criados + r.atualizados,
+      // Sem `novoWatermark`: não há de onde tirar um. A ausência é o registro
+      // honesto de que este ciclo é carga cheia.
+      detalhe: { ...r, paginas, parcial },
+    }
+  },
 })
 
 export const c2BaseElegivel = defineCycle({

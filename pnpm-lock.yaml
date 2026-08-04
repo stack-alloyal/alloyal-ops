@@ -152,6 +152,9 @@ importers:
       '@pulse/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@pulse/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@pulse/contratos':
         specifier: workspace:*
         version: link:../../packages/contratos
@@ -196,6 +199,9 @@ importers:
         specifier: ^8.13.0
         version: 8.22.0
     devDependencies:
+      '@pulse/db':
+        specifier: workspace:*
+        version: link:../db
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1

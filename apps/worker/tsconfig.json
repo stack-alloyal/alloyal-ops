@@ -19,6 +19,9 @@
     },
     {
       "path": "../../packages/contratos"
+    },
+    {
+      "path": "../../packages/config"
     }
   ],
   "include": [
