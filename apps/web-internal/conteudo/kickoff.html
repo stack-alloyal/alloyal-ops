@@ -1063,7 +1063,7 @@ body.presenting .cons-tools{display:none}
         <button class="btn btn-ghost" type="button" id="impBtn">Importar JSON</button>
         <input type="file" id="impFile" accept="application/json,.json" hidden>
         <button class="btn btn-ghost" type="button" id="reloadBtn">Atualizar</button>
-        <button class="btn btn-ghost" type="button" id="rescueBtn">Recuperar deste navegador</button>
+        <button class="btn btn-ghost" type="button" id="rescueBtn">Enviar o que ficou em navegador antigo</button>
         <span class="formnote" id="storeStatus"></span>
       </div>
 
@@ -1249,48 +1249,41 @@ body.presenting .cons-tools{display:none}
   var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes','roadmap'];
 
   /* ---------- onde os registros ficam ----------
-     COMPARTILHADO, num endpoint do Pulse (`/api/kickoff`), gravando em
-     `ops.kickoff_registro`.
-
-     Este documento nasceu como artefato do Claude, onde `window.storage` guardava o
-     preenchimento compartilhado. Servido pelo Pulse, esse objeto não existe — e o
-     primeiro substituto foi `localStorage`, que é POR NAVEGADOR: cada área via só o
-     que ela mesma digitou, num documento cujo texto promete "o que os times já
-     registraram". Consolidar por exportar/importar JSON funcionava e não era o que a
-     tela dizia acontecer.
-
-     `localStorage` continua como REDE DE SEGURANÇA, e só isso: se a API não
-     responder, o que a pessoa digitou não se perde na aba, e o aviso diz que o
-     registro ainda não chegou às outras áreas. Nunca é a fonte — na carga, o que vem
-     da API substitui o que estava guardado.
-
-     O portão é o mesmo do documento: sessão do Google basta, papel não é exigido. */
-  var API = '/api/kickoff'
-  var LOCAL_CHAVE = 'squad_dados_rascunho_v2'
-  var compartilhado = true   // vira false quando a API não responde
-
-  /* A chave da versão anterior, quando o preenchimento vivia SÓ no navegador. Ela é
-     lida uma vez para RESGATAR o que cada pessoa já havia digitado — sem isto, a
-     mudança para o depósito compartilhado apagaria da tela tudo o que os times
-     preencheram antes, o que para quem usa é indistinguível de perda de dado. */
-  var CHAVE_ANTIGA = 'squad_dados_registros_v1'
-  var MARCA_RESGATE = 'squad_dados_resgatado_v2'
-
-  /* ┌───────────────────────────────────────────────────────────────────────────┐
-     │ A SOMBRA: cópia que NUNCA ENCOLHE por conta da resposta do servidor.        │
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ 100% NO BANCO. Nada do kickoff é guardado neste navegador — nem rascunho,    │
+     │ nem cópia de segurança, nem a área selecionada.                             │
      │                                                                            │
-     │ Existe por um caso real. Em 05/08/2026 o depósito compartilhado perdeu 17    │
-     │ registros que o time havia acabado de preencher — foram apagados por um      │
-     │ DELETE sem filtro que eu rodei contra a produção. A partir daí, cada carga    │
-     │ bem-sucedida apagava também a cópia local, porque o rascunho era substituído  │
-     │ pelo que o servidor mandava. Duas perdas independentes viraram uma só.       │
+     │ A história explica a regra. O documento nasceu como artefato do Claude, onde  │
+     │ `window.storage` guardava o preenchimento; servido pelo Pulse esse objeto não │
+     │ existe, e o substituto foi `localStorage`. Consequências, todas reais:        │
      │                                                                            │
-     │ A sombra não é desenhada em tela nenhuma e não muda o que aparece: ela só    │
-     │ alimenta o botão "Recuperar deste navegador". Registro que a pessoa inativa   │
-     │ de propósito SAI da sombra — senão o botão ressuscitaria o que ela removeu.  │
+     │  · cada área via só o que ela mesma digitou, numa tela que promete "o que os │
+     │    times já registraram";                                                   │
+     │  · o preenchimento de Operações ficou semanas invisível, inclusive para quem │
+     │    o digitou, porque nunca saiu da máquina dele;                            │
+     │  · quando virou cópia de segurança, cada carga bem-sucedida a sobrescrevia — │
+     │    então no dia em que o servidor perdeu os registros, a cópia foi embora    │
+     │    junto. Duas perdas independentes viraram uma só.                         │
+     │                                                                            │
+     │ A troca é deliberada: SEM cópia local, a proteção contra perder o que se     │
+     │ digitou passa a ser o servidor confirmar ANTES de a tela limpar o formulário. │
+     │ Se a API não responder, o texto continua nos campos e o erro é dito. Isso    │
+     │ protege melhor que um rascunho invisível, porque a pessoa VÊ que não salvou.  │
+     │                                                                            │
+     │ O portão é o mesmo do documento: sessão do Google basta, papel não é exigido. │
      └───────────────────────────────────────────────────────────────────────────┘ */
-  var CHAVE_SOMBRA = 'squad_dados_sombra_v1'
-  var TETO_SOMBRA = 600   // registro é pequeno; o teto existe só para não estourar a cota
+  var API = '/api/kickoff'
+
+  /* A chave da versão anterior, de quando o preenchimento vivia só no navegador. É
+     LIDA para drenar o que ficou preso em alguma máquina, e apagada quando chega ao
+     banco. Nunca escrita com dado novo. */
+  var CHAVE_ANTIGA = 'squad_dados_registros_v1'
+
+  var EU = ''                 // e-mail de quem está lendo, dito pela API
+  var PODE_APAGAR_TUDO = false
+  var MINHA_AREA = ''         // vem do banco (migration 0028), não do navegador
+  var noAr = true             // a API respondeu na última tentativa
+  var enviando = 0            // POSTs em voo: a recarga automática espera por eles
 
   /** Identidade pelo CONTEÚDO: id, autor e data mudam a cada envio, o conteúdo não. */
   function chaveDeConteudo(kind, r){
@@ -1298,57 +1291,6 @@ body.presenting .cons-tools{display:none}
       return k !== 'id' && k !== 'autor' && k !== 'em'
     }).sort()
     return kind + '|' + campos.map(function(k){ return k + '=' + String(r[k]) }).join('\u0001')
-  }
-  function lerSombra(){
-    try{
-      var v = window.localStorage.getItem(CHAVE_SOMBRA)
-      return v ? normalize(JSON.parse(v)) : null
-    }catch(e){ return null }
-  }
-  /** União: acrescenta o que está na tela e não estava guardado. Nunca remove. */
-  function guardarSombra(){
-    var som = lerSombra() || { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] }
-    var vistos = {}
-    var total = 0
-    KINDS.forEach(function(k){
-      som[k].forEach(function(r){ vistos[chaveDeConteudo(k, r)] = 1; total++ })
-    })
-    var mudou = false
-    KINDS.forEach(function(k){
-      DB[k].forEach(function(r){
-        var c = chaveDeConteudo(k, r)
-        if(vistos[c] || total >= TETO_SOMBRA) return
-        som[k].push(r); vistos[c] = 1; total++; mudou = true
-      })
-    })
-    if(mudou){
-      try{ window.localStorage.setItem(CHAVE_SOMBRA, JSON.stringify(som)) }catch(e){}
-    }
-  }
-  /** Tira da sombra o que foi inativado de propósito. */
-  function esquecerNaSombra(kind, r){
-    var som = lerSombra()
-    if(!som) return
-    var c = chaveDeConteudo(kind, r)
-    var antes = som[kind].length
-    som[kind] = som[kind].filter(function(x){ return chaveDeConteudo(kind, x) !== c })
-    if(som[kind].length !== antes){
-      try{ window.localStorage.setItem(CHAVE_SOMBRA, JSON.stringify(som)) }catch(e){}
-    }
-  }
-
-  var EU = ''                 // e-mail de quem está lendo, dito pela API
-  var PODE_APAGAR_TUDO = false
-  var enviando = 0            // POSTs em voo: a recarga automática espera por eles
-
-  function guardarRascunho(){
-    try{ window.localStorage.setItem(LOCAL_CHAVE, JSON.stringify(DB)) }catch(e){}
-  }
-  function lerRascunho(){
-    try{
-      var v = window.localStorage.getItem(LOCAL_CHAVE)
-      return v ? normalize(JSON.parse(v)) : null
-    }catch(e){ return null }
   }
 
   function chips(name){
@@ -1454,198 +1396,68 @@ body.presenting .cons-tools{display:none}
 
   var vistoEm = ''
   function mensagemDeArmazenamento(){
-    if(!compartilhado){
-      return 'A API não respondeu — o que você digitar fica NESTA aba e ainda não chegou às outras áreas.'
+    if(!noAr){
+      return 'A API NÃO RESPONDEU. A tela pode estar desatualizada, e nada que você digitar será salvo até ela voltar — o texto fica nos campos.'
     }
     var total = KINDS.reduce(function(s,k){ return s + DB[k].length }, 0)
     var areas = {}
     KINDS.forEach(function(k){ DB[k].forEach(function(r){ if(r.time) areas[r.time] = 1 }) })
     var n = Object.keys(areas).length
     if(total === 0){
-      return 'Compartilhado: todas as áreas veem o mesmo preenchimento. Nada registrado ainda — o primeiro registro aparece para todos.'
+      return 'Tudo no banco, compartilhado: todas as áreas veem o mesmo preenchimento. Nada registrado ainda.'
     }
-    return 'Compartilhado: todas as áreas veem o mesmo preenchimento · ' + total
+    return 'Tudo no banco, compartilhado · ' + total
       + (total === 1 ? ' registro' : ' registros') + ' de ' + n + (n === 1 ? ' área' : ' áreas')
       + ' · atualizado às ' + vistoEm
   }
 
   /**
-   * Traz o preenchimento do servidor.
+   * Traz o preenchimento do servidor. É a ÚNICA origem do que aparece na tela.
    *
-   * `silenciosa` é a recarga automática: ela não pode roubar o foco nem contar
-   * história diferente da manual, então só troca o dado e redesenha.
-   */
-  /**
-   * Um id de servidor é uuid; o gerado nesta aba por `uid()` não é.
+   * Quando a API falha, a tela NÃO cai para cópia local — não existe cópia local. Ela
+   * mantém o que já estava desenhado e diz que pode estar velha. Inventar uma segunda
+   * origem foi o que fez uma área não ver a outra, e depois fez a cópia de segurança
+   * morrer junto com o servidor.
    *
-   * É assim que se sabe se um registro CHEGOU ao servidor, sem depender de comparar
-   * listas: quando o POST volta, o id local é substituído pelo do banco.
+   * `silenciosa` é a recarga automática: só troca o dado e redesenha.
    */
-  function ehUuid(id){
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id == null ? '' : id))
-  }
-  function naoEnviadosEm(obj){
-    var fora = []
-    if(!obj) return fora
-    KINDS.forEach(function(k){
-      obj[k].forEach(function(r){ if(!ehUuid(r.id)) fora.push({ kind:k, reg:r }) })
-    })
-    return fora
-  }
-
   async function load(silenciosa){
     var status = document.getElementById('storeStatus')
     try{
       var r = await fetch(API, { headers: { Accept: 'application/json' }, cache: 'no-store' })
       if(!r.ok) throw new Error('HTTP ' + r.status)
       var corpo = await r.json()
-      // Quem está lendo, dito pelo servidor. Nunca digitado, nunca deduzido do
-      // navegador: é o que decide de quem é cada registro.
+      // Quem está lendo e em nome de que área registra: as duas coisas ditas pelo
+      // SERVIDOR. Nunca digitadas, nunca deduzidas do navegador.
       if(typeof corpo.eu === 'string') EU = corpo.eu
       PODE_APAGAR_TUDO = corpo.podeApagarTudo === true
-
-      // ┌─────────────────────────────────────────────────────────────────────────┐
-      // │ O QUE FOI DIGITADO E NÃO CHEGOU AO SERVIDOR NÃO PODE SAIR DA TELA.        │
-      // │                                                                          │
-      // │ Antes, a resposta do servidor substituía o rascunho inteiro. Quem digitou  │
-      // │ enquanto a API estava fora tinha o registro guardado na aba — e a primeira │
-      // │ carga bem-sucedida o apagava da tela E do rascunho, em silêncio. O mesmo   │
-      // │ defeito de sempre, um nível mais fundo: dado que existe e ninguém vê.     │
-      // │                                                                          │
-      // │ Agora ele volta para a lista, é reenviado por `resgatarLocal()`, e enquanto │
-      // │ não chega aparece marcado como pendente.                                  │
-      // └─────────────────────────────────────────────────────────────────────────┘
-      var pendentes = naoEnviadosEm(lerRascunho())
+      if(typeof corpo.minhaArea === 'string') MINHA_AREA = corpo.minhaArea
+      aplicarArea()
       DB = normalize(corpo)
-      pendentes.forEach(function(p){ DB[p.kind].push(p.reg) })
-
-      compartilhado = true
+      noAr = true
       vistoEm = horaAgora()
-      guardarRascunho()
-      guardarSombra()
     }catch(e){
-      compartilhado = false
-      // Cai para o rascunho local. Não é a fonte — é o que impede a pessoa de
-      // perder o que digitou enquanto a API não volta.
-      var local = lerRascunho()
-      if(local) DB = local
+      noAr = false
     }
     if(status) status.textContent = mensagemDeArmazenamento()
     if(silenciosa) render()
   }
 
-  /* ---------- resgate do preenchimento antigo ----------
-     ┌───────────────────────────────────────────────────────────────────────────┐
-     │ POR QUE ISTO EXISTE: até a versão anterior o preenchimento vivia em         │
-     │ `localStorage`, POR NAVEGADOR. Ao passar para o depósito compartilhado, tudo │
-     │ o que os times já tinham digitado sumiu da tela — o dado continuava no       │
-     │ navegador de cada pessoa, invisível, porque ninguém mais lia aquela chave.   │
-     │                                                                            │
-     │ Aqui ele é enviado ao servidor UMA vez por navegador e passa a ser visto por │
-     │ todas as áreas. A marca de resgate impede o reenvio a cada carga, que        │
-     │ duplicaria o levantamento a cada F5.                                        │
-     │                                                                            │
-     │ A chave antiga NÃO é apagada: se o envio falhar no meio, o que sobrou ainda  │
-     │ está lá para uma próxima tentativa.                                        │
-     └───────────────────────────────────────────────────────────────────────────┘ */
-  async function resgatarLocal(forcado){
-    if(!compartilhado){
-      if(forcado) toast('A API não respondeu — tente de novo em instantes.')
-      return
-    }
-
-    var pendentes = []
-    var antigo = null   // o conteúdo da chave anterior, se houver
-
-    /* 1) A CHAVE DA VERSÃO ANTERIOR. Cada registro que chega é RISCADO dela na hora:
-          se o envio parar no meio — aba fechada, rede caindo — a próxima tentativa
-          manda só o que faltou, em vez de duplicar o que já subiu.
-
-          `forcado` ignora a marca: é o botão "Recuperar deste navegador", para quem
-          precisa conferir com os próprios olhos que nada ficou para trás. Forçar não
-          duplica, porque o que já subiu foi riscado da chave. */
-    try{
-      if(forcado || !window.localStorage.getItem(MARCA_RESGATE)){
-        var bruto = window.localStorage.getItem(CHAVE_ANTIGA)
-        if(bruto){
-          antigo = normalize(JSON.parse(bruto))
-          KINDS.forEach(function(k){
-            antigo[k].forEach(function(r){ pendentes.push({ kind:k, reg:r, antiga:true }) })
-          })
-        }else{
-          // Sem nada a resgatar: marca, para não reabrir a chave a cada carga.
-          window.localStorage.setItem(MARCA_RESGATE, '1')
-        }
-      }
-    }catch(e){}
-
-    /* 2) O QUE ESTÁ NA TELA E NÃO TEM ID DE SERVIDOR — digitado enquanto a API não
-          respondia, em qualquer momento. */
-    naoEnviadosEm(DB).forEach(function(p){ pendentes.push(p) })
-
-    /* 3) O QUE A SOMBRA TEM E O SERVIDOR NÃO — registro que desapareceu do depósito
-          comum sem ninguém ter inativado. É a fonte que teria evitado a perda de
-          05/08/2026 sem precisar ler bytes de WAL. */
-    var som = lerSombra()
-    if(som){
-      var noServidor = {}
-      KINDS.forEach(function(k){
-        DB[k].forEach(function(r){ noServidor[chaveDeConteudo(k, r)] = 1 })
-      })
-      KINDS.forEach(function(k){
-        som[k].forEach(function(r){
-          if(!noServidor[chaveDeConteudo(k, r)]){
-            // Sem id de servidor: vai como registro novo, e recebe id novo ao chegar.
-            var copia = {}
-            Object.keys(r).forEach(function(x){ if(x !== 'id' && x !== 'autor') copia[x] = r[x] })
-            copia.id = uid()
-            pendentes.push({ kind:k, reg:copia })
-          }
-        })
-      })
-    }
-
-    if(!pendentes.length){
-      // No modo forçado o silêncio é a pior resposta: quem apertou o botão precisa
-      // saber que nada ficou guardado nesta máquina, e não ficar em dúvida.
-      if(forcado) toast('Nada guardado só neste navegador — tudo o que existe aqui já está no depósito comum.')
-      return
-    }
-
-    toast('Enviando ' + pendentes.length + ' registro(s) desta aba para as outras áreas…')
-    var ok = 0
-    // EM SÉRIE: um resgate não deve abrir dezenas de conexões de uma vez.
-    for(var i = 0; i < pendentes.length; i++){
-      var p = pendentes[i]
-      // O `time` pode faltar em registro antigo: sem área o servidor recusa, e
-      // "todas as áreas" é a leitura honesta de um registro sem dono declarado.
-      if(!p.reg.time) p.reg.time = myTeam() || 'todos'
-      if(!(await enviarRegistro(p.kind, p.reg, true))) continue
-      ok++
-      if(p.antiga && antigo){
-        antigo[p.kind] = antigo[p.kind].filter(function(x){ return x !== p.reg })
-        try{ window.localStorage.setItem(CHAVE_ANTIGA, JSON.stringify(antigo)) }catch(e){}
-      }
-    }
-    // A chave antiga só é dada por resgatada quando esvazia. Marcar antes deixaria
-    // registro para trás sem ninguém para reenviá-lo.
-    if(antigo && !KINDS.some(function(k){ return antigo[k].length })){
-      try{ window.localStorage.setItem(MARCA_RESGATE, '1') }catch(e){}
-    }
-    await load()
-    render()
-    toast(ok + ' de ' + pendentes.length + ' registro(s) agora visíveis para todas as áreas.')
-  }
-
   /**
-   * Grava UM registro. Devolve true quando chegou ao servidor.
+   * Grava UM registro. Devolve true quando o BANCO confirmou.
    *
-   * Otimista de propósito: o registro aparece na tela antes da confirmação, e é
-   * removido se o servidor recusar. Esperar a ida e volta antes de mostrar faria a
-   * pessoa clicar duas vezes numa conexão lenta.
+   * ┌───────────────────────────────────────────────────────────────────────────┐
+   * │ SERVIDOR PRIMEIRO, TELA DEPOIS — e é o contrário do que estava aqui antes.   │
+   * │                                                                            │
+   * │ A versão otimista mostrava o registro antes da confirmação e o guardava num   │
+   * │ rascunho local para não perdê-lo. Sem rascunho local, otimismo viraria mentira:│
+   * │ a pessoa veria o registro na tela e ele não existiria em lugar nenhum.       │
+   * │                                                                            │
+   * │ O custo é a espera de uma ida e volta. O ganho é que "apareceu na tela"      │
+   * │ passa a significar "está no banco", sem exceção.                            │
+   * └───────────────────────────────────────────────────────────────────────────┘
    */
   async function enviarRegistro(kind, registro, quieto){
-    guardarRascunho()
     enviando++
     try{
       var r = await fetch(API, {
@@ -1661,65 +1473,138 @@ body.presenting .cons-tools{display:none}
       // O id do banco substitui o do navegador: é ele que a remoção usa.
       registro.id = criado.id
       registro.autor = criado.autor
-      compartilhado = true
-      guardarRascunho()
-      guardarSombra()
+      noAr = true
+      DB[kind].push(registro)
       render()
+      var st = document.getElementById('storeStatus')
+      if(st) st.textContent = mensagemDeArmazenamento()
       return true
     }catch(e){
-      compartilhado = false
-      if(!quieto) toast('Não chegou às outras áreas: ' + e.message + '. Continua nesta aba.')
+      noAr = false
+      if(!quieto) toast('NÃO foi salvo: ' + e.message + '. O texto continua no formulário.')
       var status = document.getElementById('storeStatus')
       if(status) status.textContent = mensagemDeArmazenamento()
-      render()
       return false
     }finally{
       enviando--
     }
   }
 
+  /**
+   * Inativa um registro no banco. Só sai da tela DEPOIS de o servidor confirmar.
+   *
+   * O registro não é apagado: `ativo = false`, com quem inativou e quando (migration
+   * 0027). Tirar da tela antes da confirmação faria o registro reaparecer na próxima
+   * carga se o servidor tivesse recusado — parece defeito e é o contrário.
+   */
   async function removerRegistro(kind, id){
-    var antes = DB[kind]
-    var oQueSai = DB[kind].filter(function(r){ return r.id === id })[0]
-    DB[kind] = DB[kind].filter(function(r){ return r.id !== id })
-    guardarRascunho()
-    render()
     try{
       var r = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE' })
       if(!r.ok){
         var corpo = await r.json().catch(function(){ return {} })
         throw new Error(corpo.erro || ('HTTP ' + r.status))
       }
-      // Removido de propósito: sai também da sombra, senão o botão de recuperar o
-      // traria de volta como se tivesse sido perdido.
-      if(oQueSai) esquecerNaSombra(kind, oQueSai)
-      toast('Registro removido.')
-    }catch(e){
-      // Devolve à tela: apagar só aqui e não no servidor faria o registro
-      // reaparecer na próxima carga, o que parece defeito e é o contrário.
-      DB[kind] = antes
-      guardarRascunho()
+      DB[kind] = DB[kind].filter(function(x){ return x.id !== id })
       render()
+      toast('Registro removido da tela. Continua no banco, marcado como inativo.')
+    }catch(e){
       toast('Não foi possível remover: ' + e.message)
     }
   }
 
-  /* ---------- time atual ---------- */
-  function myTeam(){
-    var sel = document.getElementById('teamSel');
-    return sel ? sel.value : '';
+  /* ---------- drenar o que ficou preso em navegador antigo ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ A versão anterior guardava o preenchimento em `localStorage`. Se alguma      │
+     │ máquina ainda tem algo lá, isto envia para o banco e LIMPA a chave.          │
+     │                                                                            │
+     │ Idempotente sem guardar marca nenhuma: o que já está no banco é reconhecido  │
+     │ pelo CONTEÚDO e não é reenviado. Apertar duas vezes não duplica.             │
+     │                                                                            │
+     │ É transição, não mecanismo. Quando nenhuma máquina tiver mais nada, o botão  │
+     │ passa a responder sempre "nada preso aqui" — e pode sair.                    │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  async function drenarNavegador(){
+    if(!noAr){ toast('A API não respondeu — tente de novo em instantes.'); return }
+
+    var bruto = null
+    try{ bruto = window.localStorage.getItem(CHAVE_ANTIGA) }catch(e){}
+    if(!bruto){ toast('Nada preso neste navegador: tudo o que existe está no banco.'); return }
+
+    var antigo
+    try{ antigo = normalize(JSON.parse(bruto)) }catch(e){
+      toast('O que está guardado neste navegador está ilegível.'); return
+    }
+
+    // O que o banco já tem, por conteúdo.
+    var noBanco = {}
+    KINDS.forEach(function(k){
+      DB[k].forEach(function(r){ noBanco[chaveDeConteudo(k, r)] = 1 })
+    })
+
+    var fila = []
+    KINDS.forEach(function(k){
+      antigo[k].forEach(function(r){
+        if(!noBanco[chaveDeConteudo(k, r)]) fila.push({ kind:k, reg:r })
+      })
+    })
+    if(!fila.length){
+      // Já está tudo no banco: pode limpar a chave sem perder nada.
+      try{ window.localStorage.removeItem(CHAVE_ANTIGA) }catch(e){}
+      toast('Nada preso neste navegador: tudo o que existe está no banco.')
+      return
+    }
+
+    toast('Enviando ' + fila.length + ' registro(s) deste navegador para o banco…')
+    var ok = 0
+    // EM SÉRIE: um clique não deve abrir dezenas de conexões de uma vez.
+    for(var i = 0; i < fila.length; i++){
+      var f = fila[i]
+      // Sem área declarada o servidor recusa; "todas as áreas" é a leitura honesta.
+      if(!f.reg.time) f.reg.time = MINHA_AREA || 'todos'
+      // Id novo: o antigo é do navegador e o banco atribui o seu.
+      f.reg.id = uid()
+      if(await enviarRegistro(f.kind, f.reg, true)) ok++
+    }
+    if(ok === fila.length){
+      // Só limpa a chave quando TUDO chegou. Limpar antes perderia o que faltou.
+      try{ window.localStorage.removeItem(CHAVE_ANTIGA) }catch(e){}
+    }
+    await load()
+    render()
+    toast(ok === fila.length
+      ? ok + ' registro(s) salvos no banco; este navegador não guarda mais nada.'
+      : ok + ' de ' + fila.length + ' salvos; o resto ficou guardado para outra tentativa.')
   }
+
+  /* ---------- a área em nome de quem se registra ----------
+     Vem do BANCO (migration 0028) e volta para o banco a cada troca. Estava no
+     navegador porque parecia preferência de tela; ela decide o campo `time` de todo
+     registro, e trocar de máquina passava a marcar os registros seguintes para outra
+     área, sem aviso. */
+  function myTeam(){ return MINHA_AREA }
   var teamSel = document.getElementById('teamSel');
+  function aplicarArea(){
+    if(teamSel && teamSel.value !== MINHA_AREA) teamSel.value = MINHA_AREA
+  }
   if(teamSel){
-    // A área escolhida é preferência de QUEM preenche, não dado do kickoff: fica no
-    // navegador de propósito e não vai para o servidor.
-    try{
-      var salva = window.localStorage.getItem('squad_dados_meu_time');
-      if(salva) teamSel.value = salva;
-    }catch(e){}
-    teamSel.addEventListener('change', function(){
-      try{ window.localStorage.setItem('squad_dados_meu_time', teamSel.value); }catch(e){}
-      if(teamSel.value) toast('Registros serão marcados como ' + TEAMS[teamSel.value] + '.');
+    teamSel.addEventListener('change', async function(){
+      var escolhida = teamSel.value
+      if(!escolhida){ MINHA_AREA = ''; return }
+      try{
+        var r = await fetch(API, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ area: escolhida }),
+        })
+        if(!r.ok) throw new Error('HTTP ' + r.status)
+        MINHA_AREA = escolhida
+        toast('Registros serão marcados como ' + TEAMS[escolhida] + '. Gravado na sua conta.')
+      }catch(e){
+        // Voltar o seletor é obrigatório: deixá-lo mostrando a área nova sem ela estar
+        // gravada faria os registros seguintes saírem com a área ANTIGA, em silêncio.
+        aplicarArea()
+        toast('Não foi possível gravar a área: ' + e.message)
+      }
     });
   }
 
@@ -1853,15 +1738,27 @@ body.presenting .cons-tools{display:none}
         var problema = cfg.valida();
         if(problema){ if(status) status.textContent = problema; return; }
       }
+      // ┌───────────────────────────────────────────────────────────────────────┐
+      // │ O FORMULÁRIO SÓ LIMPA DEPOIS DE O BANCO CONFIRMAR. É esta linha que      │
+      // │ substitui o rascunho local: se a API não responder, o texto continua nos  │
+      // │ campos e o erro é dito. Limpar antes, como estava, perdia o que a pessoa  │
+      // │ digitou toda vez que o servidor recusasse.                              │
+      // └───────────────────────────────────────────────────────────────────────────┘
       var registro = cfg.build();
-      DB[kind].push(registro);
-      clear(cfg.fields);
-      if(cfg.chipset) clearChips(cfg.chipset);
-      if(status) status.textContent = 'Registrado.';
-      setTimeout(function(){ if(status && status.textContent === 'Registrado.') status.textContent=''; }, 2400);
-      render()
+      btn.disabled = true;
+      if(status) status.textContent = 'Salvando…';
       void enviarRegistro(kind, registro).then(function(ok){
-        if(ok) toast('Registro adicionado — visível para todas as áreas.')
+        btn.disabled = false;
+        if(!ok){
+          // Nada é limpo, nada entra na tela: o texto fica onde a pessoa o deixou.
+          if(status) status.textContent = 'NÃO salvou — o texto continua aqui. Tente de novo.';
+          return;
+        }
+        clear(cfg.fields);
+        if(cfg.chipset) clearChips(cfg.chipset);
+        if(status) status.textContent = 'Salvo no banco.';
+        setTimeout(function(){ if(status && status.textContent === 'Salvo no banco.') status.textContent=''; }, 2400);
+        toast('Salvo no banco — visível para todas as áreas.')
       })
     });
   });
@@ -2365,7 +2262,7 @@ body.presenting .cons-tools{display:none}
           if(await enviarRegistro(KINDS[i], r)){ r.enviado = true; ok++ } else falhou++
         }
       }
-      toast(falhou === 0 ? ok + ' compartilhado(s).' : ok + ' enviado(s); ' + falhou + ' não chegaram.')
+      toast(falhou === 0 ? ok + ' salvo(s) no banco.' : ok + ' salvo(s); ' + falhou + ' não chegaram.')
     })()
     if(impFile) impFile.value = '';
   }
@@ -2386,7 +2283,7 @@ body.presenting .cons-tools{display:none}
     await load()
     render()
     btnAtualizar.disabled = false
-    toast(compartilhado ? 'Atualizado com o que as outras áreas registraram.' : 'A API não respondeu.')
+    toast(noAr ? 'Atualizado com o que as outras áreas registraram.' : 'A API não respondeu.')
   })
 
   /* ---------- resgate manual ----------
@@ -2396,7 +2293,7 @@ body.presenting .cons-tools{display:none}
   if(btnResgate) btnResgate.addEventListener('click', async function(){
     btnResgate.disabled = true
     await load()
-    await resgatarLocal(true)
+    await drenarNavegador()
     render()
     btnResgate.disabled = false
   })
@@ -2427,9 +2324,9 @@ body.presenting .cons-tools{display:none}
   render();
   load().then(function(){
     render()
-    // Depois da primeira carga: o que ficou preso na chave antiga deste navegador
-    // sobe para o depósito comum e passa a ser visto por todas as áreas.
-    void resgatarLocal()
+    // Depois da primeira carga: se este navegador ainda guarda algo da versão
+    // antiga, sobe para o banco e a chave é apagada.
+    void drenarNavegador()
   });
 })();
 

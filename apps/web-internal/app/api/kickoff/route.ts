@@ -110,6 +110,11 @@ export async function GET(): Promise<Response> {
   const r = await quemPede();
   if ("resposta" in r) return r.resposta;
 
+  const pref = await pool().query<{ area: string }>(
+    `SELECT area FROM ops.kickoff_preferencia WHERE email = $1`,
+    [r.quem.email],
+  );
+
   const { rows } = await pool().query<Linha>(
     // `WHERE ativo`: registro inativado sai da tela e FICA no banco (migration 0027).
     `SELECT id::text, tipo, time, dados, autor_email, criado_em
@@ -131,6 +136,9 @@ export async function GET(): Promise<Response> {
     {
       eu: r.quem.email,
       podeApagarTudo: r.quem.podeApagarTudo,
+      // A área vem do BANCO, não do navegador (migration 0028): ela decide o `time` de
+      // todo registro, e trocar de máquina não pode trocar a área em silêncio.
+      minhaArea: pref.rows[0]?.area ?? "",
       ...agrupar(rows),
     },
     {
@@ -200,6 +208,42 @@ export async function POST(req: Request): Promise<Response> {
     { id: linha.id, em: linha.criado_em.toISOString(), autor: r.quem.email },
     { status: 201 },
   );
+}
+
+/**
+ * Grava a área em nome de quem a pessoa registra.
+ *
+ * Verbo separado do POST de propósito: isto não cria registro de kickoff, e misturar os
+ * dois faria um erro de digitação no corpo virar um registro fantasma.
+ */
+export async function PATCH(req: Request): Promise<Response> {
+  const r = await quemPede();
+  if ("resposta" in r) return r.resposta;
+
+  let corpo: unknown;
+  try {
+    corpo = await req.json();
+  } catch {
+    return Response.json({ erro: "corpo não é JSON" }, { status: 400 });
+  }
+  const area = (corpo as Record<string, unknown> | null)?.["area"];
+  if (
+    typeof area !== "string" ||
+    !(TIMES as readonly string[]).includes(area)
+  ) {
+    return Response.json(
+      { erro: `área inválida: ${String(area)}` },
+      { status: 400 },
+    );
+  }
+
+  await pool().query(
+    `INSERT INTO ops.kickoff_preferencia (email, area)
+     VALUES ($1, $2)
+     ON CONFLICT (email) DO UPDATE SET area = $2, atualizado_em = now()`,
+    [r.quem.email, area],
+  );
+  return Response.json({ area });
 }
 
 /**
