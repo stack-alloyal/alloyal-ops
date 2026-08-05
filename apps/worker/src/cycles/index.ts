@@ -176,11 +176,21 @@ export const c18CadastroDoCore = defineCycle({
       ctx.agora,
       parcial,
       ctx.log,
+      // O CNPJ do TENANT é o CNPJ da própria Alloyal no core — é ele que separa conta
+      // interna de conta de cliente. Sem `lecupon.tenant_cnpj` cadastrado, as contas
+      // internas caem em `filial`: não é erro, é menos informação, e o log diz isso.
+      cred.tenantCnpj ?? "",
     );
     ctx.log(
       `criados ${r.criados} · atualizados ${r.atualizados} · inalterados ${r.inalterados} · ` +
         `módulos ${r.modulosGravados} · hierarquia ${r.hierarquiaLigada} · ` +
         `com hubspot_company_id ${r.comHubspot} · sem CNPJ ${r.semCnpj}`,
+    );
+    ctx.log(
+      `de-para do HubSpot: ${r.classificados} classificados · ${r.pendentes} esperando decisão` +
+        (cred.tenantCnpj
+          ? ""
+          : ' · SEM lecupon.tenant_cnpj: conta interna da Alloyal não é reconhecida e cai em "filial"'),
     );
 
     return {
