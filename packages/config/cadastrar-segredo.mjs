@@ -19,7 +19,7 @@
  *
  *   { printf 'lecupon.employee_token=%s\n' "$TOKEN"
  *     printf 'lecupon.employee_email=%s\n' "$EMAIL"
- *   } | PULSE_CHAVE_MESTRA=... DATABASE_URL=... node packages/config/cadastrar-segredo.cjs \
+ *   } | PULSE_CHAVE_MESTRA=... DATABASE_URL=... node packages/config/cadastrar-segredo.mjs \
  *         --por stack@alloyal.com.br --dica 'copiado do Allvoice'
  *
  * O ideal é a origem do valor ser outro processo (`docker exec ... printenv`), para
@@ -28,9 +28,11 @@
  * RECUSA chave que não está no catálogo: erro de digitação criaria segredo órfão, que
  * a tela não mostra e nenhum ciclo lê — e ninguém descobre até a integração quebrar.
  */
-'use strict'
+import pg from 'pg'
 
-const pg = require('pg')
+import { cifrar } from '@pulse/auth'
+
+import { SEGREDOS } from './dist/catalogo.js'
 
 async function principal() {
   const args = process.argv.slice(2)
@@ -51,10 +53,6 @@ async function principal() {
     console.error('PULSE_CHAVE_MESTRA não definida — sem ela o valor não pode ser cifrado.')
     process.exit(1)
   }
-
-  // `@pulse/config` e `@pulse/auth` são ESM; daqui entram por import dinâmico.
-  const { SEGREDOS } = await import('./dist/catalogo.js')
-  const { cifrar } = await import('@pulse/auth')
 
   const bruto = await new Promise((resolve, reject) => {
     let b = ''
