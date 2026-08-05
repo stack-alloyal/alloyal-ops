@@ -6,15 +6,15 @@
  * vive no executor, porque é lá que ela é testável contra Postgres real.
  */
 
-import { Queue, Worker, type ConnectionOptions } from 'bullmq'
-import type pg from 'pg'
+import { Queue, Worker, type ConnectionOptions } from "bullmq";
+import type pg from "pg";
 
-import type { Ciclo } from './cycle.js'
-import { todosOsCiclos } from './cycle.js'
-import { ehCasca } from './registro.js'
-import { executarCiclo, type Alarme, type DepsRunner } from './runner.js'
+import type { Ciclo } from "./cycle.js";
+import { todosOsCiclos } from "./cycle.js";
+import { ehCasca } from "./registro.js";
+import { executarCiclo, type Alarme, type DepsRunner } from "./runner.js";
 
-export const FILA = 'ops-ciclos'
+export const FILA = "ops-ciclos";
 
 /**
  * Fuso do agendamento.
@@ -24,13 +24,13 @@ export const FILA = 'ops-ciclos'
  * a forma clássica de o comentário e o valor divergirem — e o sintoma aparece
  * como "o snapshot saiu na hora errada", meses depois.
  */
-export const FUSO_AGENDA = 'America/Sao_Paulo'
+export const FUSO_AGENDA = "America/Sao_Paulo";
 
 export interface DepsFila {
-  readonly conexao: ConnectionOptions
-  readonly pool: pg.Pool
-  readonly alarmar: (a: Alarme) => Promise<void>
-  readonly log?: (msg: string) => void
+  readonly conexao: ConnectionOptions;
+  readonly pool: pg.Pool;
+  readonly alarmar: (a: Alarme) => Promise<void>;
+  readonly log?: (msg: string) => void;
 }
 
 /**
@@ -53,12 +53,12 @@ export interface DepsFila {
  */
 async function agendaveis(): Promise<readonly Ciclo[]> {
   // Ciclo de webhook não tem agenda: ele é acordado pela fonte.
-  const comAgenda = todosOsCiclos().filter((c) => c.agenda !== null)
-  const saida: Ciclo[] = []
+  const comAgenda = todosOsCiclos().filter((c) => c.agenda !== null);
+  const saida: Ciclo[] = [];
   for (const c of comAgenda) {
-    if (!(await ehCasca(c))) saida.push(c)
+    if (!ehCasca(c)) saida.push(c);
   }
-  return saida
+  return saida;
 }
 
 /**
@@ -69,18 +69,18 @@ async function agendaveis(): Promise<readonly Ciclo[]> {
  * código é a fonte — não o que está gravado no Redis.
  */
 export async function registrarAgendas(deps: DepsFila): Promise<Queue> {
-  const log = deps.log ?? (() => undefined)
-  const fila = new Queue(FILA, { connection: deps.conexao })
+  const log = deps.log ?? (() => undefined);
+  const fila = new Queue(FILA, { connection: deps.conexao });
 
-  const declarados = new Set<string>()
+  const declarados = new Set<string>();
   for (const c of await agendaveis()) {
-    declarados.add(c.id)
+    declarados.add(c.id);
     await fila.upsertJobScheduler(
       c.id,
       { pattern: c.agenda as string, tz: FUSO_AGENDA },
       { name: c.id, data: { ciclo: c.id } },
-    )
-    log(`agendado ${c.id} · ${c.agenda} (${FUSO_AGENDA})`)
+    );
+    log(`agendado ${c.id} · ${c.agenda} (${FUSO_AGENDA})`);
   }
 
   // Ciclo removido do código precisa sair do Redis: senão ele continua
@@ -88,12 +88,12 @@ export async function registrarAgendas(deps: DepsFila): Promise<Queue> {
   // cresce sem ninguém entender por quê.
   for (const s of await fila.getJobSchedulers()) {
     if (s.key && !declarados.has(s.key)) {
-      await fila.removeJobScheduler(s.key)
-      log(`agenda órfã removida: ${s.key}`)
+      await fila.removeJobScheduler(s.key);
+      log(`agenda órfã removida: ${s.key}`);
     }
   }
 
-  return fila
+  return fila;
 }
 
 /**
@@ -105,28 +105,28 @@ export async function registrarAgendas(deps: DepsFila): Promise<Queue> {
  * chamadas à origem deixaria de ser o que o contrato diz.
  */
 export function criarWorker(deps: DepsFila): Worker {
-  const log = deps.log ?? (() => undefined)
-  const porId = new Map(todosOsCiclos().map((c) => [c.id, c]))
+  const log = deps.log ?? (() => undefined);
+  const porId = new Map(todosOsCiclos().map((c) => [c.id, c]));
 
   const runner: DepsRunner = {
     pool: deps.pool,
     agora: () => new Date(),
     alarmar: deps.alarmar,
     log,
-  }
+  };
 
   return new Worker(
     FILA,
     async (job) => {
-      const id = String(job.data?.ciclo ?? job.name)
-      const ciclo = porId.get(id)
+      const id = String(job.data?.ciclo ?? job.name);
+      const ciclo = porId.get(id);
       if (!ciclo) {
         // Não é erro de execução: é agenda apontando para ciclo que não existe
         // mais. Falhar aqui encheria a fila de jobs mortos.
-        log(`job para ciclo desconhecido: ${id}`)
-        return { estado: 'desconhecido', ciclo: id }
+        log(`job para ciclo desconhecido: ${id}`);
+        return { estado: "desconhecido", ciclo: id };
       }
-      return executarCiclo(ciclo, runner)
+      return executarCiclo(ciclo, runner);
     },
     {
       connection: deps.conexao,
@@ -134,10 +134,17 @@ export function criarWorker(deps: DepsFila): Worker {
       // competir entre si só aumenta o tempo total da janela.
       concurrency: 1,
     },
-  )
+  );
 }
 
 /** Dispara um ciclo fora da agenda — usado pelo painel de pipeline e pela CLI. */
-export async function dispararAgora(fila: Queue, cicloId: string): Promise<void> {
-  await fila.add(cicloId, { ciclo: cicloId }, { attempts: 1, removeOnComplete: 100 })
+export async function dispararAgora(
+  fila: Queue,
+  cicloId: string,
+): Promise<void> {
+  await fila.add(
+    cicloId,
+    { ciclo: cicloId },
+    { attempts: 1, removeOnComplete: 100 },
+  );
 }

@@ -36,6 +36,8 @@ export interface KpisDaCarteira {
    */
   readonly usuariosComCupom: number | null;
   readonly cuponsResgatados: number | null;
+  /** Quantos clientes já têm logo — a varredura do C19 cobre ~900 por noite. */
+  readonly comLogo: number;
 }
 
 export async function kpisDaCarteira(db: pg.Pool): Promise<KpisDaCarteira> {
@@ -46,13 +48,15 @@ export async function kpisDaCarteira(db: pg.Pool): Promise<KpisDaCarteira> {
     subs: string;
     autorizados: string;
     cadastrados: string;
+    com_logo: string;
   }>(
     `SELECT count(*)::text                                             AS total,
             count(*) FILTER (WHERE ativo)::text                        AS ativos,
             count(*) FILTER (WHERE parent_account_id IS NULL)::text     AS mains,
             count(*) FILTER (WHERE parent_account_id IS NOT NULL)::text AS subs,
             coalesce(sum(usuarios_autorizados), 0)::text                AS autorizados,
-            coalesce(sum(usuarios_cadastrados), 0)::text                AS cadastrados
+            coalesce(sum(usuarios_cadastrados), 0)::text                AS cadastrados,
+            count(*) FILTER (WHERE logo_url IS NOT NULL)::text          AS com_logo
        FROM core.account`,
   );
   const r = rows[0]!;
@@ -66,6 +70,7 @@ export async function kpisDaCarteira(db: pg.Pool): Promise<KpisDaCarteira> {
     // Ver o comentário do tipo: `null` é a resposta honesta enquanto o C1 não roda.
     usuariosComCupom: null,
     cuponsResgatados: null,
+    comLogo: Number(r.com_logo),
   };
 }
 
@@ -77,6 +82,10 @@ export interface LinhaDaBase {
   readonly razaoSocial: string;
   readonly cnpj: string | null;
   readonly ativo: boolean;
+  /** URL do logo em `assets.alloyal.com.br`, de "Customização do App" no core. */
+  readonly logoUrl: string | null;
+  /** De qual campo veio — a resposta para "por que este logo está deitado?". */
+  readonly logoOrigem: string | null;
   readonly usuariosAutorizados: number;
   readonly usuariosCadastrados: number;
   /** Quantos sub business pendem deste. Zero significa "não há o que abrir". */
@@ -93,7 +102,7 @@ export interface PaginaDaBase {
 }
 
 const CAMPOS = `
-  a.id::text, a.brand_id, a.razao_social, a.cnpj, a.ativo,
+  a.id::text, a.brand_id, a.razao_social, a.cnpj, a.ativo, a.logo_url, a.logo_origem,
   coalesce(a.usuarios_autorizados, 0)::text AS usuarios_autorizados,
   coalesce(a.usuarios_cadastrados, 0)::text AS usuarios_cadastrados,
   h.hubspot_company_id, h.vinculo AS hubspot_vinculo`;
@@ -107,6 +116,8 @@ function paraLinha(r: Record<string, unknown>): LinhaDaBase {
     razaoSocial: String(r["razao_social"] ?? ""),
     cnpj: (r["cnpj"] as string | null) ?? null,
     ativo: r["ativo"] === true,
+    logoUrl: (r["logo_url"] as string | null) ?? null,
+    logoOrigem: (r["logo_origem"] as string | null) ?? null,
     usuariosAutorizados: Number(r["usuarios_autorizados"] ?? 0),
     usuariosCadastrados: Number(r["usuarios_cadastrados"] ?? 0),
     subs: Number(r["subs"] ?? 0),
@@ -144,8 +155,22 @@ export async function mainBusinesses(
     AND ($1::text = '' OR
          a.razao_social ILIKE '%' || $1 || '%' OR
          a.brand_id = $1 OR
-         regexp_replace(coalesce(a.cnpj, ''), '\\D', '', 'g') LIKE '%' || regexp_replace($1, '\\D', '', 'g') || '%' OR
-         h.hubspot_company_id = $1)`;
+         h.hubspot_company_id = $1 OR
+         -- ┌───────────────────────────────────────────────────────────────────┐
+         -- │ A cláusula de CNPJ EXIGE pelo menos 6 dígitos, e os dois guardas    │
+         -- │ vieram de defeito medido:                                          │
+         -- │                                                                    │
+         -- │ sem o "não vazio", buscar "SWILE" limpava os dígitos para '' e o     │
+         -- │ LIKE virava '%%' — casava com TODAS as 1.926 contas, e a busca por   │
+         -- │ nome simplesmente não filtrava;                                     │
+         -- │                                                                    │
+         -- │ sem o mínimo de 6, buscar "912" (um Business ID) trazia junto todo   │
+         -- │ CNPJ que contivesse 912 em qualquer posição — 10 resultados para uma │
+         -- │ busca exata.                                                       │
+         -- └───────────────────────────────────────────────────────────────────┘
+         (length(regexp_replace($1, '\\D', '', 'g')) >= 6 AND
+          regexp_replace(coalesce(a.cnpj, ''), '\\D', '', 'g')
+            LIKE '%' || regexp_replace($1, '\\D', '', 'g') || '%'))`;
 
   const { rows: cont } = await db.query<{ n: string }>(
     `SELECT count(*)::text AS n

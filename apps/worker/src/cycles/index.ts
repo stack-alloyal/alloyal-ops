@@ -35,6 +35,7 @@ import { consolidar } from "../consolidacao.js";
 import { avaliarFila } from "../fila.js";
 import {
   credencialDoCore,
+  lerLogoDoApp,
   lerNegocios,
   sincronizarCadastro,
 } from "@pulse/config";
@@ -42,10 +43,28 @@ import {
 import { defineCycle } from "../cycle.js";
 import { poolDoWorker } from "../db.js";
 
-const naoImplementado = (id: string) => async () => {
-  throw new Error(
-    `Ciclo ${id} declarado e não implementado. Aguarda o spike de dados (doc 02, B.2).`,
-  );
+/**
+ * A casca de um ciclo declarado e não implementado.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ A MARCA `casca` existe porque a alternativa era EXECUTAR o ciclo para saber. │
+ * │ `ehCasca` chamava `executar(undefined)` e classificava pelo erro — o que só   │
+ * │ funcionava porque todo ciclo tocava em `ctx` na primeira linha e quebrava na  │
+ * │ hora. O C19 não toca: ele lê a base e chama a API do fornecedor antes disso.  │
+ * │                                                                            │
+ * │ Resultado, medido em 05/08/2026: a "verificação" rodou o ciclo inteiro — 900  │
+ * │ chamadas à API do core — segurando ABERTA a transação de registro das         │
+ * │ declarações. O worker nunca terminava de subir, sem log e sem erro.           │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ */
+const naoImplementado = (id: string) => {
+  const casca = async (): Promise<never> => {
+    throw new Error(
+      `Ciclo ${id} declarado e não implementado. Aguarda o spike de dados (doc 02, B.2).`,
+    );
+  };
+  (casca as { ehCascaDeclarada?: boolean }).ehCascaDeclarada = true;
+  return casca;
 };
 
 /**
@@ -126,6 +145,13 @@ export const c1Transacoes = defineCycle({
  * que quebra por falta de configuração enche o alarme de ruído previsível — é a
  * mesma razão da trava anti-lockout do step-up de e-mail.
  */
+/**
+ * Teto por rodada. A base tem 3.172 clientes a ~305 ms cada: varrer tudo levaria ~16
+ * minutos numa API que também sustenta o cadastro. 900 por noite cobre a base em ~4
+ * dias e mantém a janela curta — e quem ainda não tem logo vem primeiro.
+ */
+const TETO_DE_LOGOS_POR_RODADA = 900;
+
 export const c18CadastroDoCore = defineCycle({
   id: "C18",
   descricao: "Cadastro de cliente e configuração de programa (API do core)",
@@ -527,3 +553,112 @@ export const c17Benchmark = defineCycle({
 
 export const CICLOS_ESPERADOS_PELO_SNAPSHOT = ["C2", "C3", "C6", "C8"] as const;
 export const PRAZO_ESPERA_SNAPSHOT_BRT = "06:50";
+
+/**
+ * C19 — logo do cliente, de "Customização do App" no core.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ CICLO SEPARADO DO C18, mesma fonte, e é decisão de VOLUME e de falha:        │
+ * │                                                                            │
+ * │ o C18 lê a lista em ~109 requisições; este lê UMA POR CLIENTE — 3.172, a     │
+ * │ ~305 ms cada. Juntá-los transformaria uma carga de 2 minutos numa de 20, e   │
+ * │ um 429 na busca de logo derrubaria o cadastro junto. Cadastro é o que        │
+ * │ sustenta a tela; logo é enfeite útil. Falhar em enfeite não pode custar o    │
+ * │ cadastro.                                                                   │
+ * │                                                                            │
+ * │ 02:30 e não 02:00: depois do C18, para os clientes novos do dia já entrarem  │
+ * │ na varredura.                                                              │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Lê PRIMEIRO quem não tem logo. Numa base em que 3.172 clientes existem e poucos
+ * mudam de identidade visual, varrer sempre na mesma ordem faria o fim da lista nunca
+ * chegar se o ciclo fosse interrompido.
+ */
+export const c19LogoDoCliente = defineCycle({
+  id: "C19",
+  descricao: "Logo do cliente (Customização do App, API do core)",
+  fonte: "core",
+  metodo: "full",
+  agenda: "30 2 * * *",
+  janela: "estado_atual",
+  chaveNatural: ["brand_id"],
+  emFalha: {
+    tentativas: 2,
+    backoff: "exponencial",
+    alarmeApos: 3,
+    degradacao: "snapshot_parcial",
+  },
+  fase: "F1",
+  executar: async (ctx) => {
+    const db = poolDoWorker();
+    const cred = await credencialDoCore(db, process.env);
+    if (!cred) {
+      ctx.log(
+        "credencial do core não cadastrada — ciclo INERTE. Configurações → Segredos.",
+      );
+      return {
+        linhasLidas: 0,
+        linhasGravadas: 0,
+        inerte: true,
+        detalhe: { motivo: "sem_credencial" },
+      };
+    }
+
+    const { rows } = await db.query<{ id: string; brand_id: string }>(
+      `SELECT id::text, brand_id
+         FROM core.account
+        WHERE ativo AND brand_id ~ '^[0-9]+$'
+        ORDER BY (logo_url IS NOT NULL), coalesce(logo_em, '-infinity'::timestamptz)
+        LIMIT $1`,
+      [TETO_DE_LOGOS_POR_RODADA],
+    );
+
+    let comLogo = 0;
+    let semLogo = 0;
+    let falhas = 0;
+    const origens: Record<string, number> = {};
+
+    // EM SÉRIE, de propósito: é a API do core, a mesma que sustenta o cadastro. Abrir
+    // dezenas de conexões para buscar enfeite é o jeito de ganhar um 429 que atrapalha o
+    // que importa.
+    for (const conta of rows) {
+      try {
+        const logo = await lerLogoDoApp(cred, conta.brand_id);
+        if (logo) {
+          comLogo++;
+          origens[logo.origem] = (origens[logo.origem] ?? 0) + 1;
+          await db.query(
+            `UPDATE core.account SET logo_url = $2, logo_origem = $3, logo_em = now() WHERE id = $1`,
+            [conta.id, logo.url, logo.origem],
+          );
+        } else {
+          semLogo++;
+          // `logo_em` marcado mesmo sem logo: sem isso, quem não tem logo seria
+          // reconsultado toda rodada e as 3.172 nunca terminariam de ser varridas.
+          await db.query(
+            `UPDATE core.account SET logo_url = NULL, logo_origem = NULL, logo_em = now() WHERE id = $1`,
+            [conta.id],
+          );
+        }
+      } catch {
+        // Falha de um cliente não derruba a varredura: o próximo pode estar bem, e o
+        // ciclo existe para percorrer a base inteira.
+        falhas++;
+      }
+    }
+
+    ctx.log(
+      `${rows.length} consultado(s) · ${comLogo} com logo · ${semLogo} sem · ${falhas} falha(s) · ` +
+        `origem: ${
+          Object.entries(origens)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(" ") || "—"
+        }`,
+    );
+    return {
+      linhasLidas: rows.length,
+      linhasGravadas: comLogo,
+      detalhe: { comLogo, semLogo, falhas, origens },
+    };
+  },
+});

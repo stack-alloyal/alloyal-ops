@@ -6,7 +6,7 @@ import {
   subBusinesses,
   type LinhaDaBase,
 } from "@pulse/config";
-import { Aviso, Badge, Card, Kpi, Table } from "@pulse/ui";
+import { Aviso, Badge, Btn, Card, Field, Kpi, Table } from "@pulse/ui";
 import Link from "next/link";
 
 import { Corpo, Topo } from "../../casca";
@@ -41,18 +41,37 @@ const CNPJ = (c: string | null) => {
  * O monograma no lugar do logo. A API do core não devolve imagem — `banner` existe e é
  * booleano, é flag de módulo. Ver `iniciaisDoCliente`.
  */
-function Marca({ nome, chave }: { nome: string; chave: string }) {
+function Marca({
+  nome,
+  chave,
+  logo,
+}: {
+  nome: string;
+  chave: string;
+  logo: string | null;
+}) {
   const h = corDoCliente(chave);
   return (
     <span
       aria-hidden="true"
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold tracking-tight"
+      className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md text-[11px] font-semibold tracking-tight"
       style={{
         backgroundColor: `hsl(${h} 62% 92%)`,
         color: `hsl(${h} 55% 32%)`,
       }}
     >
       {iniciaisDoCliente(nome)}
+      {logo ? (
+        // O monograma fica ATRÁS e a imagem por cima: se o logo não carregar, o
+        // monograma aparece sozinho — sem JavaScript e sem `onerror`. Fundo branco
+        // porque a maioria é SVG desenhado para fundo claro.
+        <img
+          src={logo}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full bg-white object-contain p-[2px]"
+        />
+      ) : null}
     </span>
   );
 }
@@ -106,7 +125,7 @@ function linhaDaTabela(
       ) : (
         <span className="h-5 w-5 shrink-0" />
       )}
-      <Marca nome={l.razaoSocial} chave={l.brandId ?? l.id} />
+      <Marca nome={l.razaoSocial} chave={l.brandId ?? l.id} logo={l.logoUrl} />
       <span className="min-w-0">
         <span className="block truncate font-medium text-ink">
           {l.razaoSocial}
@@ -201,7 +220,7 @@ export default async function BaseDeClientes({
           <Kpi
             rotulo="Clientes total"
             valor={N(kpis.clientesTotal)}
-            nota={`${N(kpis.mainBusinesses)} main · ${N(kpis.subBusinesses)} sub`}
+            nota={`${N(kpis.mainBusinesses)} main · ${N(kpis.subBusinesses)} sub · ${N(kpis.comLogo)} logos`}
           />
           <Kpi
             rotulo="Clientes ativos"
@@ -248,20 +267,20 @@ export default async function BaseDeClientes({
           title={`Main business · ${N(pag.total)}${busca ? " encontrados" : ""}`}
           actions={
             <form action="/carteira/base" className="flex items-center gap-2">
-              {somenteAtivos && <input type="hidden" name="ativos" value="1" />}
-              <input
+              {/* O campo oculto preserva o filtro de ativos ao buscar. `Field` também
+                  serve para ele: o portão do design system recusa `<input>` cru, e a
+                  exceção "mas este é hidden" abriria a porta para o próximo. */}
+              {somenteAtivos && (
+                <Field type="hidden" name="ativos" value="1" readOnly />
+              )}
+              <Field
                 name="q"
                 defaultValue={busca}
                 placeholder="nome, CNPJ, Business ID ou HubSpot ID"
                 aria-label="Buscar cliente"
-                className="w-[280px] rounded-md border border-line bg-white px-3 py-1.5 text-[13px] outline-none placeholder:text-ink-4 focus:border-purple-400"
+                className="w-[280px]"
               />
-              <button
-                type="submit"
-                className="rounded-md bg-purple-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-purple-500"
-              >
-                Buscar
-              </button>
+              <Btn type="submit">Buscar</Btn>
               <Link
                 href={comBusca(somenteAtivos ? {} : { ativos: "1" })}
                 className={
