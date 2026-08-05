@@ -344,6 +344,62 @@ ul.clean li b{color:var(--ink);font-weight:600}
 }
 .pill.crit{background:rgba(220,38,38,.11);color:var(--alert)}
 .pill.lgpd{background:var(--alert);color:#fff}
+/* ── Roadmap ────────────────────────────────────────────────────────────────
+   Os quatro estados têm COR e TEXTO dizendo a mesma coisa: cor sozinha não
+   informa quem não distingue matiz, e num roadmap projetado numa parede o
+   contraste do projetor come a diferença entre verde e âmbar. */
+/* `rmp-st` e não `st`: `.step .st` já existe neste documento, e um `.st` genérico
+   deixaria aqueles rótulos em caixa alta com padding — regressão silenciosa numa
+   parte da apresentação que ninguém estava tocando. */
+.rmp-st{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;white-space:nowrap;
+}
+.rmp-st.nao{background:rgba(22,22,26,.06);color:var(--muted)}
+.rmp-st.andamento{background:rgba(106,24,229,.12);color:var(--brand)}
+.rmp-st.concluida{background:rgba(22,163,74,.13);color:var(--signal)}
+.rmp-st.bloqueada{background:rgba(220,38,38,.11);color:var(--alert)}
+
+/* A timeline rola no PRÓPRIO contêiner: um roadmap de um ano não pode empurrar
+   a página para o lado.
+   Nome `rmp-tempo` e não `tl`: `.tl` já é o rótulo dos tiles do Consolidado. */
+.rmp-tempo{margin-top:16px;overflow-x:auto}
+.tl-grade{min-width:640px}
+.tl-head{
+  display:grid;grid-template-columns:186px 1fr;align-items:end;
+  border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:9px;
+}
+/* Etiqueta de mês posicionada por PROPORÇÃO, igual às barras. Espaçamento igual
+   desalinharia: fevereiro tem 28 dias e março 31. */
+.tl-meses{position:relative;height:15px}
+.tl-mes{
+  position:absolute;top:0;font-family:var(--f-etiqueta);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line);
+  padding-left:5px;white-space:nowrap;line-height:1.3;
+}
+.tl-linha{display:grid;grid-template-columns:186px 1fr;align-items:center;gap:10px;padding:5px 0}
+.tl-rot{min-width:0}
+.tl-rot .n{font-size:13px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-rot .q{font-size:11.5px;color:var(--muted)}
+.tl-pista{position:relative;height:24px;background:rgba(22,22,26,.035);border-radius:5px}
+.tl-barra{
+  position:absolute;top:4px;height:16px;border-radius:4px;min-width:5px;
+  display:flex;align-items:center;padding:0 7px;overflow:hidden;
+}
+.tl-barra span{font-family:var(--f-etiqueta);font-size:10px;letter-spacing:.05em;color:#fff;white-space:nowrap}
+.tl-barra.nao{background:#8a8fa3}
+.tl-barra.andamento{background:var(--brand)}
+.tl-barra.concluida{background:var(--signal)}
+.tl-barra.bloqueada{background:var(--alert)}
+/* Tarefa sem data não recebe barra inventada: ela aparece à parte, dita. */
+.tl-semdata{
+  font-size:12.5px;color:var(--muted);padding:7px 0 0;border-top:1px dashed var(--line);margin-top:11px;line-height:1.6;
+}
+.rmp-grupo{margin-top:20px}
+.rmp-grupo h4{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:8px;
+}
 .empty{
   font-family:var(--f-etiqueta);font-size:12.5px;color:var(--muted);letter-spacing:.03em;
   padding:18px;text-align:center;border:1px dashed var(--line);border-radius:9px;line-height:1.7;
@@ -503,10 +559,79 @@ body.presenting .cons-tools{display:none}
         </dl>
       </div>
     </section>
+    <section class="slide" data-title="Fonte de Verdade">
+      <div class="eyebrow">01 · Fonte da verdade</div>
+      <h2>Um dono por domínio de dado</h2>
+      <p class="lede">A regra é simples: para cada informação existe <strong>um</strong> sistema que manda. Os outros podem exibir, nunca contradizer. Onde houver divergência, vence a fonte marcada abaixo — e a divergência vira chamado de correção, não debate em reunião.</p>
+      <table>
+        <thead><tr><th style="width:22%">Domínio</th><th style="width:20%">Fonte da verdade</th><th style="width:34%">O que ela decide</th><th style="width:24%">Quem consome</th></tr></thead>
+        <tbody>
+          <tr><td class="dom">Cadastro do cliente</td><td><span class="src hubspot">HubSpot</span></td><td>Razão social, CNPJ, owner comercial, segmento, estágio<small>Cadastro nasce aqui. Nenhum cliente existe sem registro no HubSpot.</small></td><td>Todos os times</td></tr>
+          <tr><td class="dom">Contrato e vigência</td><td><span class="src clicksign">ClickSign</span></td><td>Assinatura, início, prazo, aditivos, rescisão<small>Data de assinatura define o marco zero da relação.</small></td><td>Jurídico, Comercial, Financeiro</td></tr>
+          <tr><td class="dom">Receita e inadimplência</td><td><span class="src omie">Omie</span></td><td>Faturamento emitido, recebido, aging, MRR reconhecido<small>Valor negociado mora no HubSpot; valor faturado, no Omie.</small></td><td>Financeiro, Comercial, CS</td></tr>
+          <tr><td class="dom">Configuração do programa</td><td><span class="src painel">Painel do Cliente</span></td><td>Módulos ativos, regras, parceiros, status de setup<small>Define se o cliente está de fato no ar.</small></td><td>Operações, CS, Comercial</td></tr>
+          <tr><td class="dom">Engajamento</td><td><span class="src clevertap">CleverTap</span></td><td>MAU, DAU, abertura, campanha, retenção por coorte<small>Comportamento do usuário final do cliente.</small></td><td>Operações, CS, Comercial</td></tr>
+          <tr><td class="dom">Transação e GMV</td><td><span class="src db">Banco Alloyal</span></td><td>Pedidos, cupons, cashback gerado e resgatado, GMV<small>O que efetivamente aconteceu no programa.</small></td><td>Todos os times</td></tr>
+          <tr><td class="dom">Metas e forecast</td><td><span class="src painel">Pulse</span></td><td>Meta por time, forecast, atingimento<small>Hoje em planilha. Migra para o Pulse na fase 1.</small></td><td>Liderança, Comercial</td></tr>
+        </tbody>
+      </table>
 
-    <!-- 01 DORES -->
+      <h3 style="margin:32px 0 12px">O casamento de chaves — primeiro entregável do squad</h3>
+      <p class="lede" style="margin-bottom:14px">Nada acima funciona enquanto os sistemas não souberem que estão falando do mesmo cliente. Três chaves, um de-para.</p>
+      <div class="grid3">
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">hubspot_id</code></h3><p>Identificador mestre do cliente. Toda tabela, painel e relatório carrega este campo.</p></div>
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">cnpj</code></h3><p>Chave de conciliação entre HubSpot, Omie e ClickSign. Formato único, sem máscara.</p></div>
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">brand_id</code></h3><p>Identificador operacional no Banco Alloyal e no CleverTap. Mapeado 1:1 ao <code style="font-family:var(--f-etiqueta)">hubspot_id</code>.</p></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Alloyal Pulse">
+      <div class="eyebrow">02 · Alloyal Pulse</div>
+      <h2>A plataforma interna que sustenta tudo isso</h2>
+      <p class="lede">O Pulse não substitui HubSpot, Omie ou CleverTap. Ele é a camada acima deles: <strong>o lugar onde o número já vem decidido</strong>, com a origem visível e o histórico preservado.</p>
+      <div class="grid2">
+        <div class="card accent"><h3>Visão 360 do cliente</h3><p>Uma tela por cliente reunindo contrato, faturamento, inadimplência, configuração do programa, engajamento e uso — sem trocar de aba.</p></div>
+        <div class="card accent"><h3>Procedência sempre visível</h3><p>Todo número exibe de onde veio e quando foi atualizado. Discussão sobre qual dado está certo deixa de existir.</p></div>
+        <div class="card accent"><h3>Painel por time</h3><p>Cada área acessa suas métricas com sua linguagem, mas todas partem da mesma base e da mesma definição.</p></div>
+        <div class="card accent"><h3>Alertas em vez de relatórios</h3><p>O Pulse avisa quando algo muda — queda de engajamento, atraso de pagamento, contrato vencendo — em vez de esperar alguém abrir um relatório.</p></div>
+        <div class="card accent"><h3>Histórico preservado</h3><p>Guarda a série temporal. Dá para responder “como estava este cliente há seis meses” sem depender de print antigo.</p></div>
+        <div class="card accent"><h3>Acesso controlado</h3><p>Permissão por perfil e registro de acesso. Requisito de LGPD que planilha em drive pessoal não atende.</p></div>
+      </div>
+      <p class="fine" style="margin-top:22px;max-width:80ch">Entrega por fases: primeiro a base consolidada e a visão 360, depois os painéis por time, depois os alertas e as automações. Cada fase entra em uso antes da seguinte começar.</p>
+    </section>
+    <section class="slide" data-title="Centralização">
+      <div class="eyebrow">03 · Centralização dos dados</div>
+      <h2>Como o dado chega até o Pulse</h2>
+      <p class="lede">Nenhum time passa a trabalhar dentro de um sistema novo. Os sistemas de origem continuam sendo usados exatamente como hoje — o que muda é que o dado passa a ser copiado, padronizado e reunido em um só lugar.</p>
+
+      <div class="layer">
+        <div class="layer-label">Camada 1<b>Origem</b></div>
+        <div class="layer-body">Os sete sistemas seguem operando normalmente. Ninguém muda de ferramenta. Cada time continua registrando onde já registra.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 2<b>Coleta</b></div>
+        <div class="layer-body">Integração por API onde existe (HubSpot, Omie, CleverTap, ClickSign) e leitura incremental do banco. Só o que mudou desde a última carga é trazido — sem peso na operação.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 3<b>Padronização</b></div>
+        <div class="layer-body">Aplicação do de-para de chaves, normalização de CNPJ e datas, deduplicação e resolução de divergência pela regra de fonte da verdade. É aqui que “cliente ativo” passa a ter um significado só.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer hero">
+        <div class="layer-label">Camada 4<b>Alloyal Pulse</b></div>
+        <div class="layer-body">Base única consolidada, com histórico. Cada registro guarda de onde veio e quando foi atualizado — a procedência viaja junto com o número.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 5<b>Consumo</b></div>
+        <div class="layer-body">Painel por time, alertas automáticos, relatório de cliente e exportação. Quem hoje pede um número por mensagem passa a abrir a tela.</div>
+      </div>
+
+      <p class="fine" style="margin-top:20px;max-width:80ch">Regra de governança: todo dado exibido no Pulse tem um dono nomeado, uma frequência de atualização declarada e uma definição escrita no dicionário de métricas. Sem os três, o indicador não sobe para o painel.</p>
+    </section>
     <section class="slide" data-title="Dores">
-      <div class="eyebrow">01 · Dores</div>
+      <div class="eyebrow">04 · Dores</div>
       <h2>Três times, uma pergunta, três respostas</h2>
       <div class="question">“Quantos clientes ativos a Alloyal tem hoje?”</div>
       <div class="diverge">
@@ -562,10 +687,8 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="rec-dores"></div>
       </div>
     </section>
-
-    <!-- 02 DADOS -->
-    <section class="slide" data-title="Dados a coletar">
-      <div class="eyebrow">02 · Quais dados iremos coletar</div>
+    <section class="slide" data-title="Dados a Coletar">
+      <div class="eyebrow">05 · Quais dados iremos coletar</div>
       <h2>Sete fontes, sete papéis distintos</h2>
       <p class="lede">Cada sistema entra no escopo por um motivo específico. Nenhum deles é “o sistema principal” — cada um é dono de uma parte da verdade.</p>
       <div class="grid2">
@@ -601,37 +724,8 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="rec-dados"></div>
       </div>
     </section>
-
-    <!-- 03 FONTE DA VERDADE -->
-    <section class="slide" data-title="Fonte da verdade">
-      <div class="eyebrow">03 · Fonte da verdade</div>
-      <h2>Um dono por domínio de dado</h2>
-      <p class="lede">A regra é simples: para cada informação existe <strong>um</strong> sistema que manda. Os outros podem exibir, nunca contradizer. Onde houver divergência, vence a fonte marcada abaixo — e a divergência vira chamado de correção, não debate em reunião.</p>
-      <table>
-        <thead><tr><th style="width:22%">Domínio</th><th style="width:20%">Fonte da verdade</th><th style="width:34%">O que ela decide</th><th style="width:24%">Quem consome</th></tr></thead>
-        <tbody>
-          <tr><td class="dom">Cadastro do cliente</td><td><span class="src hubspot">HubSpot</span></td><td>Razão social, CNPJ, owner comercial, segmento, estágio<small>Cadastro nasce aqui. Nenhum cliente existe sem registro no HubSpot.</small></td><td>Todos os times</td></tr>
-          <tr><td class="dom">Contrato e vigência</td><td><span class="src clicksign">ClickSign</span></td><td>Assinatura, início, prazo, aditivos, rescisão<small>Data de assinatura define o marco zero da relação.</small></td><td>Jurídico, Comercial, Financeiro</td></tr>
-          <tr><td class="dom">Receita e inadimplência</td><td><span class="src omie">Omie</span></td><td>Faturamento emitido, recebido, aging, MRR reconhecido<small>Valor negociado mora no HubSpot; valor faturado, no Omie.</small></td><td>Financeiro, Comercial, CS</td></tr>
-          <tr><td class="dom">Configuração do programa</td><td><span class="src painel">Painel do Cliente</span></td><td>Módulos ativos, regras, parceiros, status de setup<small>Define se o cliente está de fato no ar.</small></td><td>Operações, CS, Comercial</td></tr>
-          <tr><td class="dom">Engajamento</td><td><span class="src clevertap">CleverTap</span></td><td>MAU, DAU, abertura, campanha, retenção por coorte<small>Comportamento do usuário final do cliente.</small></td><td>Operações, CS, Comercial</td></tr>
-          <tr><td class="dom">Transação e GMV</td><td><span class="src db">Banco Alloyal</span></td><td>Pedidos, cupons, cashback gerado e resgatado, GMV<small>O que efetivamente aconteceu no programa.</small></td><td>Todos os times</td></tr>
-          <tr><td class="dom">Metas e forecast</td><td><span class="src painel">Pulse</span></td><td>Meta por time, forecast, atingimento<small>Hoje em planilha. Migra para o Pulse na fase 1.</small></td><td>Liderança, Comercial</td></tr>
-        </tbody>
-      </table>
-
-      <h3 style="margin:32px 0 12px">O casamento de chaves — primeiro entregável do squad</h3>
-      <p class="lede" style="margin-bottom:14px">Nada acima funciona enquanto os sistemas não souberem que estão falando do mesmo cliente. Três chaves, um de-para.</p>
-      <div class="grid3">
-        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">hubspot_id</code></h3><p>Identificador mestre do cliente. Toda tabela, painel e relatório carrega este campo.</p></div>
-        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">cnpj</code></h3><p>Chave de conciliação entre HubSpot, Omie e ClickSign. Formato único, sem máscara.</p></div>
-        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">brand_id</code></h3><p>Identificador operacional no Banco Alloyal e no CleverTap. Mapeado 1:1 ao <code style="font-family:var(--f-etiqueta)">hubspot_id</code>.</p></div>
-      </div>
-    </section>
-
-    <!-- 04 PLANILHAS -->
-    <section class="slide" data-title="Planilhas hoje">
-      <div class="eyebrow">04 · Planilhas com dados atuais</div>
+    <section class="slide" data-title="Planilhas">
+      <div class="eyebrow">06 · Planilhas com dados atuais</div>
       <h2>Antes de centralizar, precisamos enxergar</h2>
       <p class="lede">Ninguém sabe hoje quantas planilhas sustentam a operação da Alloyal. Cada time preenche o inventário abaixo <strong>antes do kickoff</strong>. Não é auditoria e não é cobrança — é a única forma de garantir que nenhuma regra importante se perca na migração.</p>
       <table>
@@ -687,44 +781,89 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="rec-planilhas"></div>
       </div>
     </section>
+    <section class="slide" data-title="Automações">
+      <div class="eyebrow">07 · Automação de fluxos manuais</div>
+      <h2>O que deixa de ser feito à mão</h2>
+      <p class="lede">A ordem de execução sai do inventário de planilhas: automatiza primeiro o que consome mais tempo e mais afeta receita. A lista abaixo é a hipótese inicial, a ser confirmada com os números que cada time trouxer.</p>
 
-    <!-- 05 CENTRALIZAÇÃO -->
-    <section class="slide" data-title="Centralização">
-      <div class="eyebrow">05 · Centralização dos dados</div>
-      <h2>Como o dado chega até o Pulse</h2>
-      <p class="lede">Nenhum time passa a trabalhar dentro de um sistema novo. Os sistemas de origem continuam sendo usados exatamente como hoje — o que muda é que o dado passa a ser copiado, padronizado e reunido em um só lugar.</p>
-
-      <div class="layer">
-        <div class="layer-label">Camada 1<b>Origem</b></div>
-        <div class="layer-body">Os sete sistemas seguem operando normalmente. Ninguém muda de ferramenta. Cada time continua registrando onde já registra.</div>
-      </div>
-      <div class="flowarrow">▼</div>
-      <div class="layer">
-        <div class="layer-label">Camada 2<b>Coleta</b></div>
-        <div class="layer-body">Integração por API onde existe (HubSpot, Omie, CleverTap, ClickSign) e leitura incremental do banco. Só o que mudou desde a última carga é trazido — sem peso na operação.</div>
-      </div>
-      <div class="flowarrow">▼</div>
-      <div class="layer">
-        <div class="layer-label">Camada 3<b>Padronização</b></div>
-        <div class="layer-body">Aplicação do de-para de chaves, normalização de CNPJ e datas, deduplicação e resolução de divergência pela regra de fonte da verdade. É aqui que “cliente ativo” passa a ter um significado só.</div>
-      </div>
-      <div class="flowarrow">▼</div>
-      <div class="layer hero">
-        <div class="layer-label">Camada 4<b>Alloyal Pulse</b></div>
-        <div class="layer-body">Base única consolidada, com histórico. Cada registro guarda de onde veio e quando foi atualizado — a procedência viaja junto com o número.</div>
-      </div>
-      <div class="flowarrow">▼</div>
-      <div class="layer">
-        <div class="layer-label">Camada 5<b>Consumo</b></div>
-        <div class="layer-body">Painel por time, alertas automáticos, relatório de cliente e exportação. Quem hoje pede um número por mensagem passa a abrir a tela.</div>
+      <div class="auto">
+        <div class="auto-h"><h3>Fechamento mensal de receita</h3><span class="src omie">Omie</span><span class="src hubspot">HubSpot</span></div>
+        <div class="ba"><div class="before">Planilha reconstruída todo mês, <b>com resultado que varia conforme quem monta</b></div><div class="arrow">→</div><div class="after">Número <b>fechado e disponível no dia 1</b>, com a mesma regra sempre</div></div>
       </div>
 
-      <p class="fine" style="margin-top:20px;max-width:80ch">Regra de governança: todo dado exibido no Pulse tem um dono nomeado, uma frequência de atualização declarada e uma definição escrita no dicionário de métricas. Sem os três, o indicador não sobe para o painel.</p>
+      <div class="auto">
+        <div class="auto-h"><h3>Alerta de inadimplência para o CS</h3><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">O CS <b>descobre o atraso dentro da reunião</b> com o cliente</div><div class="arrow">→</div><div class="after">Aviso automático <b>antes do contato</b>, com valor e aging</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Sinal de churn silencioso</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span></div>
+        <div class="ba"><div class="before">Queda de engajamento percebida <b>só no pedido de cancelamento</b></div><div class="arrow">→</div><div class="after">Alerta quando o uso cai por dois ciclos — <b>meses antes</b></div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Vencimento de contrato</h3><span class="src clicksign">ClickSign</span></div>
+        <div class="ba"><div class="before">Controle manual de prazo; <b>renovação tácita passa batida</b></div><div class="arrow">→</div><div class="after">Aviso em <b>D-90 e D-30</b> para Jurídico e Comercial juntos</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Handoff Comercial → Operações</h3><span class="src hubspot">HubSpot</span><span class="src painel">Painel do Cliente</span></div>
+        <div class="ba"><div class="before">Repasse por mensagem e planilha, <b>com escopo incompleto</b></div><div class="arrow">→</div><div class="after">Contrato assinado <b>abre o setup automaticamente</b>, com o escopo vendido junto</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Relatório de cliente (QBR)</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">Montado à mão a cada reunião, <b>juntando três telas</b></div><div class="arrow">→</div><div class="after">Gerado com um clique, <b>sempre no mesmo padrão</b></div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Conciliação contratado × faturado</h3><span class="src hubspot">HubSpot</span><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">Divergência <b>descoberta por acaso</b>, às vezes meses depois</div><div class="arrow">→</div><div class="after">Comparação diária, <b>com exceção apontada na hora</b></div></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Propor um fluxo para automatizar</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Que trabalho manual da sua rotina deveria estar nesta lista? Descreva como é hoje e como deveria ser — a ordem de execução sai daqui.</p>
+        <div class="fields">
+          <div class="f f-6"><label for="a-fluxo">Fluxo manual hoje</label><input id="a-fluxo" type="text" placeholder="Ex.: conferir um a um se o boleto do mês foi emitido"></div>
+          <div class="f f-3"><label for="a-area">Área responsável</label><select id="a-area">
+            <option value="comercial">Comercial</option>
+            <option value="financeiro">Financeiro</option>
+            <option value="operacoes">Operações / CS</option>
+            <option value="juridico">Jurídico</option>
+            <option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-3"><label for="a-prior">Prioridade na sua visão</label><select id="a-prior">
+            <option>Alta — consome muito tempo toda semana</option>
+            <option>Média — incomoda no fechamento</option>
+            <option>Baixa — ganho seria pontual</option>
+          </select></div>
+          <div class="f f-12"><label>Fontes de dados envolvidas</label>
+            <div class="chipset" data-chipset="a-fonte">
+            <label class="chip"><input type="checkbox" value="HubSpot"><span>HubSpot</span></label>
+            <label class="chip"><input type="checkbox" value="Omie"><span>Omie</span></label>
+            <label class="chip"><input type="checkbox" value="ClickSign"><span>ClickSign</span></label>
+            <label class="chip"><input type="checkbox" value="Painel do Cliente"><span>Painel do Cliente</span></label>
+            <label class="chip"><input type="checkbox" value="CleverTap"><span>CleverTap</span></label>
+            <label class="chip"><input type="checkbox" value="Banco Alloyal"><span>Banco Alloyal</span></label>
+            <label class="chip"><input type="checkbox" value="Planilha interna"><span>Planilha interna</span></label>
+            </div>
+          </div>
+          <div class="f f-8"><label for="a-esperado">Como deveria funcionar</label><input id="a-esperado" type="text" placeholder="Ex.: aviso automático só das exceções, sem conferência linha a linha"></div>
+          <div class="f f-4"><label for="a-horas">Horas por ciclo que isso consome</label><input id="a-horas" type="number" min="0" step="0.5" placeholder="Ex.: 3"></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="automacoes">Registrar automação</button>
+          <span class="formnote" id="a-status"></span>
+        </div>
+        <div class="records" id="rec-automacoes"></div>
+      </div>
     </section>
-
-    <!-- 06 MÉTRICAS -->
     <section class="slide" data-title="Métricas por time">
-      <div class="eyebrow">06 · Métricas e dados para cada time</div>
+      <div class="eyebrow">08 · Métricas e dados para cada time</div>
       <h2>O que cada área vê ao abrir o Pulse</h2>
       <div class="tabs" role="tablist" data-tabs="met">
         <button class="tab" role="tab" aria-selected="true" data-pane="met-com">Comercial</button>
@@ -807,10 +946,8 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="rec-metricas"></div>
       </div>
     </section>
-
-    <!-- 07 JORNADAS -->
     <section class="slide" data-title="Jornadas">
-      <div class="eyebrow">07 · Mapeamento das jornadas</div>
+      <div class="eyebrow">09 · Mapeamento das jornadas</div>
       <h2>Onde o dado se perde no caminho</h2>
       <p class="lede">Cada time tem uma jornada que já funciona. O problema mora nas passagens de bastão — em vermelho, os pontos em que a informação hoje sai do sistema e entra numa conversa.</p>
       <div class="tabs" role="tablist" data-tabs="jor">
@@ -906,107 +1043,6 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="rec-jornadas"></div>
       </div>
     </section>
-
-    <!-- 08 PULSE -->
-    <section class="slide" data-title="Alloyal Pulse">
-      <div class="eyebrow">08 · Alloyal Pulse</div>
-      <h2>A plataforma interna que sustenta tudo isso</h2>
-      <p class="lede">O Pulse não substitui HubSpot, Omie ou CleverTap. Ele é a camada acima deles: <strong>o lugar onde o número já vem decidido</strong>, com a origem visível e o histórico preservado.</p>
-      <div class="grid2">
-        <div class="card accent"><h3>Visão 360 do cliente</h3><p>Uma tela por cliente reunindo contrato, faturamento, inadimplência, configuração do programa, engajamento e uso — sem trocar de aba.</p></div>
-        <div class="card accent"><h3>Procedência sempre visível</h3><p>Todo número exibe de onde veio e quando foi atualizado. Discussão sobre qual dado está certo deixa de existir.</p></div>
-        <div class="card accent"><h3>Painel por time</h3><p>Cada área acessa suas métricas com sua linguagem, mas todas partem da mesma base e da mesma definição.</p></div>
-        <div class="card accent"><h3>Alertas em vez de relatórios</h3><p>O Pulse avisa quando algo muda — queda de engajamento, atraso de pagamento, contrato vencendo — em vez de esperar alguém abrir um relatório.</p></div>
-        <div class="card accent"><h3>Histórico preservado</h3><p>Guarda a série temporal. Dá para responder “como estava este cliente há seis meses” sem depender de print antigo.</p></div>
-        <div class="card accent"><h3>Acesso controlado</h3><p>Permissão por perfil e registro de acesso. Requisito de LGPD que planilha em drive pessoal não atende.</p></div>
-      </div>
-      <p class="fine" style="margin-top:22px;max-width:80ch">Entrega por fases: primeiro a base consolidada e a visão 360, depois os painéis por time, depois os alertas e as automações. Cada fase entra em uso antes da seguinte começar.</p>
-    </section>
-
-    <!-- 09 AUTOMAÇÃO -->
-    <section class="slide" data-title="Automação">
-      <div class="eyebrow">09 · Automação de fluxos manuais</div>
-      <h2>O que deixa de ser feito à mão</h2>
-      <p class="lede">A ordem de execução sai do inventário de planilhas: automatiza primeiro o que consome mais tempo e mais afeta receita. A lista abaixo é a hipótese inicial, a ser confirmada com os números que cada time trouxer.</p>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Fechamento mensal de receita</h3><span class="src omie">Omie</span><span class="src hubspot">HubSpot</span></div>
-        <div class="ba"><div class="before">Planilha reconstruída todo mês, <b>com resultado que varia conforme quem monta</b></div><div class="arrow">→</div><div class="after">Número <b>fechado e disponível no dia 1</b>, com a mesma regra sempre</div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Alerta de inadimplência para o CS</h3><span class="src omie">Omie</span></div>
-        <div class="ba"><div class="before">O CS <b>descobre o atraso dentro da reunião</b> com o cliente</div><div class="arrow">→</div><div class="after">Aviso automático <b>antes do contato</b>, com valor e aging</div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Sinal de churn silencioso</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span></div>
-        <div class="ba"><div class="before">Queda de engajamento percebida <b>só no pedido de cancelamento</b></div><div class="arrow">→</div><div class="after">Alerta quando o uso cai por dois ciclos — <b>meses antes</b></div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Vencimento de contrato</h3><span class="src clicksign">ClickSign</span></div>
-        <div class="ba"><div class="before">Controle manual de prazo; <b>renovação tácita passa batida</b></div><div class="arrow">→</div><div class="after">Aviso em <b>D-90 e D-30</b> para Jurídico e Comercial juntos</div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Handoff Comercial → Operações</h3><span class="src hubspot">HubSpot</span><span class="src painel">Painel do Cliente</span></div>
-        <div class="ba"><div class="before">Repasse por mensagem e planilha, <b>com escopo incompleto</b></div><div class="arrow">→</div><div class="after">Contrato assinado <b>abre o setup automaticamente</b>, com o escopo vendido junto</div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Relatório de cliente (QBR)</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span><span class="src omie">Omie</span></div>
-        <div class="ba"><div class="before">Montado à mão a cada reunião, <b>juntando três telas</b></div><div class="arrow">→</div><div class="after">Gerado com um clique, <b>sempre no mesmo padrão</b></div></div>
-      </div>
-
-      <div class="auto">
-        <div class="auto-h"><h3>Conciliação contratado × faturado</h3><span class="src hubspot">HubSpot</span><span class="src omie">Omie</span></div>
-        <div class="ba"><div class="before">Divergência <b>descoberta por acaso</b>, às vezes meses depois</div><div class="arrow">→</div><div class="after">Comparação diária, <b>com exceção apontada na hora</b></div></div>
-      </div>
-
-      <div class="editor">
-        <div class="editor-h">
-          <h3>Propor um fluxo para automatizar</h3>
-          <span class="hint">Preenchimento colaborativo</span>
-        </div>
-        <p class="formnote" style="margin-bottom:14px">Que trabalho manual da sua rotina deveria estar nesta lista? Descreva como é hoje e como deveria ser — a ordem de execução sai daqui.</p>
-        <div class="fields">
-          <div class="f f-6"><label for="a-fluxo">Fluxo manual hoje</label><input id="a-fluxo" type="text" placeholder="Ex.: conferir um a um se o boleto do mês foi emitido"></div>
-          <div class="f f-3"><label for="a-area">Área responsável</label><select id="a-area">
-            <option value="comercial">Comercial</option>
-            <option value="financeiro">Financeiro</option>
-            <option value="operacoes">Operações / CS</option>
-            <option value="juridico">Jurídico</option>
-            <option value="todos">Todas as áreas</option>
-          </select></div>
-          <div class="f f-3"><label for="a-prior">Prioridade na sua visão</label><select id="a-prior">
-            <option>Alta — consome muito tempo toda semana</option>
-            <option>Média — incomoda no fechamento</option>
-            <option>Baixa — ganho seria pontual</option>
-          </select></div>
-          <div class="f f-12"><label>Fontes de dados envolvidas</label>
-            <div class="chipset" data-chipset="a-fonte">
-            <label class="chip"><input type="checkbox" value="HubSpot"><span>HubSpot</span></label>
-            <label class="chip"><input type="checkbox" value="Omie"><span>Omie</span></label>
-            <label class="chip"><input type="checkbox" value="ClickSign"><span>ClickSign</span></label>
-            <label class="chip"><input type="checkbox" value="Painel do Cliente"><span>Painel do Cliente</span></label>
-            <label class="chip"><input type="checkbox" value="CleverTap"><span>CleverTap</span></label>
-            <label class="chip"><input type="checkbox" value="Banco Alloyal"><span>Banco Alloyal</span></label>
-            <label class="chip"><input type="checkbox" value="Planilha interna"><span>Planilha interna</span></label>
-            </div>
-          </div>
-          <div class="f f-8"><label for="a-esperado">Como deveria funcionar</label><input id="a-esperado" type="text" placeholder="Ex.: aviso automático só das exceções, sem conferência linha a linha"></div>
-          <div class="f f-4"><label for="a-horas">Horas por ciclo que isso consome</label><input id="a-horas" type="number" min="0" step="0.5" placeholder="Ex.: 3"></div>
-        </div>
-        <div class="editor-actions">
-          <button class="btn btn-primary" type="button" data-add="automacoes">Registrar automação</button>
-          <span class="formnote" id="a-status"></span>
-        </div>
-        <div class="records" id="rec-automacoes"></div>
-      </div>
-    </section>
-
-    <!-- 10 CONSOLIDADO -->
     <section class="slide" data-title="Consolidado">
       <div class="eyebrow">Consolidado · Preenchimento das áreas</div>
       <h2>O que os times já registraram</h2>
@@ -1056,19 +1092,57 @@ body.presenting .cons-tools{display:none}
         <div class="records" id="cons-automacoes"></div>
       </div>
     </section>
-
-    <!-- 11 PRÓXIMOS PASSOS -->
-    <section class="slide" data-title="Próximos passos">
-      <div class="eyebrow">Fechamento</div>
-      <h2>O que sai desta sessão</h2>
-      <p class="lede">Kickoff único. A cadência do squad é definida no fim desta reunião, com base no volume de trabalho que aparecer no inventário.</p>
+    <section class="slide" data-title="Roadmap">
+      <div class="eyebrow">10 · Roadmap</div>
+      <h2>O que sai desta sessão, com data e dono</h2>
+      <p class="lede">As decisões do kickoff viram tarefa aqui, com área, responsável e prazo. <strong>Item sem dono e sem data não é decisão — é intenção.</strong></p>
       <div class="grid2">
         <div class="card accent"><h3>Decisão 1 — Fonte da verdade</h3><p>A tabela do bloco 03 sai desta sala aprovada ou corrigida. Divergência não resolvida aqui vira item nomeado com prazo.</p></div>
         <div class="card accent"><h3>Decisão 2 — Dono por domínio</h3><p>Cada domínio ganha uma pessoa responsável pela qualidade do dado. Responsabilidade nomeada, não coletiva.</p></div>
         <div class="card accent"><h3>Decisão 3 — Dicionário de métricas</h3><p>Definição escrita de cliente ativo, churn, MRR e inadimplência. Uma definição por termo, para toda a empresa.</p></div>
         <div class="card accent"><h3>Decisão 4 — Cadência e formato</h3><p>Frequência do squad, quem participa de forma fixa e quem entra por tema.</p></div>
       </div>
-      <div class="ask">
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Cadastro de tarefa</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Uma tarefa por vez. O que entrar aqui aparece nas duas visões abaixo, para todas as áreas.</p>
+        <div class="fields">
+          <div class="f f-3"><label for="r-area">Área</label><select id="r-area">
+            <option value="">Selecione</option>
+            <option value="comercial">Comercial</option><option value="financeiro">Financeiro</option><option value="operacoes">Operações / CS</option><option value="juridico">Jurídico</option><option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-6"><label for="r-titulo">Título da tarefa</label><input id="r-titulo" type="text" placeholder="Ex.: definir dicionário de métricas de churn"></div>
+          <div class="f f-3"><label for="r-resp">Responsável</label><input id="r-resp" type="text" placeholder="Ex.: Mariana (Financeiro)"></div>
+          <div class="f f-4"><label for="r-inicio">Data de início</label><input id="r-inicio" type="date"></div>
+          <div class="f f-4"><label for="r-fim">Data de fim</label><input id="r-fim" type="date"></div>
+          <div class="f f-4"><label for="r-status">Status</label><select id="r-status">
+            <option>Não iniciada</option><option>Em andamento</option><option>Concluída</option><option>Bloqueada</option>
+          </select></div>
+          <div class="f f-12"><label for="r-desc">Descrição</label><textarea id="r-desc" placeholder="O que precisa acontecer, e como se sabe que terminou"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="roadmap">Registrar tarefa</button>
+          <span class="formnote" id="r-status-msg"></span>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" data-tabs="rmp" style="margin-top:26px">
+        <button class="tab" role="tab" aria-selected="true" data-pane="rmp-tl">Timeline</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="rmp-area">Por área</button>
+      </div>
+
+      <div class="pane on" id="rmp-tl">
+        <div id="rmp-timeline"></div>
+      </div>
+
+      <div class="pane" id="rmp-area">
+        <div id="rmp-por-area"></div>
+      </div>
+
+      <div class="ask" style="margin-top:26px">
         <h3>Pré-requisito para a reunião acontecer</h3>
         <ul class="clean">
           <li><b>Inventário de planilhas preenchido</b> por Comercial, Financeiro, Operações e Jurídico — enviado 48h antes.</li>
@@ -1170,9 +1244,9 @@ body.presenting .cons-tools{display:none}
    CAMADA COLABORATIVA — persistência, render e exportação
    ============================================================ */
 (function(){
-  var DB = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[] };
+  var DB = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] };
   var TEAMS = { comercial:'Comercial', financeiro:'Financeiro', operacoes:'Operações / CS', juridico:'Jurídico', todos:'Todas as áreas' };
-  var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes'];
+  var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes','roadmap'];
 
   /* ---------- onde os registros ficam ----------
      COMPARTILHADO, num endpoint do Pulse (`/api/kickoff`), gravando em
@@ -1303,7 +1377,7 @@ body.presenting .cons-tools{display:none}
 
   /* ---------- persistência ---------- */
   function normalize(obj){
-    var out = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[] };
+    var out = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] };
     if(!obj || typeof obj !== 'object') return out;
     KINDS.forEach(function(k){
       if(Array.isArray(obj[k])) out[k] = obj[k].filter(function(r){ return r && typeof r === 'object'; });
@@ -1565,6 +1639,28 @@ body.presenting .cons-tools{display:none}
   function clear(ids){ ids.forEach(function(id){ var el = document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=false; else el.value=''; } }); }
 
   var FORMS = {
+    roadmap: {
+      status:'r-status-msg',
+      // `r-area` e `r-status` ficam FORA de `fields`: quem cadastra várias tarefas
+      // cadastra da mesma área, e limpar a seleção a cada registro obriga a
+      // reescolher — erro que só aparece depois, na tarefa marcada para a área errada.
+      fields:['r-titulo','r-resp','r-inicio','r-fim','r-desc'],
+      required:['r-area','r-titulo'],
+      requiredMsg:'Escolha a área e dê um título à tarefa.',
+      valida:function(){
+        var a = dataLocal(val('r-inicio')), b = dataLocal(val('r-fim'));
+        // Fim antes do início passaria pelo `required` e viraria barra invertida na
+        // timeline. Barrado aqui, com a razão dita.
+        if(a && b && b.getTime() < a.getTime()) return 'A data de fim não pode ser anterior à de início.';
+        return '';
+      },
+      build:function(){ return {
+        id:uid(), time:myTeam(), area:val('r-area'),
+        titulo:val('r-titulo'), responsavel:val('r-resp'), descricao:val('r-desc'),
+        inicio:val('r-inicio'), fim:val('r-fim'),
+        status:val('r-status') || 'Não iniciada', em:new Date().toISOString()
+      };}
+    },
     dores: {
       status:'d-status',
       fields:['d-dor','d-impacto','d-freq','d-sistema','d-contorno'],
@@ -1662,6 +1758,11 @@ body.presenting .cons-tools{display:none}
       if(kind === 'planilhas' && link && !safeUrl(link)){
         if(status) status.textContent = 'O link precisa começar com https://';
         return;
+      }
+      // Validação própria do formulário, quando "campo preenchido" não basta.
+      if(cfg.valida){
+        var problema = cfg.valida();
+        if(problema){ if(status) status.textContent = problema; return; }
       }
       var registro = cfg.build();
       DB[kind].push(registro);
@@ -1800,15 +1901,156 @@ body.presenting .cons-tools{display:none}
       + '</div>' + botaoRemover('automacoes', r) + '</div>';
   }
 
+  /* ---------- Roadmap ---------- */
+  var MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var AREAS_NA_ORDEM = ['comercial','financeiro','operacoes','juridico','todos'];
+  var CLASSE_DE_STATUS = {
+    'Não iniciada':'nao', 'Em andamento':'andamento', 'Concluída':'concluida', 'Bloqueada':'bloqueada'
+  };
+  function classeDeStatus(st){ return CLASSE_DE_STATUS[st] || 'nao'; }
+
+  /**
+   * Lê 'AAAA-MM-DD' como data LOCAL.
+   *
+   * `new Date('2026-08-05')` é meia-noite UTC: em fuso negativo — o nosso — ela cai
+   * no dia 4, e a barra da timeline começa um dia antes do que a pessoa digitou.
+   */
+  function dataLocal(txt){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(txt == null ? '' : txt));
+    if(!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function ddmm(d){ return doisDigitos(d.getDate()) + '/' + doisDigitos(d.getMonth() + 1); }
+  function prazoEmTexto(r){
+    var a = dataLocal(r.inicio), b = dataLocal(r.fim);
+    if(a && b) return ddmm(a) + ' → ' + ddmm(b);
+    if(a) return 'início ' + ddmm(a);
+    if(b) return 'entrega ' + ddmm(b);
+    return 'sem data';
+  }
+
+  function cardTarefa(r){
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + areaTag(r.area)
+      + '<span class="rmp-st ' + classeDeStatus(r.status) + '">' + esc(r.status || 'Não iniciada') + '</span>'
+      + '<span class="pill">' + esc(prazoEmTexto(r)) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.titulo) + '</div>'
+      + (r.responsavel
+          ? '<div class="rec-meta">Responsável: <b>' + esc(r.responsavel) + '</b></div>'
+          : '<div class="rec-meta">Sem responsável definido</div>')
+      + (r.descricao ? '<div class="rec-meta">' + esc(r.descricao) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('roadmap', r) + '</div>';
+  }
+
+  /**
+   * A timeline.
+   *
+   * ┌───────────────────────────────────────────────────────────────────────────┐
+   * │ As barras são posicionadas por PROPORÇÃO DE TEMPO, e as etiquetas de mês    │
+   * │ também — não por espaçamento igual. Mês tem 28 a 31 dias: régua de meses    │
+   * │ igualmente espaçada com barras proporcionais desalinha etiqueta e barra, e  │
+   * │ uma timeline que mente sobre QUANDO é pior que nenhuma.                     │
+   * │                                                                            │
+   * │ Tarefa sem as duas datas NÃO recebe barra inventada: fica listada à parte,  │
+   * │ dita como pendente de data.                                                │
+   * └───────────────────────────────────────────────────────────────────────────┘
+   */
+  function renderTimeline(){
+    var alvo = document.getElementById('rmp-timeline');
+    if(!alvo) return;
+    if(!DB.roadmap.length){ alvo.innerHTML = '<div class="empty">' + EMPTY.roadmap + '</div>'; return; }
+
+    var comData = [], semData = [];
+    DB.roadmap.forEach(function(r){
+      var a = dataLocal(r.inicio), b = dataLocal(r.fim);
+      if(a && b && b.getTime() >= a.getTime()) comData.push({ r:r, a:a, b:b });
+      else semData.push(r);
+    });
+
+    var html = '';
+    if(comData.length){
+      comData.sort(function(x,y){ return x.a - y.a || x.b - y.b; });
+      var min = comData[0].a.getTime();
+      var max = comData.reduce(function(m,x){ return Math.max(m, x.b.getTime()); }, min);
+      // Vão mínimo de um dia: tudo no mesmo dia daria divisão por zero.
+      var vao = Math.max(max - min, 86400000);
+
+      var meses = '', cur = new Date(comData[0].a.getFullYear(), comData[0].a.getMonth(), 1);
+      var ultimo = new Date(max);
+      var limite = new Date(ultimo.getFullYear(), ultimo.getMonth(), 1);
+      var primeiro = true;
+      while(cur.getTime() <= limite.getTime()){
+        var pos = Math.max(0, (cur.getTime() - min) / vao * 100);
+        meses += '<div class="tl-mes" style="left:' + pos.toFixed(2) + '%">'
+          + MESES[cur.getMonth()] + (primeiro || cur.getMonth() === 0 ? ' ' + cur.getFullYear() : '')
+          + '</div>';
+        primeiro = false;
+        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      }
+
+      var linhas = comData.map(function(x){
+        var esq = (x.a.getTime() - min) / vao * 100;
+        var larg = Math.max((x.b.getTime() - x.a.getTime()) / vao * 100, 1.8);
+        if(esq + larg > 100) larg = 100 - esq;
+        return '<div class="tl-linha">'
+          + '<div class="tl-rot"><div class="n" title="' + esc(x.r.titulo) + '">' + esc(x.r.titulo) + '</div>'
+          + '<div class="q">' + esc(TEAMS[x.r.area] || x.r.area || 'sem área')
+          + (x.r.responsavel ? ' · ' + esc(x.r.responsavel) : '') + '</div></div>'
+          + '<div class="tl-pista"><div class="tl-barra ' + classeDeStatus(x.r.status)
+          + '" style="left:' + esq.toFixed(2) + '%;width:' + larg.toFixed(2) + '%">'
+          + '<span>' + ddmm(x.a) + ' → ' + ddmm(x.b) + '</span></div></div>'
+          + '</div>';
+      }).join('');
+
+      html += '<div class="rmp-tempo"><div class="tl-grade">'
+        + '<div class="tl-head"><div></div><div class="tl-meses">' + meses + '</div></div>'
+        + linhas + '</div></div>';
+    }
+
+    if(semData.length){
+      html += '<div class="tl-semdata"><b>' + semData.length
+        + (semData.length === 1 ? ' tarefa sem data completa</b> — não entra na linha do tempo: '
+                                : ' tarefas sem data completa</b> — não entram na linha do tempo: ')
+        + semData.map(function(r){ return esc(r.titulo); }).join(' · ') + '</div>';
+    }
+    alvo.innerHTML = html;
+  }
+
+  /** As tarefas separadas por área, na ordem fixa das áreas. */
+  function renderPorArea(){
+    var alvo = document.getElementById('rmp-por-area');
+    if(!alvo) return;
+    if(!DB.roadmap.length){ alvo.innerHTML = '<div class="empty">' + EMPTY.roadmap + '</div>'; return; }
+
+    var html = '';
+    var grupo = function(rotulo, lista){
+      return '<div class="rmp-grupo"><h4>' + esc(rotulo)
+        + ' <span class="pill">' + lista.length + '</span></h4>'
+        + '<div class="records">' + lista.map(cardTarefa).join('') + '</div></div>';
+    };
+    AREAS_NA_ORDEM.forEach(function(a){
+      var lista = DB.roadmap.filter(function(r){ return (r.area || '') === a; });
+      if(lista.length) html += grupo(TEAMS[a] || a, lista);
+    });
+    // Área desconhecida não é descartada em silêncio — ela aparece e se resolve.
+    var orfas = DB.roadmap.filter(function(r){ return AREAS_NA_ORDEM.indexOf(r.area || '') === -1; });
+    if(orfas.length) html += grupo('Sem área definida', orfas);
+    alvo.innerHTML = html;
+  }
+
   var CARD = { dores:cardDor, dados:cardDado, planilhas:cardPlanilha,
-               metricas:cardMetrica, jornadas:cardJornada, automacoes:cardAutomacao };
+               metricas:cardMetrica, jornadas:cardJornada, automacoes:cardAutomacao,
+               roadmap:cardTarefa };
   var EMPTY = {
     dores:'Nenhuma dor registrada ainda.',
     dados:'Nenhuma necessidade de dado registrada ainda.',
     planilhas:'Nenhuma planilha inventariada ainda.',
     metricas:'Nenhuma métrica solicitada ainda.',
     jornadas:'Nenhuma correção de jornada registrada ainda.',
-    automacoes:'Nenhuma automação proposta ainda.'
+    automacoes:'Nenhuma automação proposta ainda.',
+    roadmap:'Nenhuma tarefa cadastrada ainda.'
   };
 
   function fill(el, kind, list){
@@ -1825,6 +2067,9 @@ body.presenting .cons-tools{display:none}
       var ct = document.getElementById('ct-' + kind);
       if(ct) ct.textContent = DB[kind].length ? DB[kind].length + ' registro' + (DB[kind].length > 1 ? 's' : '') : '';
     });
+
+    renderTimeline();
+    renderPorArea();
 
     var horas = DB.planilhas.concat(DB.automacoes).reduce(function(a,r){ var n = parseFloat(r.horas); return a + (isNaN(n) ? 0 : n); }, 0);
     var lgpd = DB.planilhas.filter(function(r){ return r.lgpd; }).length;
@@ -1845,7 +2090,7 @@ body.presenting .cons-tools{display:none}
     var kind = btn.dataset.del, id = btn.dataset.id;
     var rec = DB[kind].filter(function(r){ return r.id === id; })[0];
     if(!rec){ toast('Registro não encontrado.'); return; }
-    var nome = rec.dor || rec.campo || rec.nome || rec.metrica || rec.etapa || rec.fluxo || 'este registro';
+    var nome = rec.dor || rec.campo || rec.nome || rec.metrica || rec.etapa || rec.fluxo || rec.titulo || 'este registro';
     var autor = rec.time ? (TEAMS[rec.time] || rec.time) : null;
     ask({
       title:'Remover registro',
@@ -1960,6 +2205,23 @@ body.presenting .cons-tools{display:none}
     L.push('- Automações propostas: ' + DB.automacoes.length);
     L.push('- Horas por ciclo em trabalho manual: ' + (Math.round(horas*10)/10) + 'h');
     L.push('- Planilhas com dado pessoal: ' + DB.planilhas.filter(function(r){ return r.lgpd; }).length);
+
+    L.push('', '## Roadmap', '');
+    if(!DB.roadmap.length) L.push('_Nenhuma tarefa cadastrada._','');
+    if(DB.roadmap.length){
+      L.push('| Área | Tarefa | Responsável | Início | Fim | Status |');
+      L.push('|---|---|---|---|---|---|');
+      DB.roadmap.forEach(function(r){
+        L.push('| ' + [TEAMS[r.area] || '—', r.titulo, r.responsavel || '—', r.inicio || '—', r.fim || '—', r.status || 'Não iniciada']
+          .map(function(c){ return String(c == null ? '' : c).replace(/\|/g,'\\|').replace(/\n/g,' '); }).join(' | ') + ' |');
+      });
+      // A descrição vai FORA da tabela: texto longo em célula de Markdown fica ilegível.
+      var comDesc = DB.roadmap.filter(function(r){ return r.descricao; });
+      if(comDesc.length){
+        L.push('', '### Descrição das tarefas', '');
+        comDesc.forEach(function(r){ L.push('- **' + r.titulo + '** — ' + r.descricao); });
+      }
+    }
 
     exportar('squad-dados-alloyal-' + stamp() + '.md', L.join('\n'), 'text/markdown', 'Markdown');
   });
