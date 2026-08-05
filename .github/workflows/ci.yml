@@ -249,6 +249,7 @@ jobs:
           pnpm --filter @pulse/config build
           node --test packages/config/dist/catalogo.test.js
           node --test packages/config/dist/hubspot-vinculo.test.js
+          node --test packages/config/dist/base-de-clientes.test.js
           node --test packages/config/dist/uso.test.js
           node --test packages/auth/dist/cifra.test.js
 
