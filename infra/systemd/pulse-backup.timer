@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup diário do banco do Pulse
+
+[Timer]
+# 03:00 UTC: depois do ciclo de carga das 02:00, para o dump já conter a sincronização
+# do dia. `Persistent=yes` roda o backup atrasado se a VM estava desligada na hora —
+# sem isso, um reboot noturno pularia o dia inteiro em silêncio.
+OnCalendar=*-*-* 03:00:00
+Persistent=yes
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

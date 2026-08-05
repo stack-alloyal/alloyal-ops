@@ -1276,6 +1276,67 @@ body.presenting .cons-tools{display:none}
   var CHAVE_ANTIGA = 'squad_dados_registros_v1'
   var MARCA_RESGATE = 'squad_dados_resgatado_v2'
 
+  /* ┌───────────────────────────────────────────────────────────────────────────┐
+     │ A SOMBRA: cópia que NUNCA ENCOLHE por conta da resposta do servidor.        │
+     │                                                                            │
+     │ Existe por um caso real. Em 05/08/2026 o depósito compartilhado perdeu 17    │
+     │ registros que o time havia acabado de preencher — foram apagados por um      │
+     │ DELETE sem filtro que eu rodei contra a produção. A partir daí, cada carga    │
+     │ bem-sucedida apagava também a cópia local, porque o rascunho era substituído  │
+     │ pelo que o servidor mandava. Duas perdas independentes viraram uma só.       │
+     │                                                                            │
+     │ A sombra não é desenhada em tela nenhuma e não muda o que aparece: ela só    │
+     │ alimenta o botão "Recuperar deste navegador". Registro que a pessoa inativa   │
+     │ de propósito SAI da sombra — senão o botão ressuscitaria o que ela removeu.  │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  var CHAVE_SOMBRA = 'squad_dados_sombra_v1'
+  var TETO_SOMBRA = 600   // registro é pequeno; o teto existe só para não estourar a cota
+
+  /** Identidade pelo CONTEÚDO: id, autor e data mudam a cada envio, o conteúdo não. */
+  function chaveDeConteudo(kind, r){
+    var campos = Object.keys(r).filter(function(k){
+      return k !== 'id' && k !== 'autor' && k !== 'em'
+    }).sort()
+    return kind + '|' + campos.map(function(k){ return k + '=' + String(r[k]) }).join('\u0001')
+  }
+  function lerSombra(){
+    try{
+      var v = window.localStorage.getItem(CHAVE_SOMBRA)
+      return v ? normalize(JSON.parse(v)) : null
+    }catch(e){ return null }
+  }
+  /** União: acrescenta o que está na tela e não estava guardado. Nunca remove. */
+  function guardarSombra(){
+    var som = lerSombra() || { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] }
+    var vistos = {}
+    var total = 0
+    KINDS.forEach(function(k){
+      som[k].forEach(function(r){ vistos[chaveDeConteudo(k, r)] = 1; total++ })
+    })
+    var mudou = false
+    KINDS.forEach(function(k){
+      DB[k].forEach(function(r){
+        var c = chaveDeConteudo(k, r)
+        if(vistos[c] || total >= TETO_SOMBRA) return
+        som[k].push(r); vistos[c] = 1; total++; mudou = true
+      })
+    })
+    if(mudou){
+      try{ window.localStorage.setItem(CHAVE_SOMBRA, JSON.stringify(som)) }catch(e){}
+    }
+  }
+  /** Tira da sombra o que foi inativado de propósito. */
+  function esquecerNaSombra(kind, r){
+    var som = lerSombra()
+    if(!som) return
+    var c = chaveDeConteudo(kind, r)
+    var antes = som[kind].length
+    som[kind] = som[kind].filter(function(x){ return chaveDeConteudo(kind, x) !== c })
+    if(som[kind].length !== antes){
+      try{ window.localStorage.setItem(CHAVE_SOMBRA, JSON.stringify(som)) }catch(e){}
+    }
+  }
+
   var EU = ''                 // e-mail de quem está lendo, dito pela API
   var PODE_APAGAR_TUDO = false
   var enviando = 0            // POSTs em voo: a recarga automática espera por eles
@@ -1461,6 +1522,7 @@ body.presenting .cons-tools{display:none}
       compartilhado = true
       vistoEm = horaAgora()
       guardarRascunho()
+      guardarSombra()
     }catch(e){
       compartilhado = false
       // Cai para o rascunho local. Não é a fonte — é o que impede a pessoa de
@@ -1521,6 +1583,28 @@ body.presenting .cons-tools{display:none}
           respondia, em qualquer momento. */
     naoEnviadosEm(DB).forEach(function(p){ pendentes.push(p) })
 
+    /* 3) O QUE A SOMBRA TEM E O SERVIDOR NÃO — registro que desapareceu do depósito
+          comum sem ninguém ter inativado. É a fonte que teria evitado a perda de
+          05/08/2026 sem precisar ler bytes de WAL. */
+    var som = lerSombra()
+    if(som){
+      var noServidor = {}
+      KINDS.forEach(function(k){
+        DB[k].forEach(function(r){ noServidor[chaveDeConteudo(k, r)] = 1 })
+      })
+      KINDS.forEach(function(k){
+        som[k].forEach(function(r){
+          if(!noServidor[chaveDeConteudo(k, r)]){
+            // Sem id de servidor: vai como registro novo, e recebe id novo ao chegar.
+            var copia = {}
+            Object.keys(r).forEach(function(x){ if(x !== 'id' && x !== 'autor') copia[x] = r[x] })
+            copia.id = uid()
+            pendentes.push({ kind:k, reg:copia })
+          }
+        })
+      })
+    }
+
     if(!pendentes.length){
       // No modo forçado o silêncio é a pior resposta: quem apertou o botão precisa
       // saber que nada ficou guardado nesta máquina, e não ficar em dúvida.
@@ -1579,6 +1663,7 @@ body.presenting .cons-tools{display:none}
       registro.autor = criado.autor
       compartilhado = true
       guardarRascunho()
+      guardarSombra()
       render()
       return true
     }catch(e){
@@ -1595,6 +1680,7 @@ body.presenting .cons-tools{display:none}
 
   async function removerRegistro(kind, id){
     var antes = DB[kind]
+    var oQueSai = DB[kind].filter(function(r){ return r.id === id })[0]
     DB[kind] = DB[kind].filter(function(r){ return r.id !== id })
     guardarRascunho()
     render()
@@ -1604,6 +1690,9 @@ body.presenting .cons-tools{display:none}
         var corpo = await r.json().catch(function(){ return {} })
         throw new Error(corpo.erro || ('HTTP ' + r.status))
       }
+      // Removido de propósito: sai também da sombra, senão o botão de recuperar o
+      // traria de volta como se tivesse sido perdido.
+      if(oQueSai) esquecerNaSombra(kind, oQueSai)
       toast('Registro removido.')
     }catch(e){
       // Devolve à tela: apagar só aqui e não no servidor faria o registro

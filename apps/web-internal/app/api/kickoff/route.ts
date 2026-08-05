@@ -111,8 +111,10 @@ export async function GET(): Promise<Response> {
   if ("resposta" in r) return r.resposta;
 
   const { rows } = await pool().query<Linha>(
+    // `WHERE ativo`: registro inativado sai da tela e FICA no banco (migration 0027).
     `SELECT id::text, tipo, time, dados, autor_email, criado_em
        FROM ops.kickoff_registro
+      WHERE ativo
       ORDER BY criado_em ASC`,
   );
   // ┌───────────────────────────────────────────────────────────────────────────┐
@@ -201,17 +203,19 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 /**
- * Remove um registro.
+ * Tira um registro da tela — INATIVANDO, nunca apagando.
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
- * │ QUEM PODE APAGAR: o autor, ou quem tem permissão de configurar.             │
+ * │ O MÉTODO CONTINUA `DELETE` porque é o verbo do protocolo para "remova isto"; │
+ * │ o EFEITO é `ativo = false`. A linha fica no banco com quem inativou e quando │
+ * │ (migration 0027), e o gatilho recusa DELETE de verdade — inclusive do        │
+ * │ superusuário. Isto existe porque eu apaguei 17 registros de Operações com um  │
+ * │ DELETE sem filtro, e a regra não pode depender de quem escreve o comando.    │
  * │                                                                            │
- * │ O documento é aberto a toda a empresa. Sem esta regra, qualquer pessoa       │
- * │ apagaria o levantamento de qualquer área — e como não há UPDATE nem            │
- * │ histórico aqui, o registro sumiria sem rastro no meio de uma sessão.        │
- * │                                                                            │
- * │ O autor vem da SESSÃO, nunca do corpo do pedido. Aceitá-lo do corpo faria a  │
- * │ regra ser "quem disser que é o autor".                                     │
+ * │ QUEM PODE: o autor, ou quem tem permissão de configurar. O documento é aberto│
+ * │ a toda a empresa; sem isso, qualquer pessoa tiraria da tela o levantamento de │
+ * │ qualquer área. O autor vem da SESSÃO, nunca do corpo do pedido — aceitá-lo do│
+ * │ corpo faria a regra ser "quem disser que é o autor".                        │
  * └───────────────────────────────────────────────────────────────────────────┘
  */
 export async function DELETE(req: Request): Promise<Response> {
@@ -224,8 +228,11 @@ export async function DELETE(req: Request): Promise<Response> {
   }
 
   const { rowCount } = await pool().query(
-    `DELETE FROM ops.kickoff_registro
-      WHERE id = $1::uuid AND ($2::boolean OR autor_email = $3)`,
+    // `AND ativo` para o segundo pedido devolver 404 em vez de 200 mentindo que
+    // acabou de inativar algo que já estava inativo.
+    `UPDATE ops.kickoff_registro
+        SET ativo = false, inativado_em = now(), inativado_por = $3
+      WHERE id = $1::uuid AND ativo AND ($2::boolean OR autor_email = $3)`,
     [id, r.quem.podeApagarTudo, r.quem.email],
   );
   if (rowCount === 0) {
