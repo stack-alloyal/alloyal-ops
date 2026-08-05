@@ -1,28 +1,39 @@
-import { agendaEmPalavras, atrasado, ciclosNaTela, historicoDeExecucoes } from '@pulse/config'
-import { Aviso, Badge, Btn, Card, Table } from '@pulse/ui'
-import { AlertTriangle, CheckCircle2, Clock, MinusCircle, XCircle } from 'lucide-react'
-import Link from 'next/link'
+import {
+  agendaEmPalavras,
+  atrasado,
+  ciclosNaTela,
+  historicoDeExecucoes,
+} from "@pulse/config";
+import { Aviso, Badge, Btn, Card, Table } from "@pulse/ui";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  MinusCircle,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
 
-import { CorpoDeConfiguracao } from '../submenu'
-import { Topo } from '../../casca'
-import { dispararCiclo } from '../acoes'
-import { exigir } from '../../../../lib/guarda'
-import { pool } from '../../../../lib/db'
+import { CorpoDeConfiguracao } from "../submenu";
+import { Topo } from "../../casca";
+import { dispararCiclo } from "../acoes";
+import { exigir } from "../../../../lib/guarda";
+import { pool } from "../../../../lib/db";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-const DATA = new Intl.DateTimeFormat('pt-BR', {
-  dateStyle: 'short',
-  timeStyle: 'short',
-  timeZone: 'America/Sao_Paulo',
-})
+const DATA = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: "America/Sao_Paulo",
+});
 
 /** Duração legível. Segundos até 90s, depois minutos — 340s não se lê de cabeça. */
 function duracao(seg: number | null): string {
-  if (seg === null) return '—'
-  if (seg < 90) return `${seg}s`
-  const m = Math.floor(seg / 60)
-  return `${m}min ${seg % 60}s`
+  if (seg === null) return "—";
+  if (seg < 90) return `${seg}s`;
+  const m = Math.floor(seg / 60);
+  return `${m}min ${seg % 60}s`;
 }
 
 /**
@@ -52,31 +63,40 @@ function duracao(seg: number | null): string {
 export default async function Sincronizacao({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; erro?: string; ciclo?: string }>
+  searchParams: Promise<{ ok?: string; erro?: string; ciclo?: string }>;
 }) {
-  await exigir((p) => p.configurar, 'sincronização')
-  const q = await searchParams
-  const agora = new Date()
+  await exigir((p) => p.configurar, "sincronização");
+  const q = await searchParams;
+  const agora = new Date();
 
-  const ciclos = await ciclosNaTela(pool())
+  const ciclos = await ciclosNaTela(pool());
   const historico = await historicoDeExecucoes(pool(), {
     ...(q.ciclo ? { ciclo: q.ciclo } : {}),
     limite: 60,
-  })
+  });
 
-  const implementados = ciclos.filter((c) => c.implementado)
-  const atrasados = implementados.filter((c) => atrasado(c, agora))
-  const falhando = implementados.filter((c) => c.falhasSeguidas > 0)
+  const implementados = ciclos.filter((c) => c.implementado);
+  const atrasados = implementados.filter((c) => atrasado(c, agora));
+  const falhando = implementados.filter((c) => c.falhasSeguidas > 0);
 
   const selo = (c: (typeof ciclos)[number]) => {
-    if (!c.implementado) return <Badge tone="slate">declarado</Badge>
-    if (c.ultimoStatus === 'rodando') return <Badge tone="blue">rodando</Badge>
+    if (!c.implementado) return <Badge tone="slate">declarado</Badge>;
+    if (c.ultimoStatus === "rodando") return <Badge tone="blue">rodando</Badge>;
     if (c.falhasSeguidas > 0)
-      return <Badge tone="red">{c.falhasSeguidas} falha(s) seguidas</Badge>
-    if (atrasado(c, agora)) return <Badge tone="amber">atrasado</Badge>
-    if (c.ultimoStatus === 'ok') return <Badge tone="green">ok</Badge>
-    return <Badge tone="slate">nunca rodou</Badge>
-  }
+      return <Badge tone="red">{c.falhasSeguidas} falha(s) seguidas</Badge>;
+    // `inerte` vem ANTES de `atrasado`: os dois são verdade ao mesmo tempo, e "sem
+    // credencial" diz o que fazer enquanto "atrasado" só diz que algo está errado.
+    if (c.ultimoStatus === "inerte")
+      return <Badge tone="amber">sem credencial</Badge>;
+    if (atrasado(c, agora)) return <Badge tone="amber">atrasado</Badge>;
+    if (c.ultimoStatus === "ok") return <Badge tone="green">ok</Badge>;
+    return <Badge tone="slate">nunca rodou</Badge>;
+  };
+
+  // Ciclo que rodou e não fez o trabalho por falta de configuração. Vale um aviso
+  // próprio: sem ele, a informação fica só no selo de uma linha da tabela, e a pergunta
+  // "por que a base está vazia se o ciclo está verde" continua sem resposta na tela.
+  const inertes = implementados.filter((c) => c.ultimoStatus === "inerte");
 
   return (
     <>
@@ -99,25 +119,49 @@ export default async function Sincronizacao({
 
         {atrasados.length > 0 && (
           <Aviso tom="alerta">
-            {atrasados.length} ciclo(s) sem carga bem-sucedida há mais de 26h:{' '}
-            <strong className="font-semibold">{atrasados.map((c) => c.id).join(', ')}</strong>. Numa
-            agenda diária, isso significa que o número da tela é de anteontem.
+            {atrasados.length} ciclo(s) sem carga bem-sucedida há mais de 26h:{" "}
+            <strong className="font-semibold">
+              {atrasados.map((c) => c.id).join(", ")}
+            </strong>
+            . Numa agenda diária, isso significa que o número da tela é de
+            anteontem.
           </Aviso>
         )}
         {falhando.length > 0 && (
           <Aviso tom="erro" papel="alert">
-            {falhando.length} ciclo(s) falhando desde a última carga boa. O erro da última
-            tentativa está na tabela abaixo — ele é o texto que o executor recebeu, sem tradução.
+            {falhando.length} ciclo(s) falhando desde a última carga boa. O erro
+            da última tentativa está na tabela abaixo — ele é o texto que o
+            executor recebeu, sem tradução.
+          </Aviso>
+        )}
+        {inertes.length > 0 && (
+          <Aviso tom="alerta">
+            {inertes.length === 1
+              ? `O ciclo ${inertes[0]?.id} rodou e não carregou nada`
+              : `${inertes.length} ciclos rodaram e não carregaram nada`}{" "}
+            por falta de credencial. Não é erro e não vai virar alarme — e
+            também não vai carregar dado nenhum enquanto a credencial não
+            existir. Cadastre em{" "}
+            <Link
+              href="/configuracoes/segredos"
+              className="font-semibold text-purple-700 underline"
+            >
+              Configurações → Segredos
+            </Link>
+            , onde a sonda testa a credencial contra a API do fornecedor na
+            hora.
           </Aviso>
         )}
 
-        <Card title={`Ciclos · ${implementados.length} de ${ciclos.length} implementados`}>
+        <Card
+          title={`Ciclos · ${implementados.length} de ${ciclos.length} implementados`}
+        >
           <Table
-            cols={['Ciclo', 'Agenda', 'Estado', 'Última carga', 'Volume', '']}
+            cols={["Ciclo", "Agenda", "Estado", "Última carga", "Volume", ""]}
             vazio={
               <>
-                Nenhum ciclo declarado. O worker escreve as declarações na partida — se está vazio,
-                ele não subiu.
+                Nenhum ciclo declarado. O worker escreve as declarações na
+                partida — se está vazio, ele não subiu.
               </>
             }
             rows={ciclos.map((c) => [
@@ -127,13 +171,21 @@ export default async function Sincronizacao({
                   <Badge tone="slate">{c.fonte}</Badge>
                   <span className="text-[11.5px] text-ink-4">{c.fase}</span>
                 </div>
-                <div className="mt-0.5 text-[12.5px] text-ink-3">{c.descricao}</div>
+                <div className="mt-0.5 text-[12.5px] text-ink-3">
+                  {c.descricao}
+                </div>
               </>,
               <>
-                <div className="text-[13px] text-ink">{agendaEmPalavras(c.agenda)}</div>
+                <div className="text-[13px] text-ink">
+                  {agendaEmPalavras(c.agenda)}
+                </div>
                 {/* O cron cru fica à vista: a frase é conveniência, o cron é a verdade. */}
-                <div className="mt-0.5 font-mono text-[11px] text-ink-4">{c.agenda ?? '—'}</div>
-                <div className="mt-0.5 text-[11.5px] text-ink-3">{c.metodo}</div>
+                <div className="mt-0.5 font-mono text-[11px] text-ink-4">
+                  {c.agenda ?? "—"}
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-ink-3">
+                  {c.metodo}
+                </div>
               </>,
               <>
                 {selo(c)}
@@ -145,9 +197,9 @@ export default async function Sincronizacao({
               </>,
               <>
                 <div className="text-[13px] text-ink">
-                  {c.ultimaEm ? DATA.format(c.ultimaEm) : '—'}
+                  {c.ultimaEm ? DATA.format(c.ultimaEm) : "—"}
                 </div>
-                {c.ultimoSucessoEm && c.ultimoStatus !== 'ok' && (
+                {c.ultimoSucessoEm && c.ultimoStatus !== "ok" && (
                   <div className="mt-0.5 text-[11.5px] text-ink-3">
                     último sucesso: {DATA.format(c.ultimoSucessoEm)}
                   </div>
@@ -158,12 +210,12 @@ export default async function Sincronizacao({
               </>,
               <div className="text-[12.5px] text-ink-2">
                 {c.linhasLidas === null ? (
-                  '—'
+                  "—"
                 ) : (
                   <>
-                    {c.linhasLidas.toLocaleString('pt-BR')} lidas
+                    {c.linhasLidas.toLocaleString("pt-BR")} lidas
                     <div className="text-ink-3">
-                      {(c.linhasGravadas ?? 0).toLocaleString('pt-BR')} gravadas
+                      {(c.linhasGravadas ?? 0).toLocaleString("pt-BR")} gravadas
                     </div>
                   </>
                 )}
@@ -191,10 +243,10 @@ export default async function Sincronizacao({
             ])}
           />
           <p className="mt-3 text-[12px] leading-relaxed text-ink-3">
-            A agenda vive no código, junto do contrato do ciclo — mudá-la pela tela criaria duas
-            agendas, a declarada e a efetiva, e a divergência apareceria meses depois como
-            &ldquo;o número saiu na hora errada&rdquo;. Aqui se vê o estado, se lê o erro e se roda
-            agora.
+            A agenda vive no código, junto do contrato do ciclo — mudá-la pela
+            tela criaria duas agendas, a declarada e a efetiva, e a divergência
+            apareceria meses depois como &ldquo;o número saiu na hora
+            errada&rdquo;. Aqui se vê o estado, se lê o erro e se roda agora.
           </p>
         </Card>
 
@@ -216,50 +268,58 @@ export default async function Sincronizacao({
           }
         >
           <Table
-            cols={['Quando', 'Ciclo', 'Status', 'Duração', 'Volume', 'Detalhe']}
+            cols={["Quando", "Ciclo", "Status", "Duração", "Volume", "Detalhe"]}
             vazio={
               <>
-                Nenhuma execução registrada{q.ciclo ? ` para ${q.ciclo}` : ''}. O executor grava uma
-                linha por rodada, inclusive quando falha.
+                Nenhuma execução registrada{q.ciclo ? ` para ${q.ciclo}` : ""}.
+                O executor grava uma linha por rodada, inclusive quando falha.
               </>
             }
             rows={historico.map((e) => {
               const seg =
                 e.terminadoEm === null
                   ? null
-                  : Math.round((e.terminadoEm.getTime() - e.iniciadoEm.getTime()) / 1000)
+                  : Math.round(
+                      (e.terminadoEm.getTime() - e.iniciadoEm.getTime()) / 1000,
+                    );
               const Icone =
-                e.status === 'ok'
+                e.status === "ok"
                   ? CheckCircle2
-                  : e.status === 'falha'
+                  : e.status === "falha"
                     ? XCircle
-                    : e.status === 'rodando'
+                    : e.status === "rodando"
                       ? Clock
-                      : MinusCircle
+                      : MinusCircle;
               const cor =
-                e.status === 'ok'
-                  ? 'text-green'
-                  : e.status === 'falha'
-                    ? 'text-red'
-                    : 'text-ink-3'
+                e.status === "ok"
+                  ? "text-green"
+                  : e.status === "falha"
+                    ? "text-red"
+                    : "text-ink-3";
               return [
                 <span className="whitespace-nowrap text-[12.5px] text-ink">
                   {DATA.format(e.iniciadoEm)}
                 </span>,
                 <span className="font-semibold text-ink">{e.ciclo}</span>,
-                <span className={`flex items-center gap-1.5 text-[12.5px] ${cor}`}>
+                <span
+                  className={`flex items-center gap-1.5 text-[12.5px] ${cor}`}
+                >
                   <Icone className="h-[14px] w-[14px]" />
                   {e.status}
                 </span>,
-                <span className="text-[12.5px] text-ink-2">{duracao(seg)}</span>,
+                <span className="text-[12.5px] text-ink-2">
+                  {duracao(seg)}
+                </span>,
                 <span className="whitespace-nowrap text-[12.5px] text-ink-2">
                   {e.linhasLidas === null
-                    ? '—'
-                    : `${e.linhasLidas.toLocaleString('pt-BR')} → ${(e.linhasGravadas ?? 0).toLocaleString('pt-BR')}`}
+                    ? "—"
+                    : `${e.linhasLidas.toLocaleString("pt-BR")} → ${(e.linhasGravadas ?? 0).toLocaleString("pt-BR")}`}
                 </span>,
                 <div className="max-w-[380px] text-[11.5px] leading-snug">
                   {e.erro ? (
-                    <span className="break-words text-red">{e.erro.slice(0, 240)}</span>
+                    <span className="break-words text-red">
+                      {e.erro.slice(0, 240)}
+                    </span>
                   ) : e.detalhe ? (
                     /* O detalhe cru, e não uma seleção de campos: é o que o ciclo
                        reportou, e o dia em que ele reportar algo novo esse algo
@@ -268,14 +328,14 @@ export default async function Sincronizacao({
                       {Object.entries(e.detalhe)
                         .filter(([, v]) => v !== null && v !== 0 && v !== false)
                         .map(([k, v]) => `${k}=${String(v)}`)
-                        .join(' · ')
-                        .slice(0, 240) || '—'}
+                        .join(" · ")
+                        .slice(0, 240) || "—"}
                     </span>
                   ) : (
                     <span className="text-ink-4">—</span>
                   )}
                 </div>,
-              ]
+              ];
             })}
           />
         </Card>
@@ -285,30 +345,32 @@ export default async function Sincronizacao({
             <li className="flex gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
               <span>
-                <strong className="font-semibold text-ink">atrasado</strong> é mais de 26h sem carga
-                bem-sucedida numa agenda diária. A folga de 2h absorve atraso normal — não é alarme
-                falso.
+                <strong className="font-semibold text-ink">atrasado</strong> é
+                mais de 26h sem carga bem-sucedida numa agenda diária. A folga
+                de 2h absorve atraso normal — não é alarme falso.
               </span>
             </li>
             <li className="flex gap-2">
               <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red" />
               <span>
-                <strong className="font-semibold text-ink">falhas seguidas</strong> conta desde a
-                última carga boa, não no total. Um ciclo que falhou muito no passado e roda bem hoje
-                não é problema.
+                <strong className="font-semibold text-ink">
+                  falhas seguidas
+                </strong>{" "}
+                conta desde a última carga boa, não no total. Um ciclo que
+                falhou muito no passado e roda bem hoje não é problema.
               </span>
             </li>
             <li className="flex gap-2">
               <MinusCircle className="mt-0.5 h-4 w-4 shrink-0 text-ink-4" />
               <span>
-                <strong className="font-semibold text-ink">declarado</strong> é ciclo com contrato
-                escrito e implementação pendente. Ele não roda por desenho, e por isso não conta
-                como atrasado.
+                <strong className="font-semibold text-ink">declarado</strong> é
+                ciclo com contrato escrito e implementação pendente. Ele não
+                roda por desenho, e por isso não conta como atrasado.
               </span>
             </li>
           </ul>
         </Card>
       </CorpoDeConfiguracao>
     </>
-  )
+  );
 }
