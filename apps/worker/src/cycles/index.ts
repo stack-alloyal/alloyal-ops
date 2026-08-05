@@ -605,10 +605,22 @@ export const c19LogoDoCliente = defineCycle({
     }
 
     const { rows } = await db.query<{ id: string; brand_id: string }>(
+      // ┌───────────────────────────────────────────────────────────────────────┐
+      // │ INATIVO TAMBÉM ENTRA, e a ordem é que protege o que importa:            │
+      // │                                                                        │
+      // │ 1º quem NUNCA foi varrido — é o único caso em que há dado novo garantido; │
+      // │ 2º ativo antes de inativo — se o teto cortar a rodada, corta no inativo; │
+      // │ 3º o mais antigo primeiro, para a revisita girar.                       │
+      // │                                                                        │
+      // │ Antes o filtro era `WHERE ativo`, e os 1.005 clientes inativos nunca      │
+      // │ ganhavam logo. Eles APARECEM na Base de clientes com o selo "inativo", e  │
+      // │ uma linha sem marca ao lado de outra com marca se lê como falha de carga. │
+      // └───────────────────────────────────────────────────────────────────────┘
       `SELECT id::text, brand_id
          FROM core.account
-        WHERE ativo AND brand_id ~ '^[0-9]+$'
-        ORDER BY (logo_url IS NOT NULL), coalesce(logo_em, '-infinity'::timestamptz)
+        WHERE brand_id ~ '^[0-9]+$'
+        ORDER BY (logo_em IS NOT NULL), ativo DESC,
+                 coalesce(logo_em, '-infinity'::timestamptz)
         LIMIT $1`,
       [TETO_DE_LOGOS_POR_RODADA],
     );
