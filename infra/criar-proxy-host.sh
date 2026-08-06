@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cria o proxy host de pulse.alloyal.com.br no Nginx Proxy Manager.
+# Cria — ou ATUALIZA — o proxy host de pulse.alloyal.com.br no Nginx Proxy Manager.
 #
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ POR QUE UM SCRIPT E NÃO A TELA:                                            │
@@ -140,7 +140,31 @@ if printf '%s' "$AVANCADO" | grep -q SUBSTITUIR_PELO; then
   exit 1
 fi
 
-RESP=$(curl -s -X POST "$NPM_URL/api/nginx/proxy-hosts" \
+# ── Já existe? Então ATUALIZA, em vez de criar um segundo ────────────────────
+# Rodar este script de novo é o jeito normal de aplicar mudança no Advanced Config
+# — e sem esta checagem a segunda execução criaria um host duplicado para o mesmo
+# domínio. O nginx atende pelo primeiro que casar, então a edição "não pegaria" e
+# o motivo não apareceria em lugar nenhum.
+EXISTENTE=$(curl -s "$NPM_URL/api/nginx/proxy-hosts" -H "Authorization: Bearer $TOKEN" |
+  python3 -c "
+import json,sys
+alvo=sys.argv[1]
+for h in json.load(sys.stdin):
+    if alvo in h.get('domain_names', []):
+        print(h['id']); break
+" "$HOST" 2>/dev/null)
+
+if [ -n "$EXISTENTE" ]; then
+  METODO=PUT
+  ROTA="$NPM_URL/api/nginx/proxy-hosts/$EXISTENTE"
+  echo "── $HOST já existe (id $EXISTENTE): ATUALIZANDO"
+else
+  METODO=POST
+  ROTA="$NPM_URL/api/nginx/proxy-hosts"
+  echo "── $HOST ainda não existe: criando"
+fi
+
+RESP=$(curl -s -X "$METODO" "$ROTA" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d "$(AVANCADO="$AVANCADO" python3 - "$HOST" "$DESTINO" "$PORTA" "$CERT_ID" <<'PY'
 import json, sys, os
@@ -171,7 +195,11 @@ if printf '%s' "$RESP" | grep -q '"error"'; then
 fi
 
 ID=$(printf '%s' "$RESP" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' | head -1)
-echo "── proxy host criado: id $ID"
+if [ "$METODO" = PUT ]; then
+  echo "── proxy host atualizado: id $ID"
+else
+  echo "── proxy host criado: id $ID"
+fi
 echo
 echo "Confira agora:"
 echo "  curl -sI https://$HOST | head -1"

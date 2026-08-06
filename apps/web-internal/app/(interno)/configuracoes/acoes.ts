@@ -10,7 +10,9 @@ import {
   gravarSegredo,
   revogar,
   testarConexao,
-} from '@pulse/config'
+  definirAtivo,
+  registrarPessoa,
+  UltimoAcessoAtivoError,} from '@pulse/config'
 import { redirect } from 'next/navigation'
 
 import { pool } from '../../../lib/db'
@@ -41,7 +43,10 @@ function mensagemDe(err: unknown): string | null {
   if (
     err instanceof ValorInvalidoError ||
     err instanceof MotivoObrigatorioError ||
-    err instanceof UltimoAdminError
+    err instanceof UltimoAdminError ||
+    // Sem esta linha a trava do último admin ATIVO sobe como 500 em vez de virar
+    // mensagem na tela — e quem tentou suspender não descobre por que não pôde.
+    err instanceof UltimoAcessoAtivoError
   ) {
     return err.message
   }
@@ -157,4 +162,96 @@ export async function verificarConexao(dados: FormData): Promise<void> {
     r.estado === 'ok' ? 'ok' : 'erro',
     `${integracao}: ${r.diagnostico} (${r.duracaoMs} ms)`,
   )
+}
+
+export async function cadastrarPessoa(dados: FormData): Promise<void> {
+  const id = await exigir((p) => p.configurar, 'gestão de usuários')
+  const email = String(dados.get('email') ?? '')
+  const nome = String(dados.get('nome') ?? '')
+  try {
+    await registrarPessoa(pool(), id.email, email, nome)
+    voltar(
+      '/configuracoes/usuarios',
+      'ok',
+      `${email.trim().toLowerCase()} cadastrada. Ela ainda NÃO tem acesso — falta dar um papel.`,
+    )
+  } catch (err) {
+    const m = mensagemDe(err)
+    if (m) voltar('/configuracoes/usuarios', 'erro', m)
+    throw err
+  }
+}
+
+/**
+ * Suspende ou reativa.
+ *
+ * O motivo é obrigatório na camada de dados, e é de propósito: suspensão é a única
+ * mudança de acesso que não deixa rastro no papel — sem o motivo escrito, ninguém
+ * descobre depois por que a pessoa parou de entrar.
+ */
+export async function alternarAcesso(dados: FormData): Promise<void> {
+  const id = await exigir((p) => p.configurar, 'gestão de usuários')
+  const email = String(dados.get('email') ?? '')
+  const ativar = String(dados.get('ativar') ?? '') === '1'
+  const motivo = String(dados.get('motivo') ?? '')
+  try {
+    await definirAtivo(pool(), id, email, ativar, motivo)
+    voltar(
+      '/configuracoes/usuarios',
+      'ok',
+      `${email.trim().toLowerCase()} ${ativar ? 'reativada' : 'suspensa'}.`,
+    )
+  } catch (err) {
+    const m = mensagemDe(err)
+    if (m) voltar('/configuracoes/usuarios', 'erro', m)
+    throw err
+  }
+}
+
+/**
+ * Enfileira um ciclo para rodar agora.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ ENFILEIRA, e não executa. O ciclo roda no WORKER, que é onde ele já roda    │
+ * │ pela agenda — mesma fila, mesmo executor, mesmo registro em                 │
+ * │ `ops.cycle_run`. Executar aqui dentro criaria um segundo caminho: um ciclo   │
+ * │ com dois lugares de execução tem dois modos de falha, e o painel só enxerga  │
+ * │ um deles.                                                                  │
+ * │                                                                            │
+ * │ E a web-internal NÃO alcança o Postgres do worker com privilégio de escrita  │
+ * │ nas tabelas de fato — `pulse_api` não tem. Rodar aqui exigiria abrir isso.  │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * O `jobId` com o instante impede o BullMQ de deduplicar dois pedidos legítimos
+ * seguidos — sem ele, clicar duas vezes em cinco minutos enfileira uma vez só, e a
+ * segunda parece ter funcionado sem ter.
+ */
+export async function dispararCiclo(dados: FormData): Promise<void> {
+  await exigir((p) => p.configurar, 'sincronização')
+  const ciclo = String(dados.get('ciclo') ?? '').trim()
+  if (!/^C\d{1,3}$/.test(ciclo)) {
+    voltar('/configuracoes/sincronizacao', 'erro', `"${ciclo}" não é um id de ciclo.`)
+  }
+
+  const url = process.env['REDIS_URL']
+  if (!url) {
+    voltar(
+      '/configuracoes/sincronizacao',
+      'erro',
+      'REDIS_URL não está configurada nesta instância — sem fila, não há como pedir a carga.',
+    )
+  }
+
+  const { Queue } = await import('bullmq')
+  const fila = new Queue('ops-ciclos', { connection: { url } })
+  try {
+    await fila.add(ciclo, { ciclo }, { attempts: 1, removeOnComplete: 100, jobId: `manual-${ciclo}-${Date.now()}` })
+    voltar(
+      '/configuracoes/sincronizacao',
+      'ok',
+      `${ciclo} enfileirado. Ele roda no worker; recarregue em alguns segundos para ver o resultado.`,
+    )
+  } finally {
+    await fila.close()
+  }
 }

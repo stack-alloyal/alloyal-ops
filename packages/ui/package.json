@@ -14,7 +14,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "echo 'consumido via transpilePackages'",
-    "test": "node --test design-system.test.mjs"
+    "test": "node --test design-system.test.mjs testes-no-ci.test.mjs && node --test --experimental-strip-types src/rotaInterna.test.ts",
+    "marca": "node marca/gerar.mjs"
   },
   "peerDependencies": {
     "lucide-react": "^1.23.0",
@@ -27,7 +28,8 @@
     "next": "^15.5.22",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "playwright": "^1.62.1"
   },
   "dependencies": {
     "clsx": "^2.1.1",

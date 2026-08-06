@@ -11,7 +11,8 @@ import {
   ipEmFaixa,
   permiteIdentidadeDeDesenvolvimento,
   segredosIguais,
-} from './proxy.js'
+  SemPapelError,
+  AcessoSuspensoError,} from './proxy.js'
 import { emitirToken, hashToken, validarToken } from './magic-link.js'
 
 const FAIXAS = ['172.16.0.0/12', '127.0.0.1/32']
@@ -121,13 +122,45 @@ test('domínio de fora é recusado mesmo vindo do proxy', async () => {
   )
 })
 
-test('pessoa autenticada sem grupo recebe erro que diz como resolver', async () => {
+test('conta do domínio sem papel NÃO entra — é o papel que decide quem acessa', async () => {
+  // O oauth2-proxy filtra por domínio, então qualquer conta @alloyal.com.br
+  // chega com sessão válida. Esta é a linha que separa "trabalha na Alloyal" de
+  // "tem acesso ao Pulse".
   await assert.rejects(
     identidadeDaRequisicao({ [HEADER_EMAIL]: 'nova@alloyal.com.br' }, '172.18.0.5', {
       ...opts,
       papeisDe: async () => [],
     }),
-    /grupo pulse-\* no Google Workspace/,
+    SemPapelError,
+  )
+})
+
+test('sem papel é SemPapelError, e NÃO NaoAutenticadoError — senão vira laço de login', async () => {
+  // Herança aqui reintroduziria o defeito em silêncio: `catch (err instanceof
+  // NaoAutenticadoError) unauthorized()` devolveria a tela de login a quem
+  // acabou de autenticar, para sempre.
+  const erro = await identidadeDaRequisicao(
+    { [HEADER_EMAIL]: 'nova@alloyal.com.br' },
+    '172.18.0.5',
+    { ...opts, papeisDe: async () => [] },
+  ).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  assert.ok(erro instanceof SemPapelError)
+  assert.ok(!(erro instanceof NaoAutenticadoError), 'não pode herdar de NaoAutenticadoError')
+  assert.equal((erro as SemPapelError).email, 'nova@alloyal.com.br')
+})
+
+test('papel que não existe mais não vale como acesso', async () => {
+  // `filter(ehPapel)` descarta valor desconhecido. Uma linha órfã em
+  // ops.user_role — papel renomeado, por exemplo — não pode virar entrada.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'antiga@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => ['ops-csm', 'papel-inventado'],
+    }),
+    SemPapelError,
   )
 })
 
@@ -326,4 +359,72 @@ test('vírgula sozinha não vira segredo vazio que aceita tudo', async () => {
       ),
     NaoAutenticadoError,
   )
+})
+
+// ─── Suspensão ───────────────────────────────────────────────────────────────
+
+test('pessoa SUSPENSA não entra, mesmo com papel válido', async () => {
+  // É o ponto todo da suspensão: os papéis ficam, o acesso não.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'ferias@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => ['pulse-admin'],
+      estadoDaPessoa: async () => 'suspensa',
+    }),
+    AcessoSuspensoError,
+  )
+})
+
+test('suspensa é AcessoSuspensoError e NÃO SemPapelError — a mensagem decide o que a pessoa faz', async () => {
+  // "Você não tem papel" manda pedir acesso; "seu acesso está suspenso" manda
+  // perguntar por quê. Confundir os dois manda a pessoa para a conversa errada.
+  const erro = await identidadeDaRequisicao(
+    { [HEADER_EMAIL]: 'ferias@alloyal.com.br' },
+    '172.18.0.5',
+    { ...opts, papeisDe: async () => ['pulse-admin'], estadoDaPessoa: async () => 'suspensa' },
+  ).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  assert.ok(erro instanceof AcessoSuspensoError)
+  assert.ok(!(erro instanceof SemPapelError), 'não pode ser confundida com falta de papel')
+  assert.ok(!(erro instanceof NaoAutenticadoError), 'não pode virar laço de login')
+  assert.equal((erro as AcessoSuspensoError).email, 'ferias@alloyal.com.br')
+})
+
+test('a suspensão é checada ANTES do papel', async () => {
+  // Suspensa E sem papel: tem que ouvir "suspenso". Se a ordem invertesse, ela
+  // ouviria "sem papel" e pediria acesso que já tem.
+  await assert.rejects(
+    identidadeDaRequisicao({ [HEADER_EMAIL]: 'ferias@alloyal.com.br' }, '172.18.0.5', {
+      ...opts,
+      papeisDe: async () => [],
+      estadoDaPessoa: async () => 'suspensa',
+    }),
+    AcessoSuspensoError,
+  )
+})
+
+test('pessoa ATIVA com papel entra normalmente', async () => {
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', {
+    ...opts,
+    estadoDaPessoa: async () => 'ativa',
+  })
+  assert.equal(id.email, 'ana@alloyal.com.br')
+})
+
+test('`inexistente` NÃO barra quem tem papel — trancar por escrita parcial seria pior', async () => {
+  // Papel sem registro de pessoa é anomalia (inserção manual, escrita parcial).
+  // Barrar aqui trancaria alguém para fora por um estado que ninguém pediu; a
+  // checagem de papel logo abaixo já recusa quem não tem papel.
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', {
+    ...opts,
+    estadoDaPessoa: async () => 'inexistente',
+  })
+  assert.equal(id.email, 'ana@alloyal.com.br')
+})
+
+test('sem o resolvedor de estado, nada muda — é o que mantém o resto da suíte válido', async () => {
+  const id = await identidadeDaRequisicao({ [HEADER_EMAIL]: 'ana@alloyal.com.br' }, '172.18.0.5', opts)
+  assert.equal(id.email, 'ana@alloyal.com.br')
 })

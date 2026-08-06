@@ -1,0 +1,392 @@
+/**
+ * Grava no Pulse o cadastro lido da API do core.
+ *
+ * A leitura e as regras puras vivem em `core-lecupon.ts`; aqui é só o que precisa
+ * de Postgres.
+ */
+
+import type pg from "pg";
+
+import { classificarVinculo, ehIdDeHubspotValido } from "./hubspot-vinculo.js";
+
+import {
+  cnpjNormalizado,
+  modulosDe,
+  type NegocioDoCore,
+} from "./core-lecupon.js";
+
+export interface ResumoDaSincronizacao {
+  /** Linhas de de-para classificadas nesta carga (migration 0030). */
+  readonly classificados: number;
+  /**
+   * Quantas linhas caíram em `pendente` — mais de uma conta ATIVA, em CNPJs
+   * diferentes, sem assinatura de canal de venda.
+   *
+   * É este o número que vale numa tela, e não `hubspotAmbiguos`: aquele conta id
+   * repetido, o que inclui filial da mesma empresa e conta interna da Alloyal. Número
+   * que junta erro de dado, estrutura societária normal e decisão de negócio pendente
+   * não orienta ação nenhuma.
+   */
+  readonly pendentes: number;
+  readonly lidos: number;
+  readonly criados: number;
+  readonly atualizados: number;
+  readonly inalterados: number;
+  readonly semCnpj: number;
+  readonly comHubspot: number;
+  readonly modulosGravados: number;
+  readonly hierarquiaLigada: number;
+  readonly ausentes: number;
+  /**
+   * Quantos passaram a `ativo = false` por não vierem na carga. Zero numa leitura
+   * PARCIAL, sempre — ver o comentário na função.
+   */
+  readonly inativados: number;
+  /**
+   * Quantos negócios têm hubspot_company_id COMPARTILHADO com outro. Reportado, e
+   * não escondido: é decisão humana se são dois programas sob um contrato ou id
+   * colado errado, e daqui os dois casos são indistinguíveis.
+   */
+  readonly hubspotAmbiguos: number;
+}
+
+/**
+ * Grava a base inteira, em UMA transação.
+ *
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ POR QUE TRANSAÇÃO ÚNICA, e não por cliente:                                │
+ * │                                                                            │
+ * │ A hierarquia matriz↔filial é resolvida no SEGUNDO passo, quando todos os    │
+ * │ `brand_id` já existem. Em transações separadas, uma falha no meio deixaria  │
+ * │ filiais órfãs apontando para matriz que não entrou — e o painel mostraria   │
+ * │ cliente sem matriz como se fosse raiz.                                     │
+ * │                                                                            │
+ * │ ~3.245 clientes numa transação é grande, e é aceitável: roda uma vez por    │
+ * │ dia, de madrugada, e o custo de meia-carga é maior que o de um lock longo.  │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * @param parcial quando a leitura foi truncada (teto de páginas). Ver abaixo por
+ *   que isso muda o comportamento.
+ */
+/**
+ * Aplica `classificarVinculo` a todo o de-para já gravado e guarda o resultado.
+ *
+ * Lê da BASE e não da resposta da API de propósito: o que decide o vínculo é o estado
+ * final das contas — inclusive as que esta carga acabou de inativar por ausência. Usar a
+ * resposta da API classificaria com o estado de antes.
+ */
+async function classificarVinculosDaBase(
+  cliente: pg.PoolClient,
+  cnpjRaizDaAlloyal: string,
+): Promise<{ total: number; pendentes: number }> {
+  const { rows } = await cliente.query<{
+    hubspot_company_id: string;
+    account_id: string;
+    brand_id: string | null;
+    razao_social: string;
+    cnpj: string | null;
+    ativo: boolean;
+  }>(
+    `SELECT h.hubspot_company_id, h.account_id, a.brand_id, a.razao_social, a.cnpj, a.ativo
+       FROM core.account_hubspot h
+       JOIN core.account a ON a.id = h.account_id`,
+  );
+
+  const porId = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const lista = porId.get(r.hubspot_company_id) ?? [];
+    lista.push(r);
+    porId.set(r.hubspot_company_id, lista);
+  }
+
+  let pendentes = 0;
+  for (const [hubspotId, contas] of porId) {
+    const classificacoes = classificarVinculo(
+      hubspotId,
+      contas.map((c) => ({
+        // `brandId` só serve para a frase do motivo; sem ele o texto fica "undefined".
+        brandId: c.brand_id ?? c.account_id.slice(0, 8),
+        razaoSocial: c.razao_social,
+        cnpj: c.cnpj ?? "",
+        ativo: c.ativo,
+      })),
+      cnpjRaizDaAlloyal,
+    );
+    for (let i = 0; i < contas.length; i++) {
+      const c = classificacoes[i]!;
+      if (c.vinculo === "pendente") pendentes++;
+      await cliente.query(
+        `UPDATE core.account_hubspot
+            SET vinculo = $2, motivo = $3, classificado_em = now()
+          WHERE account_id = $1`,
+        [contas[i]!.account_id, c.vinculo, c.motivo],
+      );
+    }
+  }
+  return { total: rows.length, pendentes };
+}
+
+export async function sincronizarCadastro(
+  db: pg.Pool,
+  negocios: readonly NegocioDoCore[],
+  agora: Date,
+  parcial: boolean,
+  log: (msg: string) => void = () => {},
+  /**
+   * Raiz do CNPJ da própria Alloyal, para as contas internas não contarem como
+   * cliente. Vazio faz as 14 contas internas caírem em `filial` — não é erro, é menos
+   * informação. Não é cravado aqui: no dia em que a Alloyal mudar de CNPJ, um número
+   * escondido no código faria conta interna voltar a contar como cliente.
+   */
+  cnpjRaizDaAlloyal = "",
+): Promise<ResumoDaSincronizacao> {
+  // ── Quais hubspot_company_id são AMBÍGUOS nesta carga ────────────────────────
+  // Medido em 04/08/2026: 33 IDs apontam para mais de um negócio, 32 deles entre
+  // negócios RAIZ. `core.account.hubspot_company_id` é UNIQUE desde a 0002, então
+  // só o vínculo de um-para-um pode ir para lá; o resto vai para
+  // `core.account_hubspot`, que aceita N:1. Ver migration 0023.
+  const quantosPorHubspot = new Map<string, number>();
+  for (const n of negocios) {
+    if (n.hubspot_company_id === null || n.hubspot_company_id === undefined)
+      continue;
+    const k = String(n.hubspot_company_id);
+    quantosPorHubspot.set(k, (quantosPorHubspot.get(k) ?? 0) + 1);
+  }
+  const ambiguo = (id: string | null): boolean =>
+    id !== null && (quantosPorHubspot.get(id) ?? 0) > 1;
+  let hubspotAmbiguos = 0;
+
+  const cliente = await db.connect();
+  let criados = 0;
+  let atualizados = 0;
+  let inalterados = 0;
+  let modulosGravados = 0;
+  let hierarquiaLigada = 0;
+
+  try {
+    await cliente.query("BEGIN");
+
+    for (const n of negocios) {
+      const brandId = String(n.id);
+      const cnpj = cnpjNormalizado(n.cnpj);
+      const hubspot =
+        n.hubspot_company_id === null || n.hubspot_company_id === undefined
+          ? null
+          : String(n.hubspot_company_id);
+      const hubspotUnico = ambiguo(hubspot) ? null : hubspot;
+      if (ambiguo(hubspot)) hubspotAmbiguos++;
+
+      // `xmax = 0` distingue INSERT de UPDATE no mesmo comando — é o jeito de
+      // reportar criados e atualizados sem uma consulta a mais por cliente.
+      //
+      // `razao_social` NÃO é sobrescrito com valor vazio: o core às vezes devolve
+      // nome em branco, e apagar o nome que já estava lá é perder dado por causa de
+      // uma falha do lado deles.
+      const { rows } = await cliente.query<{
+        id: string;
+        criou: boolean;
+        mudou: boolean;
+      }>(
+        `INSERT INTO core.account
+           (brand_id, razao_social, cnpj, hubspot_company_id, ativo,
+            status_core, usuarios_cadastrados, usuarios_autorizados, contato_email,
+            sincronizado_em, atualizado_em)
+         VALUES ($1, coalesce(nullif($2, ''), 'sem nome no core'), $3, $4, $5, $6, $7, $8, $9, $10, $10)
+         -- O predicado REPETIDO nao e redundancia: o indice unico de brand_id e
+         -- PARCIAL (WHERE brand_id IS NOT NULL, migration 0022), porque conta
+         -- semeada nao tem brand_id. Sem repetir aqui, o Postgres nao encontra o
+         -- indice e devolve 42P10, "no unique constraint matching the ON CONFLICT".
+         ON CONFLICT (brand_id) WHERE brand_id IS NOT NULL DO UPDATE SET
+            razao_social         = coalesce(nullif($2, ''), core.account.razao_social),
+            cnpj                 = coalesce($3, core.account.cnpj),
+            hubspot_company_id   = coalesce($4, core.account.hubspot_company_id),
+            ativo                = $5,
+            status_core          = $6,
+            usuarios_cadastrados = $7,
+            usuarios_autorizados = $8,
+            contato_email        = coalesce($9, core.account.contato_email),
+            sincronizado_em      = $10,
+            atualizado_em        = CASE
+              WHEN core.account.ativo IS DISTINCT FROM $5
+                OR core.account.status_core IS DISTINCT FROM $6
+                OR core.account.usuarios_cadastrados IS DISTINCT FROM $7
+                OR core.account.usuarios_autorizados IS DISTINCT FROM $8
+                OR core.account.razao_social IS DISTINCT FROM coalesce(nullif($2, ''), core.account.razao_social)
+              THEN $10 ELSE core.account.atualizado_em END
+         RETURNING id,
+                   (xmax = 0) AS criou,
+                   (atualizado_em = $10) AS mudou`,
+        [
+          brandId,
+          n.name ?? "",
+          cnpj,
+          hubspotUnico,
+          n.active,
+          n.status,
+          n.user_count,
+          n.authorized_user_count,
+          n.contact_email,
+          agora,
+        ],
+      );
+      const linha = rows[0]!;
+      if (linha.criou) criados++;
+      else if (linha.mudou) atualizados++;
+      else inalterados++;
+
+      // ── O de-para COMPLETO, ambíguo ou não ─────────────────────────────────
+      // Aqui nada se perde: é a tabela que existe para registrar N contas → 1
+      // empresa do HubSpot.
+      // Id inválido NÃO entra: havia duas contas com `'0'`, e as duas apareciam
+      // ligadas entre si na view de ambíguos — MEGA PROTEGE e uma associação de
+      // socorro mútuo, que nada têm em comum. Zero é o nulo do core vazando como
+      // texto (migration 0030 tem o CHECK que impede a reincidência).
+      if (hubspot && ehIdDeHubspotValido(hubspot)) {
+        await cliente.query(
+          `INSERT INTO core.account_hubspot (account_id, hubspot_company_id, sincronizado_em)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (account_id) DO UPDATE
+             SET hubspot_company_id = EXCLUDED.hubspot_company_id,
+                 sincronizado_em = EXCLUDED.sincronizado_em`,
+          [linha.id, hubspot, agora],
+        );
+      } else {
+        // O core deixou de reportar o vínculo: sai, senão a tela mostra um de-para
+        // que não existe mais.
+        await cliente.query(
+          "DELETE FROM core.account_hubspot WHERE account_id = $1",
+          [linha.id],
+        );
+      }
+
+      // ── Módulos: grava os que vieram e APAGA os que não vieram ──────────────
+      // Módulo que o core deixou de reportar tem que sair. Deixá-lo faria a tela
+      // mostrar módulo desligado como se ainda estivesse configurado.
+      const modulos = modulosDe(n);
+      for (const m of modulos) {
+        await cliente.query(
+          `INSERT INTO core.programa_modulo (account_id, modulo, ativo, sincronizado_em)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (account_id, modulo) DO UPDATE
+             SET ativo = EXCLUDED.ativo, sincronizado_em = EXCLUDED.sincronizado_em`,
+          [linha.id, m.modulo, m.ativo, agora],
+        );
+      }
+      modulosGravados += modulos.length;
+      await cliente.query(
+        `DELETE FROM core.programa_modulo
+          WHERE account_id = $1 AND sincronizado_em < $2`,
+        [linha.id, agora],
+      );
+    }
+
+    // ── Passo 2: hierarquia, com todos os brand_id já gravados ────────────────
+    const comPai = negocios.filter(
+      (n) => n.main_business_id !== null && n.main_business_id !== undefined,
+    );
+    for (const n of comPai) {
+      const r = await cliente.query(
+        `UPDATE core.account f
+            SET parent_account_id = m.id
+           FROM core.account m
+          WHERE f.brand_id = $1 AND m.brand_id = $2
+            AND f.id <> m.id
+            AND f.parent_account_id IS DISTINCT FROM m.id`,
+        [String(n.id), String(n.main_business_id)],
+      );
+      hierarquiaLigada += r.rowCount ?? 0;
+    }
+
+    await cliente.query("COMMIT");
+  } catch (err) {
+    await cliente.query("ROLLBACK");
+    throw err;
+  } finally {
+    cliente.release();
+  }
+
+  // ── Ausentes: INATIVADOS, nunca apagados ───────────────────────────────────
+  //
+  // ┌─────────────────────────────────────────────────────────────────────────┐
+  // │ A REGRA: cliente sai de circulação por `ativo = false`. DELETE é recusado │
+  // │ por gatilho (migration 0024), porque o histórico em fact.activity,       │
+  // │ fact.mrr_event, core.contract e metrics.daily_snapshot aponta para a      │
+  // │ linha.                                                                   │
+  // │                                                                          │
+  // │ E SÓ INATIVA QUANDO A LEITURA FOI COMPLETA. Numa leitura PARCIAL o        │
+  // │ ausente provavelmente só não foi lido — inativar ali desligaria clientes  │
+  // │ que estão no ar por causa de um teto de paginação. O ciclo então CONTA e  │
+  // │ diz que não mexeu.                                                       │
+  // │                                                                          │
+  // │ Fica um caso que esta função não resolve: mudança de ESCOPO da credencial.│
+  // │ Se o escopo encolher, os clientes que saíram da visão são inativados como │
+  // │ se tivessem saído da base. É por isso que o número vai no resumo e no log │
+  // │ — inativação em massa é sinal de escopo, não de churn.                   │
+  // └─────────────────────────────────────────────────────────────────────────┘
+  const { rows: aus } = await db.query<{ n: string }>(
+    `SELECT count(*)::text AS n
+       FROM core.account
+      WHERE brand_id IS NOT NULL
+        AND (sincronizado_em IS NULL OR sincronizado_em < $1)`,
+    [agora],
+  );
+  const ausentes = Number(aus[0]?.n ?? 0);
+  let inativados = 0;
+
+  if (ausentes > 0 && !parcial) {
+    const r = await db.query(
+      `UPDATE core.account
+          SET ativo = false, atualizado_em = $1
+        WHERE brand_id IS NOT NULL
+          AND (sincronizado_em IS NULL OR sincronizado_em < $1)
+          AND ativo`,
+      [agora],
+    );
+    inativados = r.rowCount ?? 0;
+    log(
+      `${ausentes} cliente(s) já gravados NÃO vieram nesta carga; ${inativados} passaram a ` +
+        "ativo = false. Nenhum foi apagado — DELETE é recusado por gatilho. " +
+        "Número alto aqui é sinal de mudança de ESCOPO da credencial, não de churn.",
+    );
+  } else if (ausentes > 0) {
+    log(
+      `${ausentes} cliente(s) já gravados NÃO vieram nesta carga, mas a leitura foi ` +
+        "PARCIAL — NADA foi inativado. Ausente numa leitura truncada provavelmente só " +
+        "não foi lido.",
+    );
+  }
+
+  // ┌───────────────────────────────────────────────────────────────────────────┐
+  // │ A CLASSIFICAÇÃO RODA A CADA CARGA, e é por isso que ela é regra e não          │
+  // │ `UPDATE` de uma vez: a carga é diária e completa. Resolução gravada à mão hoje │
+  // │ é sobrescrita amanhã, ou pior — sobrevive desatualizada depois de a conta       │
+  // │ mudar de estado, e ninguém percebe que o vínculo passou a apontar para uma      │
+  // │ conta inativa.                                                               │
+  // │                                                                            │
+  // │ Dentro da MESMA transação da carga: classificar depois, fora dela, deixaria a │
+  // │ janela em que o de-para existe sem dizer o que significa.                     │
+  // └───────────────────────────────────────────────────────────────────────────┘
+  const classificados = await classificarVinculosDaBase(
+    cliente,
+    cnpjRaizDaAlloyal,
+  );
+
+  return {
+    classificados: classificados.total,
+    pendentes: classificados.pendentes,
+    lidos: negocios.length,
+    criados,
+    atualizados,
+    inalterados,
+    semCnpj: negocios.filter((n) => !cnpjNormalizado(n.cnpj)).length,
+    comHubspot: negocios.filter(
+      (n) =>
+        n.hubspot_company_id !== null && n.hubspot_company_id !== undefined,
+    ).length,
+    modulosGravados,
+    hierarquiaLigada,
+    ausentes,
+    inativados,
+    hubspotAmbiguos,
+  };
+}

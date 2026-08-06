@@ -3,7 +3,8 @@ import { Badge, Card, Table, Vazio } from '@pulse/ui'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-import { Corpo, Topo } from '../../casca'
+import { Topo } from '../../casca'
+import { CorpoDeConfiguracao } from '../submenu'
 import { pool } from '../../../../lib/db'
 import { exigir } from '../../../../lib/guarda'
 
@@ -64,7 +65,7 @@ export default async function Historico() {
           </Link>
         }
       />
-      <Corpo className="grid gap-5">
+      <CorpoDeConfiguracao atual="/configuracoes/historico">
         {mudancas.length === 0 ? (
           <Vazio
             titulo="Nenhuma mudança registrada ainda."
@@ -109,7 +110,7 @@ export default async function Historico() {
           registro novo, nunca edição do anterior: trilha que se conserta não sustenta nenhuma
           conversa sobre o que aconteceu.
         </p>
-      </Corpo>
+      </CorpoDeConfiguracao>
     </>
   )
 }

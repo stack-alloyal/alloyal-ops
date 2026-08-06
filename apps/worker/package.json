@@ -16,7 +16,8 @@
     "pg": "^8.13.0",
     "@pulse/success": "workspace:*",
     "@pulse/contratos": "workspace:*",
-    "@pulse/auth": "workspace:*"
+    "@pulse/auth": "workspace:*",
+    "@pulse/config": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

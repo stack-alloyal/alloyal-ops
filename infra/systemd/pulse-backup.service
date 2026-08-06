@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup do banco do Pulse (pg_dump verificado)
+Documentation=file:///home/ubuntu/alloyal-pulse/infra/backup-banco.sh
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/alloyal-pulse/infra/backup-banco.sh
+# O script recusa dump suspeito e sai != 0. Sem isto o systemd marcaria "success"
+# num dia em que nada foi salvo, que é o pior desfecho possível para um backup.
+StandardOutput=append:/home/ubuntu/backups/pulse/backup.log
+StandardError=append:/home/ubuntu/backups/pulse/backup.log

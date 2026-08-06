@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": "./dist/index.js" },
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
@@ -13,11 +15,13 @@
   },
   "dependencies": {
     "@pulse/auth": "workspace:*",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "@pulse/mail": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "@pulse/db": "workspace:*"
   }
 }

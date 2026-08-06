@@ -140,6 +140,11 @@ services:
       # recusa autenticar — e é assim que se quer que ela falhe.
       PULSE_PROXY_SECRET: ${PULSE_PROXY_SECRET:?defina no .env}
       AUTH_DOMINIO: ${AUTH_DOMINIO:-alloyal.com.br}
+      # Só para ENFILEIRAR o "rodar agora" da tela de Sincronização. Quem EXECUTA o
+      # ciclo é o worker — mesma fila, mesmo executor, mesmo registro em
+      # ops.cycle_run. Um ciclo com dois lugares de execução tem dois modos de
+      # falha, e o painel só enxerga um deles.
+      REDIS_URL: redis://:${REDIS_PULSE_PASSWORD:?defina no .env}@redis-pulse:6379
     # NENHUMA porta publicada. A identidade chega por cabeçalho, e cabeçalho é
     # falsificável por quem fala direto com a aplicação. Defesa em duas camadas:
     # sem porta exposta, e a aplicação só aceita o cabeçalho de identidade quando
@@ -172,10 +177,51 @@ services:
       - --cookie-domain=pulse.alloyal.com.br
       - --cookie-secure=true
       - --cookie-csrf-per-request=true
-      - --cookie-csrf-expire=5m
+      # ── Janela do CSRF ───────────────────────────────────────────────────
+      # 15m é o padrão do oauth2-proxy. Estava em 5m — apertado por mim, sem razão
+      # escrita — e derrubou um login real em 06/08/2026:
+      #
+      #   11:07:46  /oauth2/start   → cookie CSRF válido até 11:12:46
+      #   11:13:39  /oauth2/callback → 53s DEPOIS de expirar → 403
+      #   "Cookies were found in OAuth callback, but none was a CSRF cookie."
+      #
+      # Seis minutos na tela do Google é o normal, não a exceção: o fluxo pede
+      # escolher a conta, revisar permissões (`prompt=consent` vai em toda ida) e
+      # às vezes o segundo fator. A janela precisa caber uma pessoa lendo, não uma
+      # máquina redirecionando.
+      #
+      # O que esta janela protege é a ligação entre quem começou o login e quem
+      # voltou com o código. 15m não afrouxa isso de forma relevante — o `state` é
+      # aleatório e de uso único, e o código do Google expira sozinho em minutos.
+      - --cookie-csrf-expire=15m
+      # ── Duração da sessão ────────────────────────────────────────────────
+      # O padrão do oauth2-proxy é 168h — SETE DIAS — e é o que Publi, Hub e
+      # Radar usam. Aqui é menos, e a razão é o que está atrás da porta: o Pulse
+      # dá acesso a carteira, receita, contratos e relatório de cliente. Um
+      # notebook esquecido aberto vale uma semana de acesso com 168h; vale um dia
+      # com 12h.
+      #
+      # `--cookie-refresh` renova enquanto a pessoa USA, então quem trabalha o dia
+      # inteiro não é interrompido — o que expira é sessão parada. Sem ele, 12h
+      # seria 12h de relógio e derrubaria gente no meio do expediente.
+      - --cookie-expire=12h
+      - --cookie-refresh=1h
       - --set-xauthrequest=true
-      - --skip-provider-button=true
+      # ── A TELA DE ENTRADA ────────────────────────────────────────────────
+      # `--skip-provider-button=true` estava aqui e mandava direto ao Google:
+      # o visitante nunca via tela nenhuma do Pulse, só o consentimento da
+      # conta. Tirá-lo faz o oauth2-proxy servir a página de entrada, e o
+      # `--custom-templates-dir` diz qual — a mesma mecânica do Publi, em
+      # /opt/stack/apps/alloyal-publi/infra/oauth2-templates.
+      #
+      # O template é servido pelo oauth2-proxy, que responde ANTES da
+      # aplicação: a tela aparece mesmo com o Postgres fora do ar.
+      - --custom-templates-dir=/templates
       - --upstream=static://200
+    volumes:
+      # Somente leitura: o oauth2-proxy não tem motivo para escrever aqui, e
+      # é um processo exposto à internet.
+      - ./oauth2-templates:/templates:ro
     networks:
       - proxy-net
 

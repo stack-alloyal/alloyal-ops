@@ -10,6 +10,8 @@ import {
 } from '@pulse/auth'
 import { headers } from 'next/headers'
 
+import { estadoDaPessoa } from '@pulse/config'
+
 import { pool } from './db'
 
 export { NaoAutenticadoError }
@@ -44,6 +46,10 @@ export async function identidade(): Promise<Identidade> {
     dominio: process.env['AUTH_DOMINIO'] ?? 'alloyal.com.br',
     segredoDoProxy: segredo,
     papeisDe: papeisDoBanco,
+    // Suspensão é checada AQUI, na resolução de identidade — não na tela. A regra
+    // da casa é que a fronteira de autorização é a consulta, e suspender alguém
+    // que já está com uma aba aberta tem que valer na próxima requisição.
+    estadoDaPessoa: (email) => estadoDaPessoa(pool(), email),
   })
 }
 

@@ -5,7 +5,8 @@ import { ArrowLeft, Lock, PlugZap } from 'lucide-react'
 import Link from 'next/link'
 
 import { removerSegredo, salvarSegredo, verificarConexao } from '../acoes'
-import { Corpo, Topo } from '../../casca'
+import { Topo } from '../../casca'
+import { CorpoDeConfiguracao } from '../submenu'
 import { pool } from '../../../../lib/db'
 import { exigir } from '../../../../lib/guarda'
 
@@ -64,7 +65,7 @@ export default async function Segredos({
           </span>
         }
       />
-      <Corpo className="grid gap-5">
+      <CorpoDeConfiguracao atual="/configuracoes/segredos">
         {q.erro && (
           <Aviso tom="erro" papel="alert">
             {q.erro}
@@ -244,7 +245,7 @@ export default async function Segredos({
             )
           })}
         </div>
-      </Corpo>
+      </CorpoDeConfiguracao>
     </>
   )
 }

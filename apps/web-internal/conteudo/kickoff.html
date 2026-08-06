@@ -1,0 +1,2335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Squad Dados Alloyal — Kickoff</title>
+<!--
+  Fontes SERVIDAS DAQUI, e não do Google.
+
+  A CSP do Pulse é `style-src 'self' 'unsafe-inline'` e `font-src 'self' data:`
+  (packages/ui/cabecalhos.mjs). Um <link> para fonts.googleapis.com é bloqueado
+  pelo navegador — e o sintoma é sutil: nenhum erro na tela, só o documento
+  renderizando em fonte de sistema, sem a Space Grotesk que sustenta o desenho.
+
+  Duas famílias, dois arquivos: fontes VARIÁVEIS do Google, subset latin, 71 KB no
+  total. Uma família por arquivo, com faixa de peso — é assim que o navegador
+  interpola 400..700 de um arquivo só. O Google devolve um @font-face por peso
+  apontando para o mesmo arquivo, o que funciona mas repete a declaração.
+
+  A JetBrains Mono saiu: as etiquetas passaram para Inter, num tamanho acima. Em
+  9,5px a monoespaçada ficava apertada para projetar, que é o uso deste
+  documento.
+-->
+<style>
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url(/docs/fontes/space-grotesk.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(/docs/fontes/inter.woff2) format('woff2')}
+</style>
+<style>
+/* ============================================================
+   PALETA DA MARCA — os hex oficiais da Alloyal, tirados de
+   packages/ui/src/estilo.css. Não são mais placeholders.
+   ============================================================ */
+:root{
+  --brand:      #6a18e5;   /* primária Alloyal */
+  --brand-deep: #2e0962;   /* primária escura */
+  --ink:        #16161a;   /* texto / fundo escuro */
+  --paper:      #f6f6f8;   /* fundo claro */
+  --signal:     #16a34a;   /* fonte da verdade / ok */
+  --alert:      #dc2626;   /* divergência / risco */
+
+  --amber:      #f59e0b;
+  --line:       rgba(22,22,26,.12);
+  --muted:      #5b5b66;
+
+  /* tags de procedência por sistema */
+  --s-hubspot:   #FF6B4A;
+  --s-omie:      #00A99D;
+  --s-clicksign: #2E7DFF;
+  --s-clevertap: #F04B4B;
+  --s-painel:    #6a18e5;
+  --s-db:        #9B51E0;
+  --s-sheet:     #8A8FA3;
+
+  --f-display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Era 'JetBrains Mono'. Virou Inter, e por isso mudou de nome: uma variável
+     chamada --f-mono guardando fonte proporcional engana quem lê depois. O papel
+     dela é etiqueta — rótulo curto, em caixa alta, com tracking largo. */
+  --f-etiqueta: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--f-body);
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+/* ---------- Estrutura ---------- */
+.deck{display:grid;grid-template-columns:236px 1fr;height:100vh}
+
+.rail{
+  background:var(--ink);
+  color:#fff;
+  padding:28px 20px;
+  display:flex;flex-direction:column;gap:22px;
+  overflow-y:auto;
+}
+.rail-brand{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.25}
+.rail-brand span{display:block;font-family:var(--f-etiqueta);font-size:11px;font-weight:400;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:7px}
+.rail-list{list-style:none;display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.rail-item{
+  display:flex;gap:11px;align-items:baseline;
+  padding:8px 9px;border-radius:7px;cursor:pointer;
+  font-size:12.5px;line-height:1.3;color:rgba(255,255,255,.52);
+  border:none;background:none;text-align:left;width:100%;
+  font-family:var(--f-body);transition:background .15s,color .15s;
+}
+.rail-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
+.rail-item .n{font-family:var(--f-etiqueta);font-size:11.5px;letter-spacing:.05em;color:rgba(255,255,255,.32);flex:none;width:21px}
+.rail-item[aria-current="true"]{background:var(--brand);color:#fff;font-weight:500}
+.rail-item[aria-current="true"] .n{color:rgba(255,255,255,.7)}
+.rail-foot{margin-top:auto;font-family:var(--f-etiqueta);font-size:11px;color:rgba(255,255,255,.3);line-height:1.7;letter-spacing:.04em}
+
+.stage{position:relative;overflow:hidden}
+.slide{
+  position:absolute;inset:0;
+  padding:52px 60px 76px;
+  overflow-y:auto;
+  opacity:0;visibility:hidden;
+  transform:translateY(10px);
+  transition:opacity .32s ease,transform .32s ease,visibility .32s;
+}
+.slide.on{opacity:1;visibility:visible;transform:none}
+
+.hud{
+  position:absolute;bottom:0;left:0;right:0;
+  height:56px;padding:0 60px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(to top,var(--paper) 62%,rgba(246,246,248,0));
+  pointer-events:none;
+}
+.hud > *{pointer-events:auto}
+.counter{font-family:var(--f-etiqueta);font-size:12.5px;color:var(--muted);letter-spacing:.06em}
+.nav{display:flex;gap:8px}
+.nav button{
+  font-family:var(--f-etiqueta);font-size:12.5px;letter-spacing:.06em;
+  border:1px solid var(--line);background:#fff;color:var(--ink);
+  padding:7px 15px;border-radius:6px;cursor:pointer;transition:.15s;
+}
+.nav button:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.nav button:disabled{opacity:.32;cursor:default}
+:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+
+/* ---------- Tipografia ---------- */
+.eyebrow{
+  font-family:var(--f-etiqueta);font-size:12px;letter-spacing:.19em;
+  text-transform:uppercase;color:var(--brand);margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.eyebrow::after{content:"";height:1px;flex:1;background:var(--line);max-width:180px}
+h1{font-family:var(--f-display);font-size:clamp(34px,4.6vw,60px);font-weight:700;letter-spacing:-.03em;line-height:1.03}
+h2{font-family:var(--f-display);font-size:clamp(26px,3vw,38px);font-weight:600;letter-spacing:-.025em;line-height:1.12;margin-bottom:10px}
+h3{font-family:var(--f-display);font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.lede{font-size:16px;line-height:1.55;color:var(--muted);max-width:66ch;margin-bottom:30px}
+.lede strong{color:var(--ink);font-weight:600}
+p{line-height:1.6}
+.fine{font-family:var(--f-etiqueta);font-size:12px;color:var(--muted);letter-spacing:.03em;line-height:1.7}
+
+/* ---------- Tag de procedência (elemento-assinatura) ---------- */
+.src{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--f-etiqueta);font-size:11.5px;font-weight:500;
+  letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;
+  padding:3px 8px 3px 6px;border-radius:4px;
+  background:rgba(22,22,26,.045);color:var(--muted);
+}
+.src::before{content:"";width:6px;height:6px;border-radius:2px;background:currentColor;flex:none}
+.src.hubspot{color:var(--s-hubspot);background:rgba(255,107,74,.09)}
+.src.omie{color:var(--s-omie);background:rgba(0,169,157,.10)}
+.src.clicksign{color:var(--s-clicksign);background:rgba(46,125,255,.09)}
+.src.clevertap{color:var(--s-clevertap);background:rgba(240,75,75,.09)}
+.src.painel{color:var(--s-painel);background:rgba(106,24,229,.09)}
+.src.db{color:var(--s-db);background:rgba(155,81,224,.10)}
+.src.sheet{color:var(--s-sheet);background:rgba(138,143,163,.13)}
+
+/* ---------- Capa ---------- */
+.cover{display:flex;flex-direction:column;justify-content:center;height:100%;max-width:1000px}
+.cover h1{margin:10px 0 22px}
+.cover-note{display:flex;gap:34px;flex-wrap:wrap;margin-top:38px;padding-top:26px;border-top:1px solid var(--line)}
+.cover-note div{max-width:230px}
+.cover-note dt{font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.cover-note dd{font-size:14px;line-height:1.45;font-weight:500}
+.chipline{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+/* ---------- Momento de divergência ---------- */
+.diverge{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:26px 0 22px;max-width:860px}
+.dcard{border:1px solid var(--line);background:#fff;border-radius:12px;padding:20px}
+.dcard .num{font-family:var(--f-display);font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--alert);margin:12px 0 6px}
+.dcard .who{font-size:12.5px;color:var(--muted);line-height:1.4}
+.question{
+  font-family:var(--f-display);font-size:clamp(22px,2.6vw,32px);font-weight:600;
+  letter-spacing:-.02em;padding-left:18px;border-left:3px solid var(--alert);
+}
+
+/* ---------- Grids genéricos ---------- */
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:1080px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1080px}
+.card{border:1px solid var(--line);background:#fff;border-radius:11px;padding:17px 18px}
+.card p{font-size:13.5px;color:var(--muted);line-height:1.55}
+.card .tagrow{margin-top:11px;display:flex;flex-wrap:wrap;gap:5px}
+.card.accent{border-left:3px solid var(--brand)}
+.card.warn{border-left:3px solid var(--alert)}
+
+/* ---------- Tabelas ---------- */
+table{border-collapse:collapse;width:100%;max-width:1080px;font-size:13px}
+th{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);text-align:left;font-weight:500;
+  padding:0 12px 9px;border-bottom:1px solid var(--line);
+}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+tbody tr{transition:background .14s}
+tbody tr:hover{background:rgba(106,24,229,.035)}
+td.dom{font-weight:600;font-family:var(--f-display);letter-spacing:-.01em}
+td small{display:block;color:var(--muted);font-size:12px;margin-top:3px;line-height:1.4}
+.verdict{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-etiqueta);font-size:11.5px;letter-spacing:.05em;color:var(--signal)}
+.verdict::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--signal)}
+
+/* ---------- Abas ---------- */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab{
+  font-family:var(--f-etiqueta);font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+  padding:8px 14px;border-radius:6px;border:1px solid var(--line);
+  background:#fff;color:var(--muted);cursor:pointer;transition:.15s;
+}
+.tab:hover{border-color:var(--brand);color:var(--brand)}
+.tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.pane{display:none}
+.pane.on{display:block}
+
+/* ---------- Jornada ---------- */
+.journey{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;max-width:1080px}
+.step{
+  flex:1;min-width:130px;padding:14px 15px;
+  border:1px solid var(--line);border-right:none;background:#fff;position:relative;
+}
+.step:first-child{border-radius:9px 0 0 9px}
+.step:last-child{border-right:1px solid var(--line);border-radius:0 9px 9px 0}
+.step .st{font-family:var(--f-etiqueta);font-size:10.5px;letter-spacing:.12em;color:var(--muted);margin-bottom:7px}
+.step .sn{font-size:13.5px;font-weight:600;line-height:1.25;margin-bottom:8px}
+.step.break{background:rgba(220,38,38,.05);border-color:rgba(220,38,38,.3)}
+.step.break .st{color:var(--alert)}
+.breaknote{font-size:11.5px;color:var(--alert);line-height:1.4;margin-top:6px}
+
+/* ---------- Camadas (arquitetura) ---------- */
+.layer{
+  display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;
+  padding:16px 18px;border:1px solid var(--line);background:#fff;
+  border-radius:10px;margin-bottom:9px;max-width:1080px;
+}
+.layer-label{font-family:var(--f-etiqueta);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand)}
+.layer-label b{display:block;font-family:var(--f-display);font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-transform:none;margin-top:4px}
+.layer-body{font-size:13px;color:var(--muted);line-height:1.5}
+.layer.hero{background:var(--ink);border-color:var(--ink)}
+.layer.hero .layer-label{color:rgba(255,255,255,.5)}
+.layer.hero .layer-label b{color:#fff}
+.layer.hero .layer-body{color:rgba(255,255,255,.72)}
+.flowarrow{text-align:center;color:var(--line);font-size:13px;line-height:1;margin:1px 0;max-width:1080px}
+
+/* ---------- Listas ---------- */
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:7px}
+ul.clean li{font-size:13.5px;line-height:1.5;padding-left:17px;position:relative;color:var(--muted)}
+ul.clean li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:1px;background:var(--brand)}
+ul.clean li b{color:var(--ink);font-weight:600}
+
+/* ---------- Antes / depois ---------- */
+.auto{border:1px solid var(--line);background:#fff;border-radius:10px;padding:15px 17px;margin-bottom:9px;max-width:1080px}
+.auto-h{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+.auto-h h3{margin:0}
+.ba{display:grid;grid-template-columns:1fr 26px 1fr;gap:12px;align-items:center}
+.ba div{font-size:12.5px;line-height:1.45}
+.ba .before{color:var(--muted)}
+.ba .before b{color:var(--alert);font-weight:600}
+.ba .after b{color:var(--signal);font-weight:600}
+.ba .arrow{text-align:center;font-family:var(--f-etiqueta);color:var(--line)}
+
+.ask{background:var(--brand-deep);color:#fff;border-radius:12px;padding:22px 24px;max-width:1080px;margin-top:22px}
+.ask h3{color:#fff;margin-bottom:12px}
+.ask ul.clean li{color:rgba(255,255,255,.78)}
+.ask ul.clean li b{color:#fff}
+.ask ul.clean li::before{background:var(--signal)}
+
+
+/* ============================================================
+   CAMADA COLABORATIVA
+   ============================================================ */
+.editor{
+  border:1px dashed rgba(106,24,229,.42);
+  background:rgba(106,24,229,.035);
+  border-radius:12px;padding:20px 21px;margin-top:26px;max-width:1080px;
+}
+.editor-h{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:15px}
+.editor-h h3{margin:0}
+.editor-h .hint{font-family:var(--f-etiqueta);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--brand)}
+.fields{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f-4{grid-column:span 4}.f-6{grid-column:span 6}.f-3{grid-column:span 3}.f-12{grid-column:span 12}.f-2{grid-column:span 2}
+.f label{font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.f input,.f select,.f textarea{
+  font-family:var(--f-body);font-size:13px;color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;padding:9px 11px;background:#fff;
+  width:100%;transition:border-color .15s;
+}
+.f textarea{resize:vertical;min-height:56px;line-height:1.45}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px rgba(106,24,229,.12)}
+.f-check{grid-column:span 4;display:flex;align-items:center;gap:9px;padding-top:19px}
+.f-check input{width:16px;height:16px;accent-color:var(--alert);flex:none}
+.f-check label{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-size:12.5px;color:var(--ink)}
+.editor-actions{display:flex;gap:9px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.btn{
+  font-family:var(--f-etiqueta);font-size:12.5px;letter-spacing:.07em;
+  padding:9px 17px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:.15s;
+}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-deep)}
+.btn-ghost{background:#fff;border-color:var(--line);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--brand);color:var(--brand)}
+.btn-danger{background:none;border:none;color:var(--muted);font-size:12px;padding:4px 7px;cursor:pointer;font-family:var(--f-etiqueta)}
+.btn-danger:hover{color:var(--alert)}
+.formnote{font-family:var(--f-etiqueta);font-size:11.5px;color:var(--muted);letter-spacing:.03em;line-height:1.6}
+
+
+.chipset{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;border-radius:20px;
+  padding:6px 12px 6px 9px;transition:.15s;
+}
+.chip:hover{border-color:var(--brand)}
+.chip input{width:14px;height:14px;accent-color:var(--brand);margin:0;flex:none}
+.chip span{font-family:var(--f-etiqueta);font-size:12px;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+.chip:has(input:checked){border-color:var(--brand);background:rgba(106,24,229,.07)}
+.chip:has(input:checked) span{color:var(--brand)}
+.chip input:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* registros gravados */
+.records{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+.rec{
+  background:#fff;border:1px solid var(--line);border-radius:9px;
+  padding:13px 15px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;
+}
+.rec-main{min-width:0}
+.rec-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.rec-title{font-family:var(--f-display);font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.rec-meta{font-size:12.5px;color:var(--muted);line-height:1.5}
+.rec-meta b{color:var(--ink);font-weight:600}
+.rec-meta a{color:var(--brand);text-decoration:none;word-break:break-all}
+.rec-meta a:hover{text-decoration:underline}
+.team{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;white-space:nowrap;
+}
+.team.comercial{background:rgba(255,107,74,.12);color:var(--s-hubspot)}
+.team.financeiro{background:rgba(0,169,157,.13);color:var(--s-omie)}
+.team.operacoes{background:rgba(106,24,229,.12);color:var(--brand)}
+.team.juridico{background:rgba(46,125,255,.12);color:var(--s-clicksign)}
+.pill{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;background:rgba(22,22,26,.055);color:var(--muted);white-space:nowrap;
+}
+.pill.crit{background:rgba(220,38,38,.11);color:var(--alert)}
+.pill.lgpd{background:var(--alert);color:#fff}
+/* ── Roadmap ────────────────────────────────────────────────────────────────
+   Os quatro estados têm COR e TEXTO dizendo a mesma coisa: cor sozinha não
+   informa quem não distingue matiz, e num roadmap projetado numa parede o
+   contraste do projetor come a diferença entre verde e âmbar. */
+/* `rmp-st` e não `st`: `.step .st` já existe neste documento, e um `.st` genérico
+   deixaria aqueles rótulos em caixa alta com padding — regressão silenciosa numa
+   parte da apresentação que ninguém estava tocando. */
+.rmp-st{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;white-space:nowrap;
+}
+.rmp-st.nao{background:rgba(22,22,26,.06);color:var(--muted)}
+.rmp-st.andamento{background:rgba(106,24,229,.12);color:var(--brand)}
+.rmp-st.concluida{background:rgba(22,163,74,.13);color:var(--signal)}
+.rmp-st.bloqueada{background:rgba(220,38,38,.11);color:var(--alert)}
+
+/* A timeline rola no PRÓPRIO contêiner: um roadmap de um ano não pode empurrar
+   a página para o lado.
+   Nome `rmp-tempo` e não `tl`: `.tl` já é o rótulo dos tiles do Consolidado. */
+.rmp-tempo{margin-top:16px;overflow-x:auto}
+.tl-grade{min-width:640px}
+.tl-head{
+  display:grid;grid-template-columns:186px 1fr;align-items:end;
+  border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:9px;
+}
+/* Etiqueta de mês posicionada por PROPORÇÃO, igual às barras. Espaçamento igual
+   desalinharia: fevereiro tem 28 dias e março 31. */
+.tl-meses{position:relative;height:15px}
+.tl-mes{
+  position:absolute;top:0;font-family:var(--f-etiqueta);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line);
+  padding-left:5px;white-space:nowrap;line-height:1.3;
+}
+.tl-linha{display:grid;grid-template-columns:186px 1fr;align-items:center;gap:10px;padding:5px 0}
+.tl-rot{min-width:0}
+.tl-rot .n{font-size:13px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-rot .q{font-size:11.5px;color:var(--muted)}
+.tl-pista{position:relative;height:24px;background:rgba(22,22,26,.035);border-radius:5px}
+.tl-barra{
+  position:absolute;top:4px;height:16px;border-radius:4px;min-width:5px;
+  display:flex;align-items:center;padding:0 7px;overflow:hidden;
+}
+.tl-barra span{font-family:var(--f-etiqueta);font-size:10px;letter-spacing:.05em;color:#fff;white-space:nowrap}
+.tl-barra.nao{background:#8a8fa3}
+.tl-barra.andamento{background:var(--brand)}
+.tl-barra.concluida{background:var(--signal)}
+.tl-barra.bloqueada{background:var(--alert)}
+/* Tarefa sem data não recebe barra inventada: ela aparece à parte, dita. */
+.tl-semdata{
+  font-size:12.5px;color:var(--muted);padding:7px 0 0;border-top:1px dashed var(--line);margin-top:11px;line-height:1.6;
+}
+.rmp-grupo{margin-top:20px}
+.rmp-grupo h4{
+  font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:8px;
+}
+.empty{
+  font-family:var(--f-etiqueta);font-size:12.5px;color:var(--muted);letter-spacing:.03em;
+  padding:18px;text-align:center;border:1px dashed var(--line);border-radius:9px;line-height:1.7;
+}
+
+/* barra de identidade */
+.idbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:11px 13px;background:rgba(255,255,255,.07);border-radius:9px;
+}
+.idbar label{font-family:var(--f-etiqueta);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.45);display:block;margin-bottom:6px}
+.idbar select{
+  width:100%;font-family:var(--f-body);font-size:12.5px;padding:7px 9px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;
+}
+.idbar select option{color:var(--ink)}
+.rail-toggle{
+  display:flex;align-items:center;gap:8px;font-family:var(--f-etiqueta);font-size:11.5px;
+  letter-spacing:.08em;color:rgba(255,255,255,.5);cursor:pointer;
+  padding:8px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:none;width:100%;
+  transition:.15s;text-transform:uppercase;
+}
+.rail-toggle:hover{border-color:var(--brand);color:#fff}
+.rail-toggle[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* modo apresentação */
+body.presenting .editor{display:none}
+body.presenting .cons-tools{display:none}
+
+/* consolidado */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:1080px;margin-bottom:26px}
+.tile{border:1px solid var(--line);background:#fff;border-radius:11px;padding:16px 17px}
+.tile .tn{font-family:var(--f-display);font-size:36px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--brand)}
+.tile .tl{font-family:var(--f-etiqueta);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-top:8px;line-height:1.5}
+.tile.risk .tn{color:var(--alert)}
+.cons-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:22px 0 8px;padding-top:20px;border-top:1px solid var(--line);max-width:1080px}
+.cons-sec{margin-bottom:28px;max-width:1080px}
+.cons-sec > h3{padding-bottom:9px;border-bottom:1px solid var(--line);margin-bottom:13px;display:flex;align-items:center;gap:9px}
+.cons-sec > h3 .ct{font-family:var(--f-etiqueta);font-size:11.5px;font-weight:400;letter-spacing:.08em;color:var(--muted)}
+
+
+/* diálogo interno */
+.overlay{
+  position:fixed;inset:0;background:rgba(22,22,26,.55);
+  display:flex;align-items:center;justify-content:center;padding:22px;
+  opacity:0;visibility:hidden;transition:.18s;z-index:80;
+}
+.overlay.on{opacity:1;visibility:visible}
+.modal{
+  background:#fff;border-radius:14px;padding:24px 26px;max-width:520px;width:100%;
+  box-shadow:0 24px 60px rgba(22,22,26,.28);transform:translateY(8px);transition:.18s;
+  max-height:86vh;overflow-y:auto;
+}
+.overlay.on .modal{transform:none}
+.modal h3{margin-bottom:9px}
+.modal p{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:6px}
+.modal .target{
+  font-size:13.5px;line-height:1.5;color:var(--ink);background:rgba(22,22,26,.045);
+  border-radius:8px;padding:11px 13px;margin:12px 0 4px;word-break:break-word;
+}
+.modal-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+.btn-del{background:var(--alert);color:#fff;border:1px solid var(--alert)}
+.btn-del:hover{filter:brightness(.92)}
+.copybox{
+  width:100%;min-height:220px;font-family:var(--f-etiqueta);font-size:12.5px;line-height:1.6;
+  border:1px solid var(--line);border-radius:9px;padding:12px;margin-top:12px;resize:vertical;
+  background:var(--paper);color:var(--ink);
+}
+
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translate(-50%,14px);
+  background:var(--ink);color:#fff;padding:11px 20px;border-radius:8px;
+  font-family:var(--f-etiqueta);font-size:13px;letter-spacing:.04em;
+  opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:80vw;text-align:center;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.banner{
+  display:flex;gap:11px;align-items:flex-start;
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);
+  border-radius:9px;padding:12px 15px;margin-bottom:18px;max-width:1080px;
+  font-size:12.5px;line-height:1.55;color:var(--ink);
+}
+.banner b{display:block;font-family:var(--f-etiqueta);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;margin-bottom:4px;color:#b45309}
+
+@media (max-width:900px){
+  .fields{grid-template-columns:repeat(2,1fr)}
+  .f-4,.f-6,.f-3,.f-12,.f-2,.f-check{grid-column:span 2}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .rec{grid-template-columns:1fr}
+}
+
+@media (max-width:900px){
+  .deck{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .rail{flex-direction:row;align-items:center;gap:14px;padding:12px 16px;overflow-x:auto}
+  .rail-list{flex-direction:row}
+  .rail-item{white-space:nowrap;width:auto}
+  .rail-item span:not(.n){display:none}
+  .rail-foot{display:none}
+  .slide{padding:26px 20px 70px}
+  .hud{padding:0 20px}
+  .diverge,.grid2,.grid3{grid-template-columns:1fr}
+  .layer{grid-template-columns:1fr;gap:8px}
+  .journey{flex-direction:column}
+  .step{border-right:1px solid var(--line);border-bottom:none}
+  .step:first-child{border-radius:9px 9px 0 0}
+  .step:last-child{border-radius:0 0 9px 9px;border-bottom:1px solid var(--line)}
+}
+@media (prefers-reduced-motion:reduce){
+  .slide{transition:none}
+  *{animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <nav class="rail" aria-label="Índice">
+    <div class="rail-brand">Squad Dados Alloyal<span>Kickoff · 2026</span></div>
+    <div class="idbar">
+      <div style="width:100%">
+        <label for="teamSel">Preenchendo por</label>
+        <select id="teamSel">
+          <option value="">Selecione sua área</option>
+          <option value="comercial">Comercial</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="operacoes">Operações / CS</option>
+          <option value="juridico">Jurídico</option>
+        </select>
+      </div>
+    </div>
+    <button class="rail-toggle" id="presentBtn" type="button" aria-pressed="false">Modo apresentação</button>
+    <ul class="rail-list" id="rail"></ul>
+    <div class="rail-foot">← → navega<br>Uso interno</div>
+  </nav>
+
+  <div class="stage">
+
+    <!-- 00 CAPA -->
+    <section class="slide on" data-title="Capa">
+      <div class="cover">
+        <div class="eyebrow">Kickoff · Financeiro · Operações · Jurídico · Comercial</div>
+        <h1>Uma pergunta.<br>Uma resposta.</h1>
+        <p class="lede">Hoje a Alloyal tem sete lugares onde o dado mora e nenhum lugar onde o dado é decidido. O Squad Dados existe para mudar isso: definir a fonte da verdade de cada informação, centralizá-la no <strong>Alloyal Pulse</strong> e aposentar o controle manual.</p>
+        <div class="chipline">
+          <span class="src hubspot">HubSpot</span>
+          <span class="src omie">Omie</span>
+          <span class="src painel">Painel do Cliente</span>
+          <span class="src clicksign">ClickSign</span>
+          <span class="src clevertap">CleverTap</span>
+          <span class="src db">Banco Alloyal</span>
+          <span class="src sheet">Planilhas internas</span>
+        </div>
+        <dl class="cover-note">
+          <div><dt>Formato</dt><dd>Kickoff único. A cadência é definida no fim desta sessão.</dd></div>
+          <div><dt>Duração</dt><dd>90 minutos, com decisões registradas ao vivo.</dd></div>
+          <div><dt>Saída esperada</dt><dd>Fonte da verdade acordada por domínio e um dono por dado.</dd></div>
+        </dl>
+      </div>
+    </section>
+    <section class="slide" data-title="Fonte de Verdade">
+      <div class="eyebrow">01 · Fonte da verdade</div>
+      <h2>Um dono por domínio de dado</h2>
+      <p class="lede">A regra é simples: para cada informação existe <strong>um</strong> sistema que manda. Os outros podem exibir, nunca contradizer. Onde houver divergência, vence a fonte marcada abaixo — e a divergência vira chamado de correção, não debate em reunião.</p>
+      <table>
+        <thead><tr><th style="width:22%">Domínio</th><th style="width:20%">Fonte da verdade</th><th style="width:34%">O que ela decide</th><th style="width:24%">Quem consome</th></tr></thead>
+        <tbody>
+          <tr><td class="dom">Cadastro do cliente</td><td><span class="src hubspot">HubSpot</span></td><td>Razão social, CNPJ, owner comercial, segmento, estágio<small>Cadastro nasce aqui. Nenhum cliente existe sem registro no HubSpot.</small></td><td>Todos os times</td></tr>
+          <tr><td class="dom">Contrato e vigência</td><td><span class="src clicksign">ClickSign</span></td><td>Assinatura, início, prazo, aditivos, rescisão<small>Data de assinatura define o marco zero da relação.</small></td><td>Jurídico, Comercial, Financeiro</td></tr>
+          <tr><td class="dom">Receita e inadimplência</td><td><span class="src omie">Omie</span></td><td>Faturamento emitido, recebido, aging, MRR reconhecido<small>Valor negociado mora no HubSpot; valor faturado, no Omie.</small></td><td>Financeiro, Comercial, CS</td></tr>
+          <tr><td class="dom">Configuração do programa</td><td><span class="src painel">Painel do Cliente</span></td><td>Módulos ativos, regras, parceiros, status de setup<small>Define se o cliente está de fato no ar.</small></td><td>Operações, CS, Comercial</td></tr>
+          <tr><td class="dom">Engajamento</td><td><span class="src clevertap">CleverTap</span></td><td>MAU, DAU, abertura, campanha, retenção por coorte<small>Comportamento do usuário final do cliente.</small></td><td>Operações, CS, Comercial</td></tr>
+          <tr><td class="dom">Transação e GMV</td><td><span class="src db">Banco Alloyal</span></td><td>Pedidos, cupons, cashback gerado e resgatado, GMV<small>O que efetivamente aconteceu no programa.</small></td><td>Todos os times</td></tr>
+          <tr><td class="dom">Metas e forecast</td><td><span class="src painel">Pulse</span></td><td>Meta por time, forecast, atingimento<small>Hoje em planilha. Migra para o Pulse na fase 1.</small></td><td>Liderança, Comercial</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin:32px 0 12px">O casamento de chaves — primeiro entregável do squad</h3>
+      <p class="lede" style="margin-bottom:14px">Nada acima funciona enquanto os sistemas não souberem que estão falando do mesmo cliente. Três chaves, um de-para.</p>
+      <div class="grid3">
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">hubspot_id</code></h3><p>Identificador mestre do cliente. Toda tabela, painel e relatório carrega este campo.</p></div>
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">cnpj</code></h3><p>Chave de conciliação entre HubSpot, Omie e ClickSign. Formato único, sem máscara.</p></div>
+        <div class="card accent"><h3><code style="font-family:var(--f-etiqueta);font-size:14px">brand_id</code></h3><p>Identificador operacional no Banco Alloyal e no CleverTap. Mapeado 1:1 ao <code style="font-family:var(--f-etiqueta)">hubspot_id</code>.</p></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Alloyal Pulse">
+      <div class="eyebrow">02 · Alloyal Pulse</div>
+      <h2>A plataforma interna que sustenta tudo isso</h2>
+      <p class="lede">O Pulse não substitui HubSpot, Omie ou CleverTap. Ele é a camada acima deles: <strong>o lugar onde o número já vem decidido</strong>, com a origem visível e o histórico preservado.</p>
+      <div class="grid2">
+        <div class="card accent"><h3>Visão 360 do cliente</h3><p>Uma tela por cliente reunindo contrato, faturamento, inadimplência, configuração do programa, engajamento e uso — sem trocar de aba.</p></div>
+        <div class="card accent"><h3>Procedência sempre visível</h3><p>Todo número exibe de onde veio e quando foi atualizado. Discussão sobre qual dado está certo deixa de existir.</p></div>
+        <div class="card accent"><h3>Painel por time</h3><p>Cada área acessa suas métricas com sua linguagem, mas todas partem da mesma base e da mesma definição.</p></div>
+        <div class="card accent"><h3>Alertas em vez de relatórios</h3><p>O Pulse avisa quando algo muda — queda de engajamento, atraso de pagamento, contrato vencendo — em vez de esperar alguém abrir um relatório.</p></div>
+        <div class="card accent"><h3>Histórico preservado</h3><p>Guarda a série temporal. Dá para responder “como estava este cliente há seis meses” sem depender de print antigo.</p></div>
+        <div class="card accent"><h3>Acesso controlado</h3><p>Permissão por perfil e registro de acesso. Requisito de LGPD que planilha em drive pessoal não atende.</p></div>
+      </div>
+      <p class="fine" style="margin-top:22px;max-width:80ch">Entrega por fases: primeiro a base consolidada e a visão 360, depois os painéis por time, depois os alertas e as automações. Cada fase entra em uso antes da seguinte começar.</p>
+    </section>
+    <section class="slide" data-title="Centralização">
+      <div class="eyebrow">03 · Centralização dos dados</div>
+      <h2>Como o dado chega até o Pulse</h2>
+      <p class="lede">Nenhum time passa a trabalhar dentro de um sistema novo. Os sistemas de origem continuam sendo usados exatamente como hoje — o que muda é que o dado passa a ser copiado, padronizado e reunido em um só lugar.</p>
+
+      <div class="layer">
+        <div class="layer-label">Camada 1<b>Origem</b></div>
+        <div class="layer-body">Os sete sistemas seguem operando normalmente. Ninguém muda de ferramenta. Cada time continua registrando onde já registra.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 2<b>Coleta</b></div>
+        <div class="layer-body">Integração por API onde existe (HubSpot, Omie, CleverTap, ClickSign) e leitura incremental do banco. Só o que mudou desde a última carga é trazido — sem peso na operação.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 3<b>Padronização</b></div>
+        <div class="layer-body">Aplicação do de-para de chaves, normalização de CNPJ e datas, deduplicação e resolução de divergência pela regra de fonte da verdade. É aqui que “cliente ativo” passa a ter um significado só.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer hero">
+        <div class="layer-label">Camada 4<b>Alloyal Pulse</b></div>
+        <div class="layer-body">Base única consolidada, com histórico. Cada registro guarda de onde veio e quando foi atualizado — a procedência viaja junto com o número.</div>
+      </div>
+      <div class="flowarrow">▼</div>
+      <div class="layer">
+        <div class="layer-label">Camada 5<b>Consumo</b></div>
+        <div class="layer-body">Painel por time, alertas automáticos, relatório de cliente e exportação. Quem hoje pede um número por mensagem passa a abrir a tela.</div>
+      </div>
+
+      <p class="fine" style="margin-top:20px;max-width:80ch">Regra de governança: todo dado exibido no Pulse tem um dono nomeado, uma frequência de atualização declarada e uma definição escrita no dicionário de métricas. Sem os três, o indicador não sobe para o painel.</p>
+    </section>
+    <section class="slide" data-title="Dores">
+      <div class="eyebrow">04 · Dores</div>
+      <h2>Três times, uma pergunta, três respostas</h2>
+      <div class="question">“Quantos clientes ativos a Alloyal tem hoje?”</div>
+      <div class="diverge">
+        <div class="dcard">
+          <span class="src hubspot">HubSpot</span>
+          <div class="num">A</div>
+          <div class="who">Negócios em estágio “Cliente”. Inclui contrato assinado que nunca entrou em operação.</div>
+        </div>
+        <div class="dcard">
+          <span class="src omie">Omie</span>
+          <div class="num">B</div>
+          <div class="who">Clientes faturados no mês. Exclui quem está em carência e inclui quem já pediu cancelamento.</div>
+        </div>
+        <div class="dcard">
+          <span class="src db">Banco Alloyal</span>
+          <div class="num">C</div>
+          <div class="who">Marcas com programa no ar. Inclui ambientes de teste e conta de demonstração.</div>
+        </div>
+      </div>
+      <p class="lede" style="margin-bottom:22px">Nenhum dos três está errado. Os três respondem perguntas diferentes usando a mesma palavra. <strong>O problema não é o dado — é a definição.</strong></p>
+      <div class="grid3">
+        <div class="card warn"><h3>Decisão sem contexto</h3><p>Renovação é discutida sem cruzar engajamento e inadimplência. O churn silencioso só aparece no aviso de cancelamento.</p></div>
+        <div class="card warn"><h3>Fechamento refeito à mão</h3><p>Todo mês alguém reconstrói os mesmos números em planilha. O resultado depende de quem montou.</p></div>
+        <div class="card warn"><h3>Contrato invisível</h3><p>Vigência, reajuste e renovação vivem no ClickSign e no drive. Comercial e Financeiro não enxergam o vencimento.</p></div>
+        <div class="card warn"><h3>Dado com dono único</h3><p>Se a pessoa que mantém a planilha sai de férias, a informação para. Conhecimento sem redundância é risco operacional.</p></div>
+        <div class="card warn"><h3>Exposição LGPD</h3><p>Dado pessoal de cliente circula em planilhas sem controle de acesso, sem log e sem política de retenção.</p></div>
+        <div class="card warn"><h3>Tempo em vez de análise</h3><p>Os times gastam a semana montando o número. Sobra pouco para interpretar o que ele diz.</p></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Mapa de dores da sua área</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Registre as dores concretas do seu dia a dia. Uma por vez, com o impacto que ela causa. O que entrar aqui vira pauta da sessão.</p>
+        <div class="fields">
+          <div class="f f-12"><label for="d-dor">Qual é a dor</label><input id="d-dor" type="text" placeholder="Ex.: não sei se o cliente está inadimplente antes de entrar na reunião"></div>
+          <div class="f f-4"><label for="d-impacto">Impacto principal</label><select id="d-impacto">
+            <option>Receita em risco</option><option>Tempo operacional</option><option>Risco jurídico ou LGPD</option><option>Decisão sem informação</option><option>Experiência do cliente</option>
+          </select></div>
+          <div class="f f-4"><label for="d-freq">Com que frequência dói</label><select id="d-freq">
+            <option>Diariamente</option><option>Semanalmente</option><option>No fechamento do mês</option><option>A cada trimestre</option><option>Esporádico, mas grave</option>
+          </select></div>
+          <div class="f f-4"><label for="d-sistema">Onde o dado deveria estar</label><select id="d-sistema">
+            <option>HubSpot</option><option>Omie</option><option>ClickSign</option><option>Painel do Cliente</option><option>CleverTap</option><option>Banco Alloyal</option><option>Não existe em lugar nenhum</option>
+          </select></div>
+          <div class="f f-12"><label for="d-contorno">Como você contorna isso hoje</label><textarea id="d-contorno" placeholder="Ex.: peço no grupo do WhatsApp e alguém confere no Omie"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="dores">Registrar dor</button>
+          <span class="formnote" id="d-status"></span>
+        </div>
+        <div class="records" id="rec-dores"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Dados a Coletar">
+      <div class="eyebrow">05 · Quais dados iremos coletar</div>
+      <h2>Sete fontes, sete papéis distintos</h2>
+      <p class="lede">Cada sistema entra no escopo por um motivo específico. Nenhum deles é “o sistema principal” — cada um é dono de uma parte da verdade.</p>
+      <div class="grid2">
+        <div class="card"><span class="src hubspot">HubSpot</span><h3 style="margin-top:10px">Relacionamento comercial</h3><p>Empresas, contatos, negócios, estágio de pipeline, owner, valor contratado, origem do lead, histórico de interação.</p></div>
+        <div class="card"><span class="src omie">Omie</span><h3 style="margin-top:10px">Financeiro e fiscal</h3><p>Faturamento, notas fiscais, contas a receber, recebimentos, aging de inadimplência, condições de pagamento.</p></div>
+        <div class="card"><span class="src clicksign">ClickSign</span><h3 style="margin-top:10px">Ciclo de vida contratual</h3><p>Contrato assinado, data de assinatura, vigência, aditivos, signatários, cláusulas de reajuste e rescisão.</p></div>
+        <div class="card"><span class="src painel">Painel do Cliente</span><h3 style="margin-top:10px">Configuração do programa</h3><p>Módulos ativos, regras de cashback e pontos, parceiros habilitados, personalização, usuários cadastrados por cliente.</p></div>
+        <div class="card"><span class="src clevertap">CleverTap</span><h3 style="margin-top:10px">Engajamento do usuário final</h3><p>Base ativa, MAU e DAU, campanhas, push enviado e aberto, eventos de uso, retenção por coorte.</p></div>
+        <div class="card"><span class="src db">Banco Alloyal</span><h3 style="margin-top:10px">Transação e uso real</h3><p>Pedidos, cupons utilizados, cashback gerado e resgatado, GMV por marca e filial, resgates e transferências.</p></div>
+        <div class="card" style="grid-column:span 2;border-left:3px solid var(--s-sheet)"><span class="src sheet">Planilhas internas</span><h3 style="margin-top:10px">Entram para ser lidas e depois aposentadas</h3><p>Metas, forecast, comissionamento, controles paralelos de cada área. São mapeadas para entender o que existe hoje e por quê — mas <b>planilha não será fonte da verdade de nada</b>. Toda regra útil que hoje vive numa planilha vira campo, cálculo ou automação no Pulse.</p></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Que dado a sua área precisa e ainda não tem</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">O escopo acima é a hipótese. Aqui você diz o que falta: o campo, de qual sistema deveria vir e para que você usaria.</p>
+        <div class="fields">
+          <div class="f f-6"><label for="c-campo">Informação necessária</label><input id="c-campo" type="text" placeholder="Ex.: data de vencimento do contrato por cliente"></div>
+          <div class="f f-3"><label for="c-fonte">Deveria vir de</label><select id="c-fonte">
+            <option>HubSpot</option><option>Omie</option><option>ClickSign</option><option>Painel do Cliente</option><option>CleverTap</option><option>Banco Alloyal</option><option>Planilha interna</option><option>Não sei de onde viria</option>
+          </select></div>
+          <div class="f f-3"><label for="c-crit">Criticidade</label><select id="c-crit">
+            <option>Essencial — sem isso não opero</option><option>Importante — hoje contorno com esforço</option><option>Desejável — melhoraria a análise</option>
+          </select></div>
+          <div class="f f-12"><label for="c-uso">Para que você usaria</label><textarea id="c-uso" placeholder="Ex.: acionar renovação com 90 dias de antecedência junto ao Jurídico"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="dados">Registrar necessidade</button>
+          <span class="formnote" id="c-status"></span>
+        </div>
+        <div class="records" id="rec-dados"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Planilhas">
+      <div class="eyebrow">06 · Planilhas com dados atuais</div>
+      <h2>Antes de centralizar, precisamos enxergar</h2>
+      <p class="lede">Ninguém sabe hoje quantas planilhas sustentam a operação da Alloyal. Cada time preenche o inventário abaixo <strong>antes do kickoff</strong>. Não é auditoria e não é cobrança — é a única forma de garantir que nenhuma regra importante se perca na migração.</p>
+      <table>
+        <thead><tr><th>Campo</th><th>O que preencher</th><th>Por que importa</th></tr></thead>
+        <tbody>
+          <tr><td class="dom">Nome e link</td><td>Onde a planilha vive</td><td>Muitas estão em drive pessoal — risco de perda e de LGPD</td></tr>
+          <tr><td class="dom">Dono</td><td>Quem mantém, não quem usa</td><td>Identifica dependência de pessoa única</td></tr>
+          <tr><td class="dom">O que controla</td><td>Uma frase, em linguagem de negócio</td><td>Revela controle duplicado entre times</td></tr>
+          <tr><td class="dom">De onde vem o dado</td><td>Sistema de origem ou digitação manual</td><td>Separa o que é extração do que é conhecimento tácito</td></tr>
+          <tr><td class="dom">Frequência</td><td>Diária, semanal, mensal, sob demanda</td><td>Dimensiona o ganho da automação</td></tr>
+          <tr><td class="dom">Tempo gasto</td><td>Horas por ciclo de atualização</td><td>Prioriza o backlog de automação por retorno</td></tr>
+          <tr><td class="dom">Se parar de existir</td><td>O que quebra na operação</td><td>Define criticidade e ordem de migração</td></tr>
+          <tr><td class="dom">Contém dado pessoal?</td><td>CPF, e-mail, telefone de usuário final</td><td>Aciona o Jurídico antes de qualquer migração</td></tr>
+        </tbody>
+      </table>
+      <div class="ask">
+        <h3>O que cada time traz preenchido</h3>
+        <ul class="clean">
+          <li><b>Comercial</b> — controles de pipeline, forecast, comissionamento e metas paralelos ao HubSpot.</li>
+          <li><b>Financeiro</b> — fechamento mensal, régua de cobrança, conciliação e projeção de caixa.</li>
+          <li><b>Operações / CS</b> — acompanhamento de setup, base de contatos, relatórios de cliente e controles de campanha.</li>
+          <li><b>Jurídico</b> — controle de contratos, vigências, aditivos e mapeamento de tratamento de dados pessoais.</li>
+        </ul>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Inventário de planilhas</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <div class="banner">
+          <div><b>Antes de colar um link</b>Este é o único bloco do documento que aceita links. Cole apenas planilhas do drive corporativo com acesso já controlado. Se a planilha estiver em drive pessoal, mova para o corporativo antes — e marque a caixa de dado pessoal se houver CPF, e-mail ou telefone de usuário final.</div>
+        </div>
+        <div class="fields">
+          <div class="f f-6"><label for="p-nome">Nome da planilha</label><input id="p-nome" type="text" placeholder="Ex.: Controle de fechamento mensal"></div>
+          <div class="f f-6"><label for="p-link">Link</label><input id="p-link" type="url" placeholder="https://docs.google.com/..."></div>
+          <div class="f f-4"><label for="p-dono">Quem mantém</label><input id="p-dono" type="text" placeholder="Nome de quem atualiza"></div>
+          <div class="f f-4"><label for="p-origem">De onde vem o dado</label><select id="p-origem">
+            <option>HubSpot</option><option>Omie</option><option>ClickSign</option><option>Painel do Cliente</option><option>CleverTap</option><option>Banco Alloyal</option><option>Digitação manual</option><option>Mistura de várias fontes</option>
+          </select></div>
+          <div class="f f-4"><label for="p-freq">Frequência de atualização</label><select id="p-freq">
+            <option>Diária</option><option>Semanal</option><option>Mensal</option><option>Sob demanda</option>
+          </select></div>
+          <div class="f f-12"><label for="p-controla">O que ela controla</label><input id="p-controla" type="text" placeholder="Uma frase, em linguagem de negócio"></div>
+          <div class="f f-4"><label for="p-horas">Horas gastas por ciclo</label><input id="p-horas" type="number" min="0" step="0.5" placeholder="Ex.: 4"></div>
+          <div class="f f-8"><label for="p-quebra">Se ela parar de existir, o que quebra</label><input id="p-quebra" type="text" placeholder="Ex.: o fechamento do mês não fecha"></div>
+          <div class="f-check"><input id="p-lgpd" type="checkbox"><label for="p-lgpd">Contém dado pessoal (CPF, e-mail, telefone)</label></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="planilhas">Registrar planilha</button>
+          <span class="formnote" id="p-status"></span>
+        </div>
+        <div class="records" id="rec-planilhas"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Automações">
+      <div class="eyebrow">07 · Automação de fluxos manuais</div>
+      <h2>O que deixa de ser feito à mão</h2>
+      <p class="lede">A ordem de execução sai do inventário de planilhas: automatiza primeiro o que consome mais tempo e mais afeta receita. A lista abaixo é a hipótese inicial, a ser confirmada com os números que cada time trouxer.</p>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Fechamento mensal de receita</h3><span class="src omie">Omie</span><span class="src hubspot">HubSpot</span></div>
+        <div class="ba"><div class="before">Planilha reconstruída todo mês, <b>com resultado que varia conforme quem monta</b></div><div class="arrow">→</div><div class="after">Número <b>fechado e disponível no dia 1</b>, com a mesma regra sempre</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Alerta de inadimplência para o CS</h3><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">O CS <b>descobre o atraso dentro da reunião</b> com o cliente</div><div class="arrow">→</div><div class="after">Aviso automático <b>antes do contato</b>, com valor e aging</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Sinal de churn silencioso</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span></div>
+        <div class="ba"><div class="before">Queda de engajamento percebida <b>só no pedido de cancelamento</b></div><div class="arrow">→</div><div class="after">Alerta quando o uso cai por dois ciclos — <b>meses antes</b></div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Vencimento de contrato</h3><span class="src clicksign">ClickSign</span></div>
+        <div class="ba"><div class="before">Controle manual de prazo; <b>renovação tácita passa batida</b></div><div class="arrow">→</div><div class="after">Aviso em <b>D-90 e D-30</b> para Jurídico e Comercial juntos</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Handoff Comercial → Operações</h3><span class="src hubspot">HubSpot</span><span class="src painel">Painel do Cliente</span></div>
+        <div class="ba"><div class="before">Repasse por mensagem e planilha, <b>com escopo incompleto</b></div><div class="arrow">→</div><div class="after">Contrato assinado <b>abre o setup automaticamente</b>, com o escopo vendido junto</div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Relatório de cliente (QBR)</h3><span class="src clevertap">CleverTap</span><span class="src db">Banco Alloyal</span><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">Montado à mão a cada reunião, <b>juntando três telas</b></div><div class="arrow">→</div><div class="after">Gerado com um clique, <b>sempre no mesmo padrão</b></div></div>
+      </div>
+
+      <div class="auto">
+        <div class="auto-h"><h3>Conciliação contratado × faturado</h3><span class="src hubspot">HubSpot</span><span class="src omie">Omie</span></div>
+        <div class="ba"><div class="before">Divergência <b>descoberta por acaso</b>, às vezes meses depois</div><div class="arrow">→</div><div class="after">Comparação diária, <b>com exceção apontada na hora</b></div></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Propor um fluxo para automatizar</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Que trabalho manual da sua rotina deveria estar nesta lista? Descreva como é hoje e como deveria ser — a ordem de execução sai daqui.</p>
+        <div class="fields">
+          <div class="f f-6"><label for="a-fluxo">Fluxo manual hoje</label><input id="a-fluxo" type="text" placeholder="Ex.: conferir um a um se o boleto do mês foi emitido"></div>
+          <div class="f f-3"><label for="a-area">Área responsável</label><select id="a-area">
+            <option value="comercial">Comercial</option>
+            <option value="financeiro">Financeiro</option>
+            <option value="operacoes">Operações / CS</option>
+            <option value="juridico">Jurídico</option>
+            <option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-3"><label for="a-prior">Prioridade na sua visão</label><select id="a-prior">
+            <option>Alta — consome muito tempo toda semana</option>
+            <option>Média — incomoda no fechamento</option>
+            <option>Baixa — ganho seria pontual</option>
+          </select></div>
+          <div class="f f-12"><label>Fontes de dados envolvidas</label>
+            <div class="chipset" data-chipset="a-fonte">
+            <label class="chip"><input type="checkbox" value="HubSpot"><span>HubSpot</span></label>
+            <label class="chip"><input type="checkbox" value="Omie"><span>Omie</span></label>
+            <label class="chip"><input type="checkbox" value="ClickSign"><span>ClickSign</span></label>
+            <label class="chip"><input type="checkbox" value="Painel do Cliente"><span>Painel do Cliente</span></label>
+            <label class="chip"><input type="checkbox" value="CleverTap"><span>CleverTap</span></label>
+            <label class="chip"><input type="checkbox" value="Banco Alloyal"><span>Banco Alloyal</span></label>
+            <label class="chip"><input type="checkbox" value="Planilha interna"><span>Planilha interna</span></label>
+            </div>
+          </div>
+          <div class="f f-8"><label for="a-esperado">Como deveria funcionar</label><input id="a-esperado" type="text" placeholder="Ex.: aviso automático só das exceções, sem conferência linha a linha"></div>
+          <div class="f f-4"><label for="a-horas">Horas por ciclo que isso consome</label><input id="a-horas" type="number" min="0" step="0.5" placeholder="Ex.: 3"></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="automacoes">Registrar automação</button>
+          <span class="formnote" id="a-status"></span>
+        </div>
+        <div class="records" id="rec-automacoes"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Métricas por time">
+      <div class="eyebrow">08 · Métricas e dados para cada time</div>
+      <h2>O que cada área vê ao abrir o Pulse</h2>
+      <div class="tabs" role="tablist" data-tabs="met">
+        <button class="tab" role="tab" aria-selected="true" data-pane="met-com">Comercial</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="met-fin">Financeiro</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="met-ops">Operações / CS</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="met-jur">Jurídico</button>
+      </div>
+
+      <div class="pane on" id="met-com">
+        <div class="grid2">
+          <div class="card"><h3>Pipeline e conversão</h3><p>Volume por estágio, taxa de conversão entre etapas, ciclo médio de venda, motivo de perda.</p><div class="tagrow"><span class="src hubspot">HubSpot</span></div></div>
+          <div class="card"><h3>Receita nova e expansão</h3><p>MRR novo no mês, expansão em base, ticket médio, receita por canal de origem.</p><div class="tagrow"><span class="src hubspot">HubSpot</span><span class="src omie">Omie</span></div></div>
+          <div class="card"><h3>Saúde da carteira</h3><p>Clientes em risco por queda de engajamento cruzada com atraso de pagamento, ordenados por receita exposta.</p><div class="tagrow"><span class="src clevertap">CleverTap</span><span class="src omie">Omie</span></div></div>
+          <div class="card"><h3>Renovação à vista</h3><p>Contratos com vencimento nos próximos 90 dias, com histórico de uso do cliente ao lado.</p><div class="tagrow"><span class="src clicksign">ClickSign</span><span class="src db">Banco Alloyal</span></div></div>
+        </div>
+      </div>
+
+      <div class="pane" id="met-fin">
+        <div class="grid2">
+          <div class="card"><h3>Receita recorrente</h3><p>MRR e ARR reconhecidos, variação mês a mês decomposta em novo, expansão, contração e churn.</p><div class="tagrow"><span class="src omie">Omie</span></div></div>
+          <div class="card"><h3>Inadimplência</h3><p>Aging 30/60/90+, valor exposto por cliente, prazo médio de recebimento, efetividade da régua de cobrança.</p><div class="tagrow"><span class="src omie">Omie</span></div></div>
+          <div class="card"><h3>Contratado × faturado</h3><p>Divergência entre o valor negociado no HubSpot e o efetivamente faturado no Omie, cliente a cliente.</p><div class="tagrow"><span class="src hubspot">HubSpot</span><span class="src omie">Omie</span></div></div>
+          <div class="card"><h3>Custo de entrega</h3><p>Cashback distribuído e custo de operação por cliente, para leitura de margem por conta.</p><div class="tagrow"><span class="src db">Banco Alloyal</span></div></div>
+        </div>
+      </div>
+
+      <div class="pane" id="met-ops">
+        <div class="grid2">
+          <div class="card"><h3>Time to value</h3><p>Dias entre assinatura e go-live, etapas de setup pendentes, gargalo mais frequente.</p><div class="tagrow"><span class="src clicksign">ClickSign</span><span class="src painel">Painel do Cliente</span></div></div>
+          <div class="card"><h3>Adoção da base</h3><p>Usuários cadastrados sobre base contratada, ativação no primeiro acesso, MAU e DAU por cliente.</p><div class="tagrow"><span class="src clevertap">CleverTap</span></div></div>
+          <div class="card"><h3>Uso real do programa</h3><p>Cupons utilizados, cashback gerado e resgatado, GMV por marca, categorias mais usadas.</p><div class="tagrow"><span class="src db">Banco Alloyal</span></div></div>
+          <div class="card"><h3>Health score</h3><p>Nota composta por engajamento, uso, inadimplência e chamados — a base do churn silencioso.</p><div class="tagrow"><span class="src clevertap">CleverTap</span><span class="src omie">Omie</span><span class="src db">Banco Alloyal</span></div></div>
+        </div>
+      </div>
+
+      <div class="pane" id="met-jur">
+        <div class="grid2">
+          <div class="card"><h3>Base contratual viva</h3><p>Contratos vigentes, aditivos, prazo restante, cláusula de reajuste e índice aplicável por contrato.</p><div class="tagrow"><span class="src clicksign">ClickSign</span></div></div>
+          <div class="card"><h3>Vencimentos e renovação automática</h3><p>Alerta em D-90 e D-30, com destaque para contratos de renovação tácita.</p><div class="tagrow"><span class="src clicksign">ClickSign</span></div></div>
+          <div class="card"><h3>Mapa de tratamento de dados</h3><p>Onde há dado pessoal de usuário final, com que base legal, por quanto tempo e quem tem acesso.</p><div class="tagrow"><span class="src painel">Pulse</span></div></div>
+          <div class="card"><h3>SLA contratado × entregue</h3><p>Compromissos assumidos em contrato confrontados com a operação real do cliente.</p><div class="tagrow"><span class="src clicksign">ClickSign</span><span class="src db">Banco Alloyal</span></div></div>
+        </div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Adicionar métrica ao painel</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Os painéis acima são a proposta inicial. Falta alguma métrica que a sua área acompanha ou precisa acompanhar? Registre aqui, indicando de quais fontes ela vem.</p>
+        <div class="fields">
+          <div class="f f-6"><label for="m-metrica">Métrica</label><input id="m-metrica" type="text" placeholder="Ex.: receita exposta em clientes inadimplentes há mais de 60 dias"></div>
+          <div class="f f-3"><label for="m-area">Painel de qual área</label><select id="m-area">
+            <option value="comercial">Comercial</option>
+            <option value="financeiro">Financeiro</option>
+            <option value="operacoes">Operações / CS</option>
+            <option value="juridico">Jurídico</option>
+            <option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-3"><label for="m-freq">Com que frequência precisa olhar</label><select id="m-freq">
+            <option>Diária</option><option>Semanal</option><option>Mensal</option><option>Trimestral</option>
+          </select></div>
+          <div class="f f-12"><label>Fontes de dados envolvidas</label>
+            <div class="chipset" data-chipset="m-fonte">
+            <label class="chip"><input type="checkbox" value="HubSpot"><span>HubSpot</span></label>
+            <label class="chip"><input type="checkbox" value="Omie"><span>Omie</span></label>
+            <label class="chip"><input type="checkbox" value="ClickSign"><span>ClickSign</span></label>
+            <label class="chip"><input type="checkbox" value="Painel do Cliente"><span>Painel do Cliente</span></label>
+            <label class="chip"><input type="checkbox" value="CleverTap"><span>CleverTap</span></label>
+            <label class="chip"><input type="checkbox" value="Banco Alloyal"><span>Banco Alloyal</span></label>
+            <label class="chip"><input type="checkbox" value="Planilha interna"><span>Planilha interna</span></label>
+            </div>
+          </div>
+          <div class="f f-12"><label for="m-decisao">Que decisão essa métrica sustenta</label><textarea id="m-decisao" placeholder="Ex.: decidir quais contas suspender antes do fechamento"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="metricas">Registrar métrica</button>
+          <span class="formnote" id="m-status"></span>
+        </div>
+        <div class="records" id="rec-metricas"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Jornadas">
+      <div class="eyebrow">09 · Mapeamento das jornadas</div>
+      <h2>Onde o dado se perde no caminho</h2>
+      <p class="lede">Cada time tem uma jornada que já funciona. O problema mora nas passagens de bastão — em vermelho, os pontos em que a informação hoje sai do sistema e entra numa conversa.</p>
+      <div class="tabs" role="tablist" data-tabs="jor">
+        <button class="tab" role="tab" aria-selected="true" data-pane="jor-com">Comercial</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="jor-jur">Jurídico</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="jor-fin">Financeiro</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="jor-ops">Operações / CS</button>
+      </div>
+
+      <div class="pane on" id="jor-com">
+        <div class="journey">
+          <div class="step"><div class="st">01</div><div class="sn">Lead</div><span class="src hubspot">HubSpot</span></div>
+          <div class="step"><div class="st">02</div><div class="sn">Qualificação</div><span class="src hubspot">HubSpot</span></div>
+          <div class="step"><div class="st">03</div><div class="sn">Proposta</div><span class="src hubspot">HubSpot</span></div>
+          <div class="step break"><div class="st">04 · quebra</div><div class="sn">Minuta e assinatura</div><span class="src clicksign">ClickSign</span><div class="breaknote">O status da assinatura não volta para o HubSpot. O vendedor pergunta por mensagem.</div></div>
+          <div class="step break"><div class="st">05 · quebra</div><div class="sn">Handoff para Operações</div><span class="src sheet">Planilha</span><div class="breaknote">Passagem manual. O que foi vendido nem sempre chega a quem vai configurar.</div></div>
+          <div class="step"><div class="st">06</div><div class="sn">Acompanhamento</div><span class="src hubspot">HubSpot</span></div>
+        </div>
+      </div>
+
+      <div class="pane" id="jor-jur">
+        <div class="journey">
+          <div class="step"><div class="st">01</div><div class="sn">Minuta</div><span class="src sheet">Drive</span></div>
+          <div class="step"><div class="st">02</div><div class="sn">Revisão</div><span class="src sheet">Drive</span></div>
+          <div class="step"><div class="st">03</div><div class="sn">Assinatura</div><span class="src clicksign">ClickSign</span></div>
+          <div class="step break"><div class="st">04 · quebra</div><div class="sn">Guarda e vigência</div><span class="src sheet">Planilha</span><div class="breaknote">Controle de prazo é manual. Renovação tácita passa despercebida.</div></div>
+          <div class="step break"><div class="st">05 · quebra</div><div class="sn">Reajuste</div><span class="src sheet">Planilha</span><div class="breaknote">Índice e data-base não chegam ao Financeiro no tempo certo.</div></div>
+          <div class="step"><div class="st">06</div><div class="sn">Renovação ou rescisão</div><span class="src clicksign">ClickSign</span></div>
+        </div>
+      </div>
+
+      <div class="pane" id="jor-fin">
+        <div class="journey">
+          <div class="step break"><div class="st">01 · quebra</div><div class="sn">Cadastro do cliente</div><span class="src omie">Omie</span><div class="breaknote">Redigitado a partir do HubSpot. Divergência de razão social e CNPJ nasce aqui.</div></div>
+          <div class="step"><div class="st">02</div><div class="sn">Faturamento</div><span class="src omie">Omie</span></div>
+          <div class="step"><div class="st">03</div><div class="sn">Cobrança</div><span class="src omie">Omie</span></div>
+          <div class="step break"><div class="st">04 · quebra</div><div class="sn">Régua de inadimplência</div><span class="src sheet">Planilha</span><div class="breaknote">O CS não sabe que o cliente está inadimplente ao entrar na reunião.</div></div>
+          <div class="step break"><div class="st">05 · quebra</div><div class="sn">Fechamento mensal</div><span class="src sheet">Planilha</span><div class="breaknote">Reconstruído do zero todo mês, com resultado dependente de quem montou.</div></div>
+          <div class="step"><div class="st">06</div><div class="sn">Reporte à liderança</div><span class="src sheet">Planilha</span></div>
+        </div>
+      </div>
+
+      <div class="pane" id="jor-ops">
+        <div class="journey">
+          <div class="step break"><div class="st">01 · quebra</div><div class="sn">Recebimento do cliente</div><span class="src sheet">Planilha</span><div class="breaknote">Escopo vendido chega incompleto. Retrabalho já no primeiro contato.</div></div>
+          <div class="step"><div class="st">02</div><div class="sn">Setup do programa</div><span class="src painel">Painel do Cliente</span></div>
+          <div class="step"><div class="st">03</div><div class="sn">Go-live</div><span class="src painel">Painel do Cliente</span></div>
+          <div class="step"><div class="st">04</div><div class="sn">Ativação da base</div><span class="src clevertap">CleverTap</span></div>
+          <div class="step break"><div class="st">05 · quebra</div><div class="sn">Acompanhamento e QBR</div><span class="src sheet">Planilha</span><div class="breaknote">Relatório do cliente montado à mão, juntando três telas diferentes.</div></div>
+          <div class="step break"><div class="st">06 · quebra</div><div class="sn">Sinal de risco</div><span class="src sheet">Nenhum sistema</span><div class="breaknote">Não existe. A queda de engajamento só é percebida quando vira cancelamento.</div></div>
+        </div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Corrigir ou acrescentar etapa da jornada</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">As jornadas acima foram desenhadas de fora. Quem executa sabe onde elas estão erradas. Acrescente uma etapa que falta, ou aponte uma quebra que não mapeamos.</p>
+        <div class="fields">
+          <div class="f f-6"><label for="j-etapa">Etapa</label><input id="j-etapa" type="text" placeholder="Ex.: conferência manual de cadastro antes do faturamento"></div>
+          <div class="f f-3"><label for="j-area">Jornada de qual área</label><select id="j-area">
+            <option value="comercial">Comercial</option>
+            <option value="financeiro">Financeiro</option>
+            <option value="operacoes">Operações / CS</option>
+            <option value="juridico">Jurídico</option>
+            <option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-3"><label for="j-tipo">Situação da etapa</label><select id="j-tipo">
+            <option>Ponto de quebra — o dado se perde aqui</option>
+            <option>Etapa que falta no mapa</option>
+            <option>Correção — está descrita errado</option>
+            <option>Funciona bem — manter como está</option>
+          </select></div>
+          <div class="f f-12"><label>Onde essa etapa acontece hoje</label>
+            <div class="chipset" data-chipset="j-fonte">
+            <label class="chip"><input type="checkbox" value="HubSpot"><span>HubSpot</span></label>
+            <label class="chip"><input type="checkbox" value="Omie"><span>Omie</span></label>
+            <label class="chip"><input type="checkbox" value="ClickSign"><span>ClickSign</span></label>
+            <label class="chip"><input type="checkbox" value="Painel do Cliente"><span>Painel do Cliente</span></label>
+            <label class="chip"><input type="checkbox" value="CleverTap"><span>CleverTap</span></label>
+            <label class="chip"><input type="checkbox" value="Banco Alloyal"><span>Banco Alloyal</span></label>
+            <label class="chip"><input type="checkbox" value="Planilha interna"><span>Planilha interna</span></label>
+              <label class="chip"><input type="checkbox" value="Nenhum sistema"><span>Nenhum sistema</span></label>
+            </div>
+          </div>
+          <div class="f f-12"><label for="j-perde">O que se perde ou trava nessa etapa</label><textarea id="j-perde" placeholder="Ex.: o CS não recebe o escopo vendido e refaz a configuração"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="jornadas">Registrar etapa</button>
+          <span class="formnote" id="j-status"></span>
+        </div>
+        <div class="records" id="rec-jornadas"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Consolidado">
+      <div class="eyebrow">Consolidado · Preenchimento das áreas</div>
+      <h2>O que os times já registraram</h2>
+      <p class="lede">Esta é a tela de alinhamento. Tudo que Comercial, Financeiro, Operações e Jurídico preencheram nos blocos anteriores aparece aqui, junto. É o material que conduz a discussão da sessão.</p>
+
+      <div class="tiles">
+        <div class="tile"><div class="tn" id="k-dores">0</div><div class="tl">Dores mapeadas</div></div>
+        <div class="tile"><div class="tn" id="k-planilhas">0</div><div class="tl">Planilhas inventariadas</div></div>
+        <div class="tile"><div class="tn" id="k-horas">0h</div><div class="tl">Horas por ciclo em trabalho manual</div></div>
+        <div class="tile risk"><div class="tn" id="k-lgpd">0</div><div class="tl">Planilhas com dado pessoal</div></div>
+        <div class="tile"><div class="tn" id="k-metricas">0</div><div class="tl">Métricas solicitadas</div></div>
+        <div class="tile"><div class="tn" id="k-automacoes">0</div><div class="tl">Automações propostas</div></div>
+      </div>
+
+      <div class="cons-tools">
+        <button class="btn btn-ghost" type="button" id="expJson">Exportar JSON</button>
+        <button class="btn btn-ghost" type="button" id="expMd">Exportar Markdown</button>
+        <button class="btn btn-ghost" type="button" id="impBtn">Importar JSON</button>
+        <input type="file" id="impFile" accept="application/json,.json" hidden>
+        <button class="btn btn-ghost" type="button" id="reloadBtn">Atualizar</button>
+        <button class="btn btn-ghost" type="button" id="rescueBtn">Enviar o que ficou em navegador antigo</button>
+        <span class="formnote" id="storeStatus"></span>
+      </div>
+
+      <div class="cons-sec">
+        <h3>Dores por área <span class="ct" id="ct-dores"></span></h3>
+        <div class="records" id="cons-dores"></div>
+      </div>
+      <div class="cons-sec">
+        <h3>Dados que faltam <span class="ct" id="ct-dados"></span></h3>
+        <div class="records" id="cons-dados"></div>
+      </div>
+      <div class="cons-sec">
+        <h3>Planilhas inventariadas <span class="ct" id="ct-planilhas"></span></h3>
+        <div class="records" id="cons-planilhas"></div>
+      </div>
+      <div class="cons-sec">
+        <h3>Métricas solicitadas <span class="ct" id="ct-metricas"></span></h3>
+        <div class="records" id="cons-metricas"></div>
+      </div>
+      <div class="cons-sec">
+        <h3>Jornadas — correções e quebras <span class="ct" id="ct-jornadas"></span></h3>
+        <div class="records" id="cons-jornadas"></div>
+      </div>
+      <div class="cons-sec">
+        <h3>Automações propostas <span class="ct" id="ct-automacoes"></span></h3>
+        <div class="records" id="cons-automacoes"></div>
+      </div>
+    </section>
+    <section class="slide" data-title="Roadmap">
+      <div class="eyebrow">10 · Roadmap</div>
+      <h2>O que sai desta sessão, com data e dono</h2>
+      <p class="lede">As decisões do kickoff viram tarefa aqui, com área, responsável e prazo. <strong>Item sem dono e sem data não é decisão — é intenção.</strong></p>
+      <div class="grid2">
+        <div class="card accent"><h3>Decisão 1 — Fonte da verdade</h3><p>A tabela do bloco 03 sai desta sala aprovada ou corrigida. Divergência não resolvida aqui vira item nomeado com prazo.</p></div>
+        <div class="card accent"><h3>Decisão 2 — Dono por domínio</h3><p>Cada domínio ganha uma pessoa responsável pela qualidade do dado. Responsabilidade nomeada, não coletiva.</p></div>
+        <div class="card accent"><h3>Decisão 3 — Dicionário de métricas</h3><p>Definição escrita de cliente ativo, churn, MRR e inadimplência. Uma definição por termo, para toda a empresa.</p></div>
+        <div class="card accent"><h3>Decisão 4 — Cadência e formato</h3><p>Frequência do squad, quem participa de forma fixa e quem entra por tema.</p></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-h">
+          <h3>Cadastro de tarefa</h3>
+          <span class="hint">Preenchimento colaborativo</span>
+        </div>
+        <p class="formnote" style="margin-bottom:14px">Uma tarefa por vez. O que entrar aqui aparece nas duas visões abaixo, para todas as áreas.</p>
+        <div class="fields">
+          <div class="f f-3"><label for="r-area">Área</label><select id="r-area">
+            <option value="">Selecione</option>
+            <option value="comercial">Comercial</option><option value="financeiro">Financeiro</option><option value="operacoes">Operações / CS</option><option value="juridico">Jurídico</option><option value="todos">Todas as áreas</option>
+          </select></div>
+          <div class="f f-6"><label for="r-titulo">Título da tarefa</label><input id="r-titulo" type="text" placeholder="Ex.: definir dicionário de métricas de churn"></div>
+          <div class="f f-3"><label for="r-resp">Responsável</label><input id="r-resp" type="text" placeholder="Ex.: Mariana (Financeiro)"></div>
+          <div class="f f-4"><label for="r-inicio">Data de início</label><input id="r-inicio" type="date"></div>
+          <div class="f f-4"><label for="r-fim">Data de fim</label><input id="r-fim" type="date"></div>
+          <div class="f f-4"><label for="r-status">Status</label><select id="r-status">
+            <option>Não iniciada</option><option>Em andamento</option><option>Concluída</option><option>Bloqueada</option>
+          </select></div>
+          <div class="f f-12"><label for="r-desc">Descrição</label><textarea id="r-desc" placeholder="O que precisa acontecer, e como se sabe que terminou"></textarea></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-primary" type="button" data-add="roadmap">Registrar tarefa</button>
+          <span class="formnote" id="r-status-msg"></span>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" data-tabs="rmp" style="margin-top:26px">
+        <button class="tab" role="tab" aria-selected="true" data-pane="rmp-tl">Timeline</button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="rmp-area">Por área</button>
+      </div>
+
+      <div class="pane on" id="rmp-tl">
+        <div id="rmp-timeline"></div>
+      </div>
+
+      <div class="pane" id="rmp-area">
+        <div id="rmp-por-area"></div>
+      </div>
+
+      <div class="ask" style="margin-top:26px">
+        <h3>Pré-requisito para a reunião acontecer</h3>
+        <ul class="clean">
+          <li><b>Inventário de planilhas preenchido</b> por Comercial, Financeiro, Operações e Jurídico — enviado 48h antes.</li>
+          <li><b>Um representante com autonomia de decisão</b> por área. Sem isso, a sessão vira levantamento e não decisão.</li>
+          <li><b>Lista de perguntas que hoje ninguém consegue responder</b> — cada time traz as três principais.</li>
+        </ul>
+      </div>
+    </section>
+
+  </div><!-- /stage -->
+
+  <div class="hud">
+    <div class="counter" id="counter">01 / 11</div>
+    <div class="nav">
+      <button id="prev" aria-label="Slide anterior">← Anterior</button>
+      <button id="next" aria-label="Próximo slide">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h3 id="modalTitle">Confirmar</h3>
+    <p id="modalMsg"></p>
+    <div class="target" id="modalTarget" hidden></div>
+    <textarea class="copybox" id="modalText" hidden readonly aria-label="Conteúdo para copiar"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="modalOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var rail = document.getElementById('rail');
+  var counter = document.getElementById('counter');
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  var i = 0;
+
+  slides.forEach(function(s, idx){
+    var li = document.createElement('li');
+    var b = document.createElement('button');
+    b.className = 'rail-item';
+    b.type = 'button';
+    b.setAttribute('aria-current', idx === 0 ? 'true' : 'false');
+    b.innerHTML = '<span class="n">' + String(idx).padStart(2,'0') + '</span><span>' + s.dataset.title + '</span>';
+    b.addEventListener('click', function(){ go(idx); });
+    li.appendChild(b);
+    rail.appendChild(li);
+  });
+
+  var railItems = Array.prototype.slice.call(rail.querySelectorAll('.rail-item'));
+
+  function go(n){
+    if(n < 0 || n >= slides.length) return;
+    slides[i].classList.remove('on');
+    railItems[i].setAttribute('aria-current','false');
+    i = n;
+    slides[i].classList.add('on');
+    slides[i].scrollTop = 0;
+    railItems[i].setAttribute('aria-current','true');
+    counter.textContent = String(i+1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0');
+    prev.disabled = (i === 0);
+    next.disabled = (i === slides.length - 1);
+  }
+
+  prev.addEventListener('click', function(){ go(i-1); });
+  next.addEventListener('click', function(){ go(i+1); });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight' || e.key === 'PageDown'){ e.preventDefault(); go(i+1); }
+    if(e.key === 'ArrowLeft'  || e.key === 'PageUp'){ e.preventDefault(); go(i-1); }
+    if(e.key === 'Home'){ e.preventDefault(); go(0); }
+    if(e.key === 'End'){ e.preventDefault(); go(slides.length-1); }
+  });
+
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      var group = tab.parentElement;
+      group.querySelectorAll('.tab').forEach(function(t){
+        t.setAttribute('aria-selected','false');
+        var p = document.getElementById(t.dataset.pane);
+        if(p) p.classList.remove('on');
+      });
+      tab.setAttribute('aria-selected','true');
+      var pane = document.getElementById(tab.dataset.pane);
+      if(pane) pane.classList.add('on');
+    });
+  });
+
+  go(0);
+})();
+
+/* ============================================================
+   CAMADA COLABORATIVA — persistência, render e exportação
+   ============================================================ */
+(function(){
+  var DB = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] };
+  var TEAMS = { comercial:'Comercial', financeiro:'Financeiro', operacoes:'Operações / CS', juridico:'Jurídico', todos:'Todas as áreas' };
+  var KINDS = ['dores','dados','planilhas','metricas','jornadas','automacoes','roadmap'];
+
+  /* ---------- onde os registros ficam ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ 100% NO BANCO. Nada do kickoff é guardado neste navegador — nem rascunho,    │
+     │ nem cópia de segurança, nem a área selecionada.                             │
+     │                                                                            │
+     │ A história explica a regra. O documento nasceu como artefato do Claude, onde  │
+     │ `window.storage` guardava o preenchimento; servido pelo Pulse esse objeto não │
+     │ existe, e o substituto foi `localStorage`. Consequências, todas reais:        │
+     │                                                                            │
+     │  · cada área via só o que ela mesma digitou, numa tela que promete "o que os │
+     │    times já registraram";                                                   │
+     │  · o preenchimento de Operações ficou semanas invisível, inclusive para quem │
+     │    o digitou, porque nunca saiu da máquina dele;                            │
+     │  · quando virou cópia de segurança, cada carga bem-sucedida a sobrescrevia — │
+     │    então no dia em que o servidor perdeu os registros, a cópia foi embora    │
+     │    junto. Duas perdas independentes viraram uma só.                         │
+     │                                                                            │
+     │ A troca é deliberada: SEM cópia local, a proteção contra perder o que se     │
+     │ digitou passa a ser o servidor confirmar ANTES de a tela limpar o formulário. │
+     │ Se a API não responder, o texto continua nos campos e o erro é dito. Isso    │
+     │ protege melhor que um rascunho invisível, porque a pessoa VÊ que não salvou.  │
+     │                                                                            │
+     │ O portão é o mesmo do documento: sessão do Google basta, papel não é exigido. │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  var API = '/api/kickoff'
+
+  /* A chave da versão anterior, de quando o preenchimento vivia só no navegador. É
+     LIDA para drenar o que ficou preso em alguma máquina, e apagada quando chega ao
+     banco. Nunca escrita com dado novo. */
+  var CHAVE_ANTIGA = 'squad_dados_registros_v1'
+
+  var EU = ''                 // e-mail de quem está lendo, dito pela API
+  var PODE_APAGAR_TUDO = false
+  var MINHA_AREA = ''         // vem do banco (migration 0028), não do navegador
+  var noAr = true             // a API respondeu na última tentativa
+  var enviando = 0            // POSTs em voo: a recarga automática espera por eles
+
+  /** Identidade pelo CONTEÚDO: id, autor e data mudam a cada envio, o conteúdo não. */
+  function chaveDeConteudo(kind, r){
+    var campos = Object.keys(r).filter(function(k){
+      return k !== 'id' && k !== 'autor' && k !== 'em'
+    }).sort()
+    return kind + '|' + campos.map(function(k){ return k + '=' + String(r[k]) }).join('\u0001')
+  }
+
+  function chips(name){
+    var nodes = document.querySelectorAll('[data-chipset="' + name + '"] input:checked');
+    return Array.prototype.map.call(nodes, function(n){ return n.value; });
+  }
+  function clearChips(name){
+    document.querySelectorAll('[data-chipset="' + name + '"] input').forEach(function(n){ n.checked = false; });
+  }
+
+  var toastEl = document.getElementById('toast');
+  var toastTimer;
+  function toast(msg){
+    if(!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('on'); }, 2600);
+  }
+
+  /* ---------- diálogo interno ---------- */
+  var ov = document.getElementById('overlay');
+  var mTitle = document.getElementById('modalTitle');
+  var mMsg = document.getElementById('modalMsg');
+  var mTarget = document.getElementById('modalTarget');
+  var mText = document.getElementById('modalText');
+  var mOk = document.getElementById('modalOk');
+  var mCancel = document.getElementById('modalCancel');
+  var pending = null, lastFocus = null;
+
+  function closeModal(result){
+    if(!ov) return;
+    ov.classList.remove('on');
+    var fn = pending; pending = null;
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+    if(fn) fn(result);
+  }
+
+  function ask(opts){
+    return new Promise(function(resolve){
+      if(!ov){ resolve(false); return; }
+      lastFocus = document.activeElement;
+      mTitle.textContent = opts.title || 'Confirmar';
+      mMsg.textContent = opts.message || '';
+      if(opts.target){ mTarget.textContent = opts.target; mTarget.hidden = false; }
+      else { mTarget.hidden = true; }
+      if(opts.text != null){ mText.value = opts.text; mText.hidden = false; }
+      else { mText.hidden = true; mText.value = ''; }
+      mOk.textContent = opts.okLabel || 'Confirmar';
+      mOk.className = 'btn ' + (opts.danger ? 'btn-del' : 'btn-primary');
+      mCancel.hidden = !!opts.single;
+      mCancel.textContent = opts.cancelLabel || 'Cancelar';
+      pending = resolve;
+      ov.classList.add('on');
+      setTimeout(function(){ mOk.focus(); }, 40);
+    });
+  }
+
+  if(mOk) mOk.addEventListener('click', function(){ closeModal(true); });
+  if(mCancel) mCancel.addEventListener('click', function(){ closeModal(false); });
+  if(ov) ov.addEventListener('click', function(e){ if(e.target === ov) closeModal(false); });
+  document.addEventListener('keydown', function(e){
+    if(!ov || !ov.classList.contains('on')) return;
+    if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeModal(false); }
+    if(e.key === 'Enter' && document.activeElement !== mText){ e.preventDefault(); closeModal(true); }
+  }, true);
+
+  function copiar(texto){
+    if(mText && !mText.hidden){
+      mText.focus(); mText.select();
+      try{ if(document.execCommand('copy')) return true; }catch(e){}
+    }
+    try{ if(navigator.clipboard) navigator.clipboard.writeText(texto); return true; }catch(e){}
+    return false;
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function safeUrl(u){
+    var s = String(u || '').trim();
+    return /^https?:\/\//i.test(s) ? s : '';
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  /* ---------- persistência ---------- */
+  function normalize(obj){
+    var out = { dores:[], dados:[], planilhas:[], metricas:[], jornadas:[], automacoes:[], roadmap:[] };
+    if(!obj || typeof obj !== 'object') return out;
+    KINDS.forEach(function(k){
+      if(Array.isArray(obj[k])) out[k] = obj[k].filter(function(r){ return r && typeof r === 'object'; });
+    });
+    return out;
+  }
+
+  function doisDigitos(n){ return (n < 10 ? '0' : '') + n }
+  function horaAgora(){
+    var d = new Date()
+    return doisDigitos(d.getHours()) + ':' + doisDigitos(d.getMinutes())
+  }
+
+  var vistoEm = ''
+  function mensagemDeArmazenamento(){
+    if(!noAr){
+      return 'A API NÃO RESPONDEU. A tela pode estar desatualizada, e nada que você digitar será salvo até ela voltar — o texto fica nos campos.'
+    }
+    var total = KINDS.reduce(function(s,k){ return s + DB[k].length }, 0)
+    var areas = {}
+    KINDS.forEach(function(k){ DB[k].forEach(function(r){ if(r.time) areas[r.time] = 1 }) })
+    var n = Object.keys(areas).length
+    if(total === 0){
+      return 'Tudo no banco, compartilhado: todas as áreas veem o mesmo preenchimento. Nada registrado ainda.'
+    }
+    return 'Tudo no banco, compartilhado · ' + total
+      + (total === 1 ? ' registro' : ' registros') + ' de ' + n + (n === 1 ? ' área' : ' áreas')
+      + ' · atualizado às ' + vistoEm
+  }
+
+  /**
+   * Traz o preenchimento do servidor. É a ÚNICA origem do que aparece na tela.
+   *
+   * Quando a API falha, a tela NÃO cai para cópia local — não existe cópia local. Ela
+   * mantém o que já estava desenhado e diz que pode estar velha. Inventar uma segunda
+   * origem foi o que fez uma área não ver a outra, e depois fez a cópia de segurança
+   * morrer junto com o servidor.
+   *
+   * `silenciosa` é a recarga automática: só troca o dado e redesenha.
+   */
+  async function load(silenciosa){
+    var status = document.getElementById('storeStatus')
+    try{
+      var r = await fetch(API, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      if(!r.ok) throw new Error('HTTP ' + r.status)
+      var corpo = await r.json()
+      // Quem está lendo e em nome de que área registra: as duas coisas ditas pelo
+      // SERVIDOR. Nunca digitadas, nunca deduzidas do navegador.
+      if(typeof corpo.eu === 'string') EU = corpo.eu
+      PODE_APAGAR_TUDO = corpo.podeApagarTudo === true
+      if(typeof corpo.minhaArea === 'string') MINHA_AREA = corpo.minhaArea
+      aplicarArea()
+      DB = normalize(corpo)
+      noAr = true
+      vistoEm = horaAgora()
+    }catch(e){
+      noAr = false
+    }
+    if(status) status.textContent = mensagemDeArmazenamento()
+    if(silenciosa) render()
+  }
+
+  /**
+   * Grava UM registro. Devolve true quando o BANCO confirmou.
+   *
+   * ┌───────────────────────────────────────────────────────────────────────────┐
+   * │ SERVIDOR PRIMEIRO, TELA DEPOIS — e é o contrário do que estava aqui antes.   │
+   * │                                                                            │
+   * │ A versão otimista mostrava o registro antes da confirmação e o guardava num   │
+   * │ rascunho local para não perdê-lo. Sem rascunho local, otimismo viraria mentira:│
+   * │ a pessoa veria o registro na tela e ele não existiria em lugar nenhum.       │
+   * │                                                                            │
+   * │ O custo é a espera de uma ida e volta. O ganho é que "apareceu na tela"      │
+   * │ passa a significar "está no banco", sem exceção.                            │
+   * └───────────────────────────────────────────────────────────────────────────┘
+   */
+  async function enviarRegistro(kind, registro, quieto){
+    enviando++
+    try{
+      var r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: kind, time: registro.time, dados: registro }),
+      })
+      if(!r.ok){
+        var corpo = await r.json().catch(function(){ return {} })
+        throw new Error(corpo.erro || ('HTTP ' + r.status))
+      }
+      var criado = await r.json()
+      // O id do banco substitui o do navegador: é ele que a remoção usa.
+      registro.id = criado.id
+      registro.autor = criado.autor
+      noAr = true
+      DB[kind].push(registro)
+      render()
+      var st = document.getElementById('storeStatus')
+      if(st) st.textContent = mensagemDeArmazenamento()
+      return true
+    }catch(e){
+      noAr = false
+      if(!quieto) toast('NÃO foi salvo: ' + e.message + '. O texto continua no formulário.')
+      var status = document.getElementById('storeStatus')
+      if(status) status.textContent = mensagemDeArmazenamento()
+      return false
+    }finally{
+      enviando--
+    }
+  }
+
+  /**
+   * Inativa um registro no banco. Só sai da tela DEPOIS de o servidor confirmar.
+   *
+   * O registro não é apagado: `ativo = false`, com quem inativou e quando (migration
+   * 0027). Tirar da tela antes da confirmação faria o registro reaparecer na próxima
+   * carga se o servidor tivesse recusado — parece defeito e é o contrário.
+   */
+  async function removerRegistro(kind, id){
+    try{
+      var r = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE' })
+      if(!r.ok){
+        var corpo = await r.json().catch(function(){ return {} })
+        throw new Error(corpo.erro || ('HTTP ' + r.status))
+      }
+      DB[kind] = DB[kind].filter(function(x){ return x.id !== id })
+      render()
+      toast('Registro removido da tela. Continua no banco, marcado como inativo.')
+    }catch(e){
+      toast('Não foi possível remover: ' + e.message)
+    }
+  }
+
+  /* ---------- drenar o que ficou preso em navegador antigo ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ A versão anterior guardava o preenchimento em `localStorage`. Se alguma      │
+     │ máquina ainda tem algo lá, isto envia para o banco e LIMPA a chave.          │
+     │                                                                            │
+     │ Idempotente sem guardar marca nenhuma: o que já está no banco é reconhecido  │
+     │ pelo CONTEÚDO e não é reenviado. Apertar duas vezes não duplica.             │
+     │                                                                            │
+     │ É transição, não mecanismo. Quando nenhuma máquina tiver mais nada, o botão  │
+     │ passa a responder sempre "nada preso aqui" — e pode sair.                    │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  async function drenarNavegador(){
+    if(!noAr){ toast('A API não respondeu — tente de novo em instantes.'); return }
+
+    var bruto = null
+    try{ bruto = window.localStorage.getItem(CHAVE_ANTIGA) }catch(e){}
+    if(!bruto){ toast('Nada preso neste navegador: tudo o que existe está no banco.'); return }
+
+    var antigo
+    try{ antigo = normalize(JSON.parse(bruto)) }catch(e){
+      toast('O que está guardado neste navegador está ilegível.'); return
+    }
+
+    // O que o banco já tem, por conteúdo.
+    var noBanco = {}
+    KINDS.forEach(function(k){
+      DB[k].forEach(function(r){ noBanco[chaveDeConteudo(k, r)] = 1 })
+    })
+
+    var fila = []
+    KINDS.forEach(function(k){
+      antigo[k].forEach(function(r){
+        if(!noBanco[chaveDeConteudo(k, r)]) fila.push({ kind:k, reg:r })
+      })
+    })
+    if(!fila.length){
+      // Já está tudo no banco: pode limpar a chave sem perder nada.
+      try{ window.localStorage.removeItem(CHAVE_ANTIGA) }catch(e){}
+      toast('Nada preso neste navegador: tudo o que existe está no banco.')
+      return
+    }
+
+    toast('Enviando ' + fila.length + ' registro(s) deste navegador para o banco…')
+    var ok = 0
+    // EM SÉRIE: um clique não deve abrir dezenas de conexões de uma vez.
+    for(var i = 0; i < fila.length; i++){
+      var f = fila[i]
+      // Sem área declarada o servidor recusa; "todas as áreas" é a leitura honesta.
+      if(!f.reg.time) f.reg.time = MINHA_AREA || 'todos'
+      // Id novo: o antigo é do navegador e o banco atribui o seu.
+      f.reg.id = uid()
+      if(await enviarRegistro(f.kind, f.reg, true)) ok++
+    }
+    if(ok === fila.length){
+      // Só limpa a chave quando TUDO chegou. Limpar antes perderia o que faltou.
+      try{ window.localStorage.removeItem(CHAVE_ANTIGA) }catch(e){}
+    }
+    await load()
+    render()
+    toast(ok === fila.length
+      ? ok + ' registro(s) salvos no banco; este navegador não guarda mais nada.'
+      : ok + ' de ' + fila.length + ' salvos; o resto ficou guardado para outra tentativa.')
+  }
+
+  /* ---------- a área em nome de quem se registra ----------
+     Vem do BANCO (migration 0028) e volta para o banco a cada troca. Estava no
+     navegador porque parecia preferência de tela; ela decide o campo `time` de todo
+     registro, e trocar de máquina passava a marcar os registros seguintes para outra
+     área, sem aviso. */
+  function myTeam(){ return MINHA_AREA }
+  var teamSel = document.getElementById('teamSel');
+  function aplicarArea(){
+    if(teamSel && teamSel.value !== MINHA_AREA) teamSel.value = MINHA_AREA
+  }
+  if(teamSel){
+    teamSel.addEventListener('change', async function(){
+      var escolhida = teamSel.value
+      if(!escolhida){ MINHA_AREA = ''; return }
+      try{
+        var r = await fetch(API, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ area: escolhida }),
+        })
+        if(!r.ok) throw new Error('HTTP ' + r.status)
+        MINHA_AREA = escolhida
+        toast('Registros serão marcados como ' + TEAMS[escolhida] + '. Gravado na sua conta.')
+      }catch(e){
+        // Voltar o seletor é obrigatório: deixá-lo mostrando a área nova sem ela estar
+        // gravada faria os registros seguintes saírem com a área ANTIGA, em silêncio.
+        aplicarArea()
+        toast('Não foi possível gravar a área: ' + e.message)
+      }
+    });
+  }
+
+  /* ---------- leitura dos formulários ---------- */
+  function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+  function clear(ids){ ids.forEach(function(id){ var el = document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=false; else el.value=''; } }); }
+
+  var FORMS = {
+    roadmap: {
+      status:'r-status-msg',
+      // `r-area` e `r-status` ficam FORA de `fields`: quem cadastra várias tarefas
+      // cadastra da mesma área, e limpar a seleção a cada registro obriga a
+      // reescolher — erro que só aparece depois, na tarefa marcada para a área errada.
+      fields:['r-titulo','r-resp','r-inicio','r-fim','r-desc'],
+      required:['r-area','r-titulo'],
+      requiredMsg:'Escolha a área e dê um título à tarefa.',
+      valida:function(){
+        var a = dataLocal(val('r-inicio')), b = dataLocal(val('r-fim'));
+        // Fim antes do início passaria pelo `required` e viraria barra invertida na
+        // timeline. Barrado aqui, com a razão dita.
+        if(a && b && b.getTime() < a.getTime()) return 'A data de fim não pode ser anterior à de início.';
+        return '';
+      },
+      build:function(){ return {
+        id:uid(), time:myTeam(), area:val('r-area'),
+        titulo:val('r-titulo'), responsavel:val('r-resp'), descricao:val('r-desc'),
+        inicio:val('r-inicio'), fim:val('r-fim'),
+        status:val('r-status') || 'Não iniciada', em:new Date().toISOString()
+      };}
+    },
+    dores: {
+      status:'d-status',
+      fields:['d-dor','d-impacto','d-freq','d-sistema','d-contorno'],
+      required:['d-dor'],
+      requiredMsg:'Descreva a dor antes de registrar.',
+      build:function(){ return {
+        id:uid(), time:myTeam(),
+        dor:val('d-dor'), impacto:val('d-impacto'), frequencia:val('d-freq'),
+        sistema:val('d-sistema'), contorno:val('d-contorno'), em:new Date().toISOString()
+      };}
+    },
+    dados: {
+      status:'c-status',
+      fields:['c-campo','c-fonte','c-crit','c-uso'],
+      required:['c-campo'],
+      requiredMsg:'Informe qual dado está faltando.',
+      build:function(){ return {
+        id:uid(), time:myTeam(),
+        campo:val('c-campo'), fonte:val('c-fonte'), criticidade:val('c-crit'),
+        uso:val('c-uso'), em:new Date().toISOString()
+      };}
+    },
+    metricas: {
+      status:'m-status', chipset:'m-fonte',
+      fields:['m-metrica','m-decisao'],
+      required:['m-metrica'],
+      requiredMsg:'Descreva a métrica antes de registrar.',
+      build:function(){ return {
+        id:uid(), time:myTeam(), area:val('m-area'),
+        metrica:val('m-metrica'), frequencia:val('m-freq'),
+        fontes:chips('m-fonte'), decisao:val('m-decisao'), em:new Date().toISOString()
+      };}
+    },
+    jornadas: {
+      status:'j-status', chipset:'j-fonte',
+      fields:['j-etapa','j-perde'],
+      required:['j-etapa'],
+      requiredMsg:'Descreva a etapa antes de registrar.',
+      build:function(){ return {
+        id:uid(), time:myTeam(), area:val('j-area'),
+        etapa:val('j-etapa'), tipo:val('j-tipo'),
+        fontes:chips('j-fonte'), perde:val('j-perde'), em:new Date().toISOString()
+      };}
+    },
+    automacoes: {
+      status:'a-status', chipset:'a-fonte',
+      fields:['a-fluxo','a-esperado','a-horas'],
+      required:['a-fluxo'],
+      requiredMsg:'Descreva o fluxo manual antes de registrar.',
+      build:function(){ return {
+        id:uid(), time:myTeam(), area:val('a-area'),
+        fluxo:val('a-fluxo'), prioridade:val('a-prior'),
+        fontes:chips('a-fonte'), esperado:val('a-esperado'), horas:val('a-horas'),
+        em:new Date().toISOString()
+      };}
+    },
+    planilhas: {
+      status:'p-status',
+      fields:['p-nome','p-link','p-dono','p-origem','p-freq','p-controla','p-horas','p-quebra','p-lgpd'],
+      required:['p-nome'],
+      requiredMsg:'Informe ao menos o nome da planilha.',
+      build:function(){
+        var lgpdEl = document.getElementById('p-lgpd');
+        return {
+          id:uid(), time:myTeam(),
+          nome:val('p-nome'), link:val('p-link'), dono:val('p-dono'),
+          origem:val('p-origem'), frequencia:val('p-freq'), controla:val('p-controla'),
+          horas:val('p-horas'), quebra:val('p-quebra'),
+          lgpd: !!(lgpdEl && lgpdEl.checked), em:new Date().toISOString()
+        };
+      }
+    }
+  };
+
+  document.querySelectorAll('[data-add]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var kind = btn.dataset.add;
+      var cfg = FORMS[kind];
+      if(!cfg) return;
+      var status = document.getElementById(cfg.status);
+
+      if(!myTeam()){
+        if(status) status.textContent = 'Selecione sua área na barra lateral antes de registrar.';
+        toast('Selecione sua área na barra lateral.');
+        var sel = document.getElementById('teamSel');
+        if(sel) sel.focus();
+        return;
+      }
+      var faltou = cfg.required.some(function(id){ return !val(id); });
+      if(faltou){
+        if(status) status.textContent = cfg.requiredMsg;
+        return;
+      }
+      var link = val('p-link');
+      if(kind === 'planilhas' && link && !safeUrl(link)){
+        if(status) status.textContent = 'O link precisa começar com https://';
+        return;
+      }
+      // Validação própria do formulário, quando "campo preenchido" não basta.
+      if(cfg.valida){
+        var problema = cfg.valida();
+        if(problema){ if(status) status.textContent = problema; return; }
+      }
+      // ┌───────────────────────────────────────────────────────────────────────┐
+      // │ O FORMULÁRIO SÓ LIMPA DEPOIS DE O BANCO CONFIRMAR. É esta linha que      │
+      // │ substitui o rascunho local: se a API não responder, o texto continua nos  │
+      // │ campos e o erro é dito. Limpar antes, como estava, perdia o que a pessoa  │
+      // │ digitou toda vez que o servidor recusasse.                              │
+      // └───────────────────────────────────────────────────────────────────────────┘
+      var registro = cfg.build();
+      btn.disabled = true;
+      if(status) status.textContent = 'Salvando…';
+      void enviarRegistro(kind, registro).then(function(ok){
+        btn.disabled = false;
+        if(!ok){
+          // Nada é limpo, nada entra na tela: o texto fica onde a pessoa o deixou.
+          if(status) status.textContent = 'NÃO salvou — o texto continua aqui. Tente de novo.';
+          return;
+        }
+        clear(cfg.fields);
+        if(cfg.chipset) clearChips(cfg.chipset);
+        if(status) status.textContent = 'Salvo no banco.';
+        setTimeout(function(){ if(status && status.textContent === 'Salvo no banco.') status.textContent=''; }, 2400);
+        toast('Salvo no banco — visível para todas as áreas.')
+      })
+    });
+  });
+
+  /* ---------- render ---------- */
+  function teamTag(t){
+    return t ? '<span class="team ' + esc(t) + '">' + esc(TEAMS[t] || t) + '</span>' : '';
+  }
+
+  /**
+   * Quem registrou. Aparece em TODO cartão, de propósito: numa tela em que as áreas
+   * veem o preenchimento uma da outra, "quem escreveu isto" é a diferença entre um
+   * levantamento que se pode conferir e uma lista anônima que ninguém confirma.
+   *
+   * Só a parte antes do @ — o domínio é o mesmo para todos e só ocuparia a linha.
+   */
+  function autoria(r){
+    if(!r.autor) return '<span class="rec-meta" style="opacity:.7">enviando…</span>'
+    return '<span class="rec-meta">por ' + esc(String(r.autor).split('@')[0]) + '</span>'
+  }
+
+  /**
+   * O botão de remover, e só quando ele vai funcionar: no próprio registro, ou para
+   * quem administra o Pulse.
+   *
+   * Mostrar em tudo entregaria 404 depois do clique — a regra funcionando com cara
+   * de defeito. Registro ainda sem `autor` é o otimista que acabou de ser digitado
+   * nesta aba: removível, senão um erro de digitação ficaria preso na tela.
+   */
+  function podeRemover(r){
+    return PODE_APAGAR_TUDO || !r.autor || r.autor === EU
+  }
+  function botaoRemover(kind, r){
+    if(!podeRemover(r)) return ''
+    return '<button class="btn-danger" data-del="' + kind + '" data-id="' + esc(r.id) + '">remover</button>'
+  }
+
+  function cardDor(r){
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + teamTag(r.time)
+      + '<span class="pill' + (r.impacto && r.impacto.indexOf('Receita') === 0 ? ' crit' : '') + '">' + esc(r.impacto) + '</span>'
+      + '<span class="pill">' + esc(r.frequencia) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.dor) + '</div>'
+      + '<div class="rec-meta">Deveria estar em <b>' + esc(r.sistema) + '</b>'
+      + (r.contorno ? ' · Hoje se contorna assim: ' + esc(r.contorno) : '') + '</div>'
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('dores', r) + '</div>';
+  }
+
+  function cardDado(r){
+    var crit = (r.criticidade || '').indexOf('Essencial') === 0;
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + teamTag(r.time)
+      + '<span class="pill' + (crit ? ' crit' : '') + '">' + esc((r.criticidade || '').split(' —')[0]) + '</span>'
+      + '<span class="pill">' + esc(r.fonte) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.campo) + '</div>'
+      + (r.uso ? '<div class="rec-meta">' + esc(r.uso) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('dados', r) + '</div>';
+  }
+
+  function cardPlanilha(r){
+    var url = safeUrl(r.link);
+    var meta = [];
+    if(r.controla) meta.push(esc(r.controla));
+    if(r.dono) meta.push('Mantida por <b>' + esc(r.dono) + '</b>');
+    if(r.origem) meta.push('Origem: ' + esc(r.origem));
+    if(r.frequencia) meta.push(esc(r.frequencia));
+    if(r.horas) meta.push('<b>' + esc(r.horas) + 'h</b> por ciclo');
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + teamTag(r.time)
+      + (r.lgpd ? '<span class="pill lgpd">Dado pessoal</span>' : '')
+      + '</div>'
+      + '<div class="rec-title">' + esc(r.nome) + '</div>'
+      + '<div class="rec-meta">' + meta.join(' · ') + '</div>'
+      + (r.quebra ? '<div class="rec-meta">Se parar: ' + esc(r.quebra) + '</div>' : '')
+      + (url ? '<div class="rec-meta"><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(url) + '</a></div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('planilhas', r) + '</div>';
+  }
+
+  function areaTag(a){
+    if(!a) return '';
+    return '<span class="team ' + esc(a === 'todos' ? 'operacoes' : a) + '">' + esc(TEAMS[a] || a) + '</span>';
+  }
+  function fontes(list){
+    if(!Array.isArray(list) || !list.length) return '<span class="pill">Fonte não indicada</span>';
+    return list.map(function(f){ return '<span class="pill">' + esc(f) + '</span>'; }).join('');
+  }
+
+  function cardMetrica(r){
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + areaTag(r.area) + '<span class="pill">' + esc(r.frequencia) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.metrica) + '</div>'
+      + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
+      + (r.decisao ? '<div class="rec-meta" style="margin-top:6px">Sustenta a decisão: ' + esc(r.decisao) + '</div>' : '')
+      + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Sugerido por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('metricas', r) + '</div>';
+  }
+
+  function cardJornada(r){
+    var quebra = (r.tipo || '').indexOf('quebra') > -1;
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + areaTag(r.area)
+      + '<span class="pill' + (quebra ? ' crit' : '') + '">' + esc((r.tipo || '').split(' —')[0]) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.etapa) + '</div>'
+      + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
+      + (r.perde ? '<div class="rec-meta" style="margin-top:6px">' + esc(r.perde) + '</div>' : '')
+      + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Apontado por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('jornadas', r) + '</div>';
+  }
+
+  function cardAutomacao(r){
+    var alta = (r.prioridade || '').indexOf('Alta') === 0;
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + areaTag(r.area)
+      + '<span class="pill' + (alta ? ' crit' : '') + '">' + esc((r.prioridade || '').split(' —')[0]) + '</span>'
+      + (r.horas ? '<span class="pill">' + esc(r.horas) + 'h por ciclo</span>' : '') + '</div>'
+      + '<div class="rec-title">' + esc(r.fluxo) + '</div>'
+      + '<div class="rec-top" style="margin:7px 0 0">' + fontes(r.fontes) + '</div>'
+      + (r.esperado ? '<div class="rec-meta" style="margin-top:6px">Deveria funcionar assim: ' + esc(r.esperado) + '</div>' : '')
+      + (r.time && r.time !== r.area ? '<div class="rec-meta" style="margin-top:5px">Proposto por ' + esc(TEAMS[r.time] || r.time) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('automacoes', r) + '</div>';
+  }
+
+  /* ---------- Roadmap ---------- */
+  var MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var AREAS_NA_ORDEM = ['comercial','financeiro','operacoes','juridico','todos'];
+  var CLASSE_DE_STATUS = {
+    'Não iniciada':'nao', 'Em andamento':'andamento', 'Concluída':'concluida', 'Bloqueada':'bloqueada'
+  };
+  function classeDeStatus(st){ return CLASSE_DE_STATUS[st] || 'nao'; }
+
+  /**
+   * Lê 'AAAA-MM-DD' como data LOCAL.
+   *
+   * `new Date('2026-08-05')` é meia-noite UTC: em fuso negativo — o nosso — ela cai
+   * no dia 4, e a barra da timeline começa um dia antes do que a pessoa digitou.
+   */
+  function dataLocal(txt){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(txt == null ? '' : txt));
+    if(!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function ddmm(d){ return doisDigitos(d.getDate()) + '/' + doisDigitos(d.getMonth() + 1); }
+  function prazoEmTexto(r){
+    var a = dataLocal(r.inicio), b = dataLocal(r.fim);
+    if(a && b) return ddmm(a) + ' → ' + ddmm(b);
+    if(a) return 'início ' + ddmm(a);
+    if(b) return 'entrega ' + ddmm(b);
+    return 'sem data';
+  }
+
+  function cardTarefa(r){
+    return '<div class="rec"><div class="rec-main">'
+      + '<div class="rec-top">' + areaTag(r.area)
+      + '<span class="rmp-st ' + classeDeStatus(r.status) + '">' + esc(r.status || 'Não iniciada') + '</span>'
+      + '<span class="pill">' + esc(prazoEmTexto(r)) + '</span></div>'
+      + '<div class="rec-title">' + esc(r.titulo) + '</div>'
+      + (r.responsavel
+          ? '<div class="rec-meta">Responsável: <b>' + esc(r.responsavel) + '</b></div>'
+          : '<div class="rec-meta">Sem responsável definido</div>')
+      + (r.descricao ? '<div class="rec-meta">' + esc(r.descricao) + '</div>' : '')
+      + '<div style="margin-top:6px">' + autoria(r) + '</div>'
+      + '</div>' + botaoRemover('roadmap', r) + '</div>';
+  }
+
+  /**
+   * A timeline.
+   *
+   * ┌───────────────────────────────────────────────────────────────────────────┐
+   * │ As barras são posicionadas por PROPORÇÃO DE TEMPO, e as etiquetas de mês    │
+   * │ também — não por espaçamento igual. Mês tem 28 a 31 dias: régua de meses    │
+   * │ igualmente espaçada com barras proporcionais desalinha etiqueta e barra, e  │
+   * │ uma timeline que mente sobre QUANDO é pior que nenhuma.                     │
+   * │                                                                            │
+   * │ Tarefa sem as duas datas NÃO recebe barra inventada: fica listada à parte,  │
+   * │ dita como pendente de data.                                                │
+   * └───────────────────────────────────────────────────────────────────────────┘
+   */
+  function renderTimeline(){
+    var alvo = document.getElementById('rmp-timeline');
+    if(!alvo) return;
+    if(!DB.roadmap.length){ alvo.innerHTML = '<div class="empty">' + EMPTY.roadmap + '</div>'; return; }
+
+    var comData = [], semData = [];
+    DB.roadmap.forEach(function(r){
+      var a = dataLocal(r.inicio), b = dataLocal(r.fim);
+      if(a && b && b.getTime() >= a.getTime()) comData.push({ r:r, a:a, b:b });
+      else semData.push(r);
+    });
+
+    var html = '';
+    if(comData.length){
+      comData.sort(function(x,y){ return x.a - y.a || x.b - y.b; });
+      var min = comData[0].a.getTime();
+      var max = comData.reduce(function(m,x){ return Math.max(m, x.b.getTime()); }, min);
+      // Vão mínimo de um dia: tudo no mesmo dia daria divisão por zero.
+      var vao = Math.max(max - min, 86400000);
+
+      var meses = '', cur = new Date(comData[0].a.getFullYear(), comData[0].a.getMonth(), 1);
+      var ultimo = new Date(max);
+      var limite = new Date(ultimo.getFullYear(), ultimo.getMonth(), 1);
+      var primeiro = true;
+      while(cur.getTime() <= limite.getTime()){
+        var pos = Math.max(0, (cur.getTime() - min) / vao * 100);
+        meses += '<div class="tl-mes" style="left:' + pos.toFixed(2) + '%">'
+          + MESES[cur.getMonth()] + (primeiro || cur.getMonth() === 0 ? ' ' + cur.getFullYear() : '')
+          + '</div>';
+        primeiro = false;
+        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      }
+
+      var linhas = comData.map(function(x){
+        var esq = (x.a.getTime() - min) / vao * 100;
+        var larg = Math.max((x.b.getTime() - x.a.getTime()) / vao * 100, 1.8);
+        if(esq + larg > 100) larg = 100 - esq;
+        return '<div class="tl-linha">'
+          + '<div class="tl-rot"><div class="n" title="' + esc(x.r.titulo) + '">' + esc(x.r.titulo) + '</div>'
+          + '<div class="q">' + esc(TEAMS[x.r.area] || x.r.area || 'sem área')
+          + (x.r.responsavel ? ' · ' + esc(x.r.responsavel) : '') + '</div></div>'
+          + '<div class="tl-pista"><div class="tl-barra ' + classeDeStatus(x.r.status)
+          + '" style="left:' + esq.toFixed(2) + '%;width:' + larg.toFixed(2) + '%">'
+          + '<span>' + ddmm(x.a) + ' → ' + ddmm(x.b) + '</span></div></div>'
+          + '</div>';
+      }).join('');
+
+      html += '<div class="rmp-tempo"><div class="tl-grade">'
+        + '<div class="tl-head"><div></div><div class="tl-meses">' + meses + '</div></div>'
+        + linhas + '</div></div>';
+    }
+
+    if(semData.length){
+      html += '<div class="tl-semdata"><b>' + semData.length
+        + (semData.length === 1 ? ' tarefa sem data completa</b> — não entra na linha do tempo: '
+                                : ' tarefas sem data completa</b> — não entram na linha do tempo: ')
+        + semData.map(function(r){ return esc(r.titulo); }).join(' · ') + '</div>';
+    }
+    alvo.innerHTML = html;
+  }
+
+  /** As tarefas separadas por área, na ordem fixa das áreas. */
+  function renderPorArea(){
+    var alvo = document.getElementById('rmp-por-area');
+    if(!alvo) return;
+    if(!DB.roadmap.length){ alvo.innerHTML = '<div class="empty">' + EMPTY.roadmap + '</div>'; return; }
+
+    var html = '';
+    var grupo = function(rotulo, lista){
+      return '<div class="rmp-grupo"><h4>' + esc(rotulo)
+        + ' <span class="pill">' + lista.length + '</span></h4>'
+        + '<div class="records">' + lista.map(cardTarefa).join('') + '</div></div>';
+    };
+    AREAS_NA_ORDEM.forEach(function(a){
+      var lista = DB.roadmap.filter(function(r){ return (r.area || '') === a; });
+      if(lista.length) html += grupo(TEAMS[a] || a, lista);
+    });
+    // Área desconhecida não é descartada em silêncio — ela aparece e se resolve.
+    var orfas = DB.roadmap.filter(function(r){ return AREAS_NA_ORDEM.indexOf(r.area || '') === -1; });
+    if(orfas.length) html += grupo('Sem área definida', orfas);
+    alvo.innerHTML = html;
+  }
+
+  var CARD = { dores:cardDor, dados:cardDado, planilhas:cardPlanilha,
+               metricas:cardMetrica, jornadas:cardJornada, automacoes:cardAutomacao,
+               roadmap:cardTarefa };
+  var EMPTY = {
+    dores:'Nenhuma dor registrada ainda.',
+    dados:'Nenhuma necessidade de dado registrada ainda.',
+    planilhas:'Nenhuma planilha inventariada ainda.',
+    metricas:'Nenhuma métrica solicitada ainda.',
+    jornadas:'Nenhuma correção de jornada registrada ainda.',
+    automacoes:'Nenhuma automação proposta ainda.',
+    roadmap:'Nenhuma tarefa cadastrada ainda.'
+  };
+
+  function fill(el, kind, list){
+    if(!el) return;
+    el.innerHTML = list.length
+      ? list.map(CARD[kind]).join('')
+      : '<div class="empty">' + EMPTY[kind] + '</div>';
+  }
+
+  function render(){
+    KINDS.forEach(function(kind){
+      fill(document.getElementById('rec-' + kind), kind, DB[kind]);
+      fill(document.getElementById('cons-' + kind), kind, DB[kind]);
+      var ct = document.getElementById('ct-' + kind);
+      if(ct) ct.textContent = DB[kind].length ? DB[kind].length + ' registro' + (DB[kind].length > 1 ? 's' : '') : '';
+    });
+
+    renderTimeline();
+    renderPorArea();
+
+    var horas = DB.planilhas.concat(DB.automacoes).reduce(function(a,r){ var n = parseFloat(r.horas); return a + (isNaN(n) ? 0 : n); }, 0);
+    var lgpd = DB.planilhas.filter(function(r){ return r.lgpd; }).length;
+    var set = function(id,v){ var el = document.getElementById(id); if(el) el.textContent = v; };
+    set('k-dores', DB.dores.length);
+    set('k-metricas', DB.metricas.length);
+    set('k-automacoes', DB.automacoes.length);
+    set('k-planilhas', DB.planilhas.length);
+    set('k-horas', (Math.round(horas*10)/10) + 'h');
+    set('k-lgpd', lgpd);
+  }
+
+  /* ---------- remoção com confirmação ---------- */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-del]');
+    if(!btn) return;
+    e.preventDefault();
+    var kind = btn.dataset.del, id = btn.dataset.id;
+    var rec = DB[kind].filter(function(r){ return r.id === id; })[0];
+    if(!rec){ toast('Registro não encontrado.'); return; }
+    var nome = rec.dor || rec.campo || rec.nome || rec.metrica || rec.etapa || rec.fluxo || rec.titulo || 'este registro';
+    var autor = rec.time ? (TEAMS[rec.time] || rec.time) : null;
+    ask({
+      title:'Remover registro',
+      message:'Esta ação não pode ser desfeita.',
+      target: nome + (autor ? '\n\nRegistrado por: ' + autor : ''),
+      okLabel:'Remover', danger:true
+    }).then(function(sim){
+      if(!sim) return;
+      void removerRegistro(kind, id)
+    });
+  });
+
+  /* ---------- exportação ---------- */
+  function download(name, content, type){
+    var baixou = false;
+    try{
+      var blob = new Blob([content], { type: type });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.rel = 'noopener';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+      baixou = true;
+    }catch(e){ baixou = false; }
+    return baixou;
+  }
+
+  function exportar(name, content, type, rotulo){
+    download(name, content, type);
+    ask({
+      title:'Exportar ' + rotulo,
+      message:'Se o download não iniciar automaticamente, copie o conteúdo abaixo e cole em um arquivo.',
+      text:content, okLabel:'Copiar', cancelLabel:'Fechar'
+    }).then(function(copiarAgora){
+      if(!copiarAgora) return;
+      toast(copiar(content) ? 'Conteúdo copiado.' : 'Selecione o texto e copie manualmente.');
+    });
+  }
+  function stamp(){ return new Date().toISOString().slice(0,10); }
+
+  var expJson = document.getElementById('expJson');
+  if(expJson) expJson.addEventListener('click', function(){
+    exportar('squad-dados-alloyal-' + stamp() + '.json', JSON.stringify(DB, null, 2), 'application/json', 'JSON');
+  });
+
+  var expMd = document.getElementById('expMd');
+  if(expMd) expMd.addEventListener('click', function(){
+    var L = ['# Squad Dados Alloyal — preenchimento das áreas', '', 'Exportado em ' + new Date().toLocaleString('pt-BR'), ''];
+
+    L.push('## Dores mapeadas', '');
+    if(!DB.dores.length) L.push('_Nenhum registro._','');
+    DB.dores.forEach(function(r){
+      L.push('- **[' + (TEAMS[r.time] || '—') + ']** ' + r.dor);
+      L.push('  - Impacto: ' + r.impacto + ' · Frequência: ' + r.frequencia + ' · Deveria estar em: ' + r.sistema);
+      if(r.contorno) L.push('  - Contorno atual: ' + r.contorno);
+    });
+
+    L.push('', '## Dados que faltam', '');
+    if(!DB.dados.length) L.push('_Nenhum registro._','');
+    DB.dados.forEach(function(r){
+      L.push('- **[' + (TEAMS[r.time] || '—') + ']** ' + r.campo);
+      L.push('  - Fonte esperada: ' + r.fonte + ' · Criticidade: ' + r.criticidade);
+      if(r.uso) L.push('  - Uso: ' + r.uso);
+    });
+
+    L.push('', '## Inventário de planilhas', '');
+    if(!DB.planilhas.length) L.push('_Nenhum registro._','');
+    L.push('| Área | Planilha | Dono | Controla | Origem | Freq. | Horas | Se parar | Dado pessoal | Link |');
+    L.push('|---|---|---|---|---|---|---|---|---|---|');
+    DB.planilhas.forEach(function(r){
+      L.push('| ' + [TEAMS[r.time] || '—', r.nome, r.dono, r.controla, r.origem, r.frequencia, r.horas, r.quebra, (r.lgpd ? 'SIM' : 'não'), r.link]
+        .map(function(c){ return String(c == null ? '' : c).replace(/\|/g,'\\|').replace(/\n/g,' '); }).join(' | ') + ' |');
+    });
+
+    var fl = function(x){ return (Array.isArray(x) && x.length) ? x.join(', ') : 'não indicada'; };
+
+    L.push('', '## Métricas solicitadas', '');
+    if(!DB.metricas.length) L.push('_Nenhum registro._','');
+    DB.metricas.forEach(function(r){
+      L.push('- **[' + (TEAMS[r.area] || '—') + ']** ' + r.metrica);
+      L.push('  - Fontes: ' + fl(r.fontes) + ' · Frequência: ' + r.frequencia);
+      if(r.decisao) L.push('  - Decisão que sustenta: ' + r.decisao);
+      if(r.time && r.time !== r.area) L.push('  - Sugerido por: ' + (TEAMS[r.time] || r.time));
+    });
+
+    L.push('', '## Jornadas — correções e quebras', '');
+    if(!DB.jornadas.length) L.push('_Nenhum registro._','');
+    DB.jornadas.forEach(function(r){
+      L.push('- **[' + (TEAMS[r.area] || '—') + ']** ' + r.etapa);
+      L.push('  - Situação: ' + r.tipo + ' · Onde acontece: ' + fl(r.fontes));
+      if(r.perde) L.push('  - O que se perde: ' + r.perde);
+      if(r.time && r.time !== r.area) L.push('  - Apontado por: ' + (TEAMS[r.time] || r.time));
+    });
+
+    L.push('', '## Automações propostas', '');
+    if(!DB.automacoes.length) L.push('_Nenhum registro._','');
+    DB.automacoes.forEach(function(r){
+      L.push('- **[' + (TEAMS[r.area] || '—') + ']** ' + r.fluxo);
+      L.push('  - Prioridade: ' + r.prioridade + ' · Fontes: ' + fl(r.fontes) + (r.horas ? ' · ' + r.horas + 'h por ciclo' : ''));
+      if(r.esperado) L.push('  - Como deveria funcionar: ' + r.esperado);
+      if(r.time && r.time !== r.area) L.push('  - Proposto por: ' + (TEAMS[r.time] || r.time));
+    });
+
+    var horas = DB.planilhas.concat(DB.automacoes).reduce(function(a,r){ var n = parseFloat(r.horas); return a + (isNaN(n) ? 0 : n); }, 0);
+    L.push('', '## Totais', '');
+    L.push('- Dores mapeadas: ' + DB.dores.length);
+    L.push('- Necessidades de dado: ' + DB.dados.length);
+    L.push('- Planilhas inventariadas: ' + DB.planilhas.length);
+    L.push('- Métricas solicitadas: ' + DB.metricas.length);
+    L.push('- Correções de jornada: ' + DB.jornadas.length);
+    L.push('- Automações propostas: ' + DB.automacoes.length);
+    L.push('- Horas por ciclo em trabalho manual: ' + (Math.round(horas*10)/10) + 'h');
+    L.push('- Planilhas com dado pessoal: ' + DB.planilhas.filter(function(r){ return r.lgpd; }).length);
+
+    L.push('', '## Roadmap', '');
+    if(!DB.roadmap.length) L.push('_Nenhuma tarefa cadastrada._','');
+    if(DB.roadmap.length){
+      L.push('| Área | Tarefa | Responsável | Início | Fim | Status |');
+      L.push('|---|---|---|---|---|---|');
+      DB.roadmap.forEach(function(r){
+        L.push('| ' + [TEAMS[r.area] || '—', r.titulo, r.responsavel || '—', r.inicio || '—', r.fim || '—', r.status || 'Não iniciada']
+          .map(function(c){ return String(c == null ? '' : c).replace(/\|/g,'\\|').replace(/\n/g,' '); }).join(' | ') + ' |');
+      });
+      // A descrição vai FORA da tabela: texto longo em célula de Markdown fica ilegível.
+      var comDesc = DB.roadmap.filter(function(r){ return r.descricao; });
+      if(comDesc.length){
+        L.push('', '### Descrição das tarefas', '');
+        comDesc.forEach(function(r){ L.push('- **' + r.titulo + '** — ' + r.descricao); });
+      }
+    }
+
+    exportar('squad-dados-alloyal-' + stamp() + '.md', L.join('\n'), 'text/markdown', 'Markdown');
+  });
+
+  /* ---------- importação ---------- */
+  var impBtn = document.getElementById('impBtn'), impFile = document.getElementById('impFile');
+  if(impBtn && impFile){
+    impBtn.addEventListener('click', function(){ impFile.click(); });
+    impFile.addEventListener('change', function(){
+      var f = impFile.files && impFile.files[0];
+      if(!f) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var parsed;
+        try{ parsed = normalize(JSON.parse(reader.result)); }
+        catch(err){ toast('Arquivo inválido — esperado um JSON exportado deste documento.'); impFile.value=''; return; }
+        var total = KINDS.reduce(function(a,k){ return a + parsed[k].length; }, 0);
+        if(!total){ toast('O arquivo não contém registros.'); impFile.value=''; return; }
+        ask({
+          title:'Importar registros',
+          message:'Nada do conteúdo atual será apagado — os registros do arquivo serão somados ao que já existe.',
+          target: total + ' registro(s) em ' + f.name,
+          okLabel:'Importar'
+        }).then(function(sim){
+          if(!sim){ impFile.value=''; return; }
+          aplicarImport(parsed, total);
+        });
+      };
+      reader.onerror = function(){ toast('Não foi possível ler o arquivo.'); impFile.value=''; };
+      reader.readAsText(f);
+    });
+  }
+
+  function aplicarImport(parsed, total){
+    KINDS.forEach(function(k){
+      var existentes = {};
+      DB[k].forEach(function(r){ existentes[r.id] = true; });
+      parsed[k].forEach(function(r){
+        if(!r.id || existentes[r.id]) r.id = uid();
+        DB[k].push(r);
+      });
+    });
+    render()
+    toast(total + ' registro(s) importado(s) — enviando ao servidor…')
+    void (async function(){
+      var ok = 0, falhou = 0
+      for (var i = 0; i < KINDS.length; i++) {
+        for (var j = 0; j < DB[KINDS[i]].length; j++) {
+          var r = DB[KINDS[i]][j]
+          if(r.enviado) continue
+          if(!r.time) r.time = myTeam() || 'todos'
+          if(await enviarRegistro(KINDS[i], r)){ r.enviado = true; ok++ } else falhou++
+        }
+      }
+      toast(falhou === 0 ? ok + ' salvo(s) no banco.' : ok + ' salvo(s); ' + falhou + ' não chegaram.')
+    })()
+    if(impFile) impFile.value = '';
+  }
+
+  /* ---------- modo apresentação ---------- */
+  var pres = document.getElementById('presentBtn');
+  if(pres) pres.addEventListener('click', function(){
+    var on = document.body.classList.toggle('presenting');
+    pres.setAttribute('aria-pressed', on ? 'true' : 'false');
+    pres.textContent = on ? 'Sair da apresentação' : 'Modo apresentação';
+    toast(on ? 'Formulários ocultos — pronto para projetar.' : 'Formulários visíveis.');
+  });
+
+  /* ---------- botão de atualizar ---------- */
+  var btnAtualizar = document.getElementById('reloadBtn')
+  if(btnAtualizar) btnAtualizar.addEventListener('click', async function(){
+    btnAtualizar.disabled = true
+    await load()
+    render()
+    btnAtualizar.disabled = false
+    toast(noAr ? 'Atualizado com o que as outras áreas registraram.' : 'A API não respondeu.')
+  })
+
+  /* ---------- resgate manual ----------
+     Existe para a pessoa poder CONFERIR, e não confiar na minha palavra: o botão varre
+     este navegador e diz em voz alta o que achou — inclusive quando não achou nada. */
+  var btnResgate = document.getElementById('rescueBtn')
+  if(btnResgate) btnResgate.addEventListener('click', async function(){
+    btnResgate.disabled = true
+    await load()
+    await drenarNavegador()
+    render()
+    btnResgate.disabled = false
+  })
+
+  /* ---------- recarga automática ----------
+     ┌───────────────────────────────────────────────────────────────────────────┐
+     │ SEM ISTO O DOCUMENTO PARECE NÃO SER COMPARTILHADO. O dado já era comum, mas  │
+     │ a tela só o buscava na carga: numa sessão ao vivo, Comercial registrava e     │
+     │ Operações continuava vendo a tela de antes até apertar F5 — exatamente o     │
+     │ sintoma de "uma área não vê a outra".                                       │
+     │                                                                            │
+     │ 20 s é o intervalo. Duas condições cancelam a rodada:                       │
+     │  • aba escondida — ninguém está olhando, e uma aba aberta por horas somaria  │
+     │    milhares de consultas inúteis ao banco;                                  │
+     │  • envio em voo — trocar o DB no meio de um POST apagaria da tela o registro │
+     │    otimista que ainda não voltou do servidor.                               │
+     └───────────────────────────────────────────────────────────────────────────┘ */
+  setInterval(function(){
+    if(document.hidden || enviando > 0) return
+    void load(true)
+  }, 20000)
+
+  // Voltar para a aba é o momento em que a pessoa quer ver o que mudou.
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && enviando === 0) void load(true)
+  })
+
+  render();
+  load().then(function(){
+    render()
+    // Depois da primeira carga: se este navegador ainda guarda algo da versão
+    // antiga, sobe para o banco e a chave é apagada.
+    void drenarNavegador()
+  });
+})();
+
+</script>
+</body>
+</html>

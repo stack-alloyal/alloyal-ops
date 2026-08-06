@@ -45,6 +45,7 @@ export function Card({
 
 export function Btn({
   children,
+  onClick,
   type = 'button',
   variant = 'primary',
   disabled,
@@ -54,6 +55,13 @@ export function Btn({
   className,
 }: {
   children: React.ReactNode
+  /**
+   * Só vale dentro de componente de cliente — e é o que o Publi tem na mesma
+   * assinatura. Estava faltando aqui porque a casca inteira era de servidor;
+   * quando o painel do Radar chegou, o caminho sem isto era o botão cru, que é
+   * exatamente o que `design-system.test.mjs` existe para impedir.
+   */
+  onClick?: () => void
   type?: 'button' | 'submit'
   variant?: 'primary' | 'ghost' | 'danger'
   disabled?: boolean
@@ -71,6 +79,7 @@ export function Btn({
   return (
     <button
       type={type}
+      onClick={onClick}
       disabled={disabled}
       name={name}
       value={value}
