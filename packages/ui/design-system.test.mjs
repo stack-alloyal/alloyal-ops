@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url'
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const BASE = join(RAIZ, 'packages', 'ui', 'src', 'base.tsx')
+const PRESET = join(RAIZ, 'packages', 'ui', 'tailwind-preset.ts')
 
 /** Todo .tsx da app e da biblioteca, menos o que o build gera. */
 function tsx(dir, achados = []) {
@@ -212,14 +213,170 @@ test('a regra de cor ainda pega hex em código, não só em comentário', () => 
 test('nenhuma cor da paleta padrão do Tailwind', () => {
   const PADRAO =
     /\b(?:text|bg|border|ring|from|to|via)-(gray|slate|zinc|neutral|stone|blue|indigo|sky|violet|emerald|teal|cyan|rose|fuchsia|lime|yellow)-\d{2,3}\b/g
+  // `blue-50` deixou de ser cor de fora: o DS 2026 declarou um `blue` da casa, com
+  // `50`, `DEFAULT` e `ink`. O Tailwind TAMBÉM tem `blue-50`, e o do preset ganha —
+  // então a classe pinta o azul da casa. Sem esta ressalva o portão recusaria o
+  // token novo com a mensagem errada ("paleta padrão"), que é o pior tipo de erro
+  // de portão: manda consertar o que já está certo. As outras faixas de `blue`
+  // continuam recusadas, porque essas o preset não define.
+  const DA_CASA = new Set(['blue-50'])
   const fora = []
   for (const { caminho, texto } of ARQUIVOS) {
     for (const m of texto.matchAll(PADRAO)) {
+      if (DA_CASA.has(m[0].slice(m[0].indexOf('-') + 1))) continue
       const linha = texto.slice(0, m.index).split('\n').length
       fora.push(`${caminho}:${linha} — ${m[0]}`)
     }
   }
   assert.deepEqual(fora, [], `\n${fora.join('\n')}\n`)
+})
+
+/**
+ * Contraste do texto colorido.
+ *
+ * O DS 2026 trocou os VALORES por baixo dos nomes que as telas já escreviam, e um
+ * deles ficou ilegível: o amarelo do DS dá 1.87:1 sobre branco. Quem escreve
+ * `text-amber` não tem como perceber — o nome continua o mesmo, o número muda no
+ * preset, e o `pnpm build` passa. Foi assim que o valor de um KPI cujo comentário
+ * diz "cor aqui significa saúde" ficou invisível exatamente onde importa.
+ *
+ * Mede-se contra `#FFFFFF`, o `surface`, que é o fundo mais CLARO da paleta. É de
+ * propósito: sobre o fundo mais claro o contraste é o MELHOR caso, então o que
+ * falha aqui falha em qualquer fundo da casa, e o portão não acusa à toa. Falso
+ * positivo é como um portão passa a ser ignorado — ver a regra do `inputCls`.
+ *
+ * Limiar único de 4.5:1, sem a folga de 3:1 que a WCAG dá a texto grande: o token
+ * não sabe em que tamanho será usado, e um que só passa a 30px é armadilha armada
+ * para o primeiro reuso a 13px.
+ *
+ * O que este portão NÃO alcança, e é honesto dizer: tom que o preset não declara
+ * — `text-amber-700` é o caso real, com 16 usos — cai na paleta padrão do
+ * Tailwind, e daqui não se resolve o valor dele. Medido à mão dá 5.02:1, mas o
+ * portão não o vê.
+ */
+const CONTRASTE_MINIMO = 4.5
+
+/**
+ * As tintas fracas aceitas, cada uma com motivo — a mesma exigência do `ds-excecao`:
+ * silenciador anônimo é como a regra morre.
+ *
+ * As duas são a escala de texto esmaecido, e as duas JÁ falhavam antes do DS 2026
+ * (2.78:1 e 1.83:1). O DS piorou as duas de leve, e endurecê-las mexeria em 155 usos
+ * de `ink-3` — mudança visual ampla, adiada por decisão de 06/08/2026. Ficam
+ * declaradas para que a dívida seja visível em vez de esquecida.
+ */
+const TINTA_FRACA_ACEITA = {
+  'ink-3': 'escala de texto esmaecido, 2.58:1 — 155 usos, endurecer é mudança visual ampla (06/08/2026)',
+  'ink-4': 'o mais fraco da escala, 1.47:1 — serve a traço e placeholder, não a texto que se lê',
+}
+
+/** Recorta o objeto `colors` do preset, contando chaves para achar o fecho certo. */
+function blocoDeCores(fonte) {
+  const abre = fonte.indexOf('colors: {')
+  if (abre < 0) return null
+  let i = fonte.indexOf('{', abre)
+  let nivel = 0
+  for (let j = i; j < fonte.length; j++) {
+    if (fonte[j] === '{') nivel++
+    else if (fonte[j] === '}' && --nivel === 0) return fonte.slice(i + 1, j)
+  }
+  return null
+}
+
+/**
+ * Os tokens de cor do preset que são hex literal, achatados no nome da classe:
+ * `ink` + `2` → `ink-2`, e `DEFAULT` → o nome sozinho. Os semânticos do shadcn são
+ * `hsl(var(--x))` e caem fora por não casarem com hex — que é o certo, porque o
+ * valor deles vive no CSS e não aqui.
+ */
+function tokensDeCor() {
+  const bloco = blocoDeCores(semComentarios(readFileSync(PRESET, 'utf8')))
+  assert.ok(bloco, 'não achei o objeto `colors` no tailwind-preset.ts — o arquivo mudou de forma?')
+
+  const tokens = new Map()
+  // Grupos primeiro (`ink: { ... }`), depois some com eles para as chaves soltas
+  // não serem lidas duas vezes.
+  let solto = bloco
+  for (const m of bloco.matchAll(/(\w+):\s*\{([^{}]*)\}/g)) {
+    for (const [, chave, hex] of m[2].matchAll(/(\w+):\s*'(#[0-9a-fA-F]{3,8})'/g)) {
+      tokens.set(chave === 'DEFAULT' ? m[1] : `${m[1]}-${chave}`, hex)
+    }
+    solto = solto.replace(m[0], '')
+  }
+  for (const [, nome, hex] of solto.matchAll(/(\w+):\s*'(#[0-9a-fA-F]{3,8})'/g)) {
+    tokens.set(nome, hex)
+  }
+  return tokens
+}
+
+/** Luminância relativa da WCAG. */
+function luminancia(hex) {
+  const canal = (n) => {
+    const c = n / 255
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  }
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b)
+}
+
+function contraste(a, b) {
+  const [claro, escuro] = [luminancia(a), luminancia(b)].sort((x, y) => y - x)
+  return (claro + 0.05) / (escuro + 0.05)
+}
+
+test('a conta de contraste é a da WCAG', () => {
+  // Sem isto, um erro na fórmula deixaria o portão abaixo verde afirmando o que não
+  // verificou. Os três pares são os do próprio texto da norma.
+  assert.equal(contraste('#000000', '#FFFFFF').toFixed(2), '21.00')
+  assert.equal(contraste('#FFFFFF', '#FFFFFF').toFixed(2), '1.00')
+  assert.equal(contraste('#767676', '#FFFFFF') >= 4.5, true)
+})
+
+test('os tokens de cor do preset são legíveis pelo portão', () => {
+  // O par da asserção "há arquivos para varrer": se o recorte do preset falhar, o
+  // portão de contraste varre o vazio e passa sem medir nada.
+  const tokens = tokensDeCor()
+  assert.ok(tokens.size > 20, `li só ${tokens.size} tokens do preset — o recorte quebrou?`)
+  for (const nome of ['ink', 'ink-2', 'amber', 'amber-ink', 'green', 'red', 'purple-500']) {
+    assert.match(tokens.get(nome) ?? '', /^#[0-9a-fA-F]{6}$/, `token \`${nome}\` não foi lido`)
+  }
+})
+
+test('todo texto colorido passa 4.5:1 sobre o surface', () => {
+  const tokens = tokensDeCor()
+  const SURFACE = tokens.get('surface')
+  assert.match(SURFACE ?? '', /^#[0-9a-fA-F]{6}$/, 'não li o token `surface`')
+
+  const fracos = []
+  for (const { caminho, texto } of ARQUIVOS) {
+    for (const m of semComentarios(texto).matchAll(/\btext-([a-z]+(?:-[a-z0-9]+)?)\b/g)) {
+      const hex = tokens.get(m[1])
+      if (!hex) continue // tamanho (`text-b2`), arbitrário, ou tom do Tailwind
+      if (m[1] in TINTA_FRACA_ACEITA) continue
+      const r = contraste(hex, SURFACE)
+      if (r >= CONTRASTE_MINIMO) continue
+      const linha = texto.slice(0, m.index).split('\n').length
+      fracos.push(
+        `${caminho}:${linha} — text-${m[1]} é ${hex}, ${r.toFixed(2)}:1 sobre ${SURFACE}; ` +
+          `use a tinta do par (\`-ink\`) ou um tom mais escuro`,
+      )
+    }
+  }
+  assert.deepEqual(fracos, [], `\n${fracos.join('\n')}\n`)
+})
+
+test('a regra de contraste ainda pega tinta fraca de verdade', () => {
+  // Prova em cima do amarelo REAL do DS, que é o defeito que motivou este portão:
+  // se algum dia ele voltar a ser aceito, este teste cai junto.
+  const tokens = tokensDeCor()
+  assert.ok(contraste(tokens.get('amber'), tokens.get('surface')) < CONTRASTE_MINIMO)
+  assert.ok(contraste(tokens.get('amber-ink'), tokens.get('surface')) >= CONTRASTE_MINIMO)
+  // E a exceção precisa continuar sendo exceção: token declarado sem motivo escrito
+  // não vale.
+  for (const [nome, motivo] of Object.entries(TINTA_FRACA_ACEITA)) {
+    assert.ok(motivo.trim().length >= 15, `a exceção \`${nome}\` não traz motivo`)
+    assert.ok(tokens.has(nome), `a exceção \`${nome}\` não é token do preset`)
+  }
 })
 
 /**

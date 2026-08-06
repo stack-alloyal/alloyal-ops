@@ -343,7 +343,7 @@ export default async function Sincronizacao({
         <Card title="Como ler esta tela">
           <ul className="grid gap-2 text-[13px] leading-relaxed text-ink-2">
             <li className="flex gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-ink" />
               <span>
                 <strong className="font-semibold text-ink">atrasado</strong> é
                 mais de 26h sem carga bem-sucedida numa agenda diária. A folga

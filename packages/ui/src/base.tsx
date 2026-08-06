@@ -257,7 +257,12 @@ export function Kpi({
   /** `undefined` = neutro. Cor aqui significa saúde, nunca frescor de dado. */
   tom?: 'green' | 'amber' | 'red'
 }) {
-  const cor = tom ? { green: 'text-green', amber: 'text-amber', red: 'text-red' }[tom] : 'text-ink'
+  // O par do DS é fundo/TINTA, e aqui a cor é texto — então é a tinta que vale.
+  // Em verde e vermelho a tinta é igual ao tom cheio; no âmbar NÃO é: o amarelo
+  // do DS dá 1.87:1 sobre branco, ilegível justamente no número que anuncia saúde.
+  const cor = tom
+    ? { green: 'text-green-ink', amber: 'text-amber-ink', red: 'text-red-ink' }[tom]
+    : 'text-ink'
   return (
     <div className="rounded-lg border border-line bg-surface p-[18px] shadow-sm">
       <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-3">
