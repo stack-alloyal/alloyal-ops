@@ -54,7 +54,7 @@ function Marca({
   return (
     <span
       aria-hidden="true"
-      className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md text-[11px] font-semibold tracking-tight"
+      className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[13px] font-semibold tracking-tight"
       style={{
         backgroundColor: `hsl(${h} 62% 92%)`,
         color: `hsl(${h} 55% 32%)`,
@@ -69,7 +69,7 @@ function Marca({
           src={logo}
           alt=""
           loading="lazy"
-          className="absolute inset-0 h-full w-full bg-white object-contain p-[2px]"
+          className="absolute inset-0 h-full w-full bg-white object-contain p-[3px]"
         />
       ) : null}
     </span>
@@ -106,6 +106,13 @@ function linhaDaTabela(
         <Link
           // A seta leva para a MESMA página com o parâmetro trocado — abrir e fechar são
           // a mesma navegação, e o estado mora na URL.
+          //
+          // `scroll={false}` porque o padrão do Next é rolar para o topo a cada
+          // navegação. Numa lista de 50 linhas isso joga a pessoa para longe da linha
+          // que ela acabou de abrir: ela clica na seta do 40º cliente e a tela sobe,
+          // então precisa procurar de novo onde estava. Abrir é mudança de estado da
+          // MESMA tela, não ida para outra.
+          scroll={false}
           href={`/carteira/base?${new URLSearchParams({
             ...(buscaAtual ? { q: buscaAtual } : {}),
             ...(aberta ? {} : { abrir: l.id }),
