@@ -35,3 +35,11 @@ infra/*/.env
 infra/*/oauth2.env
 !infra/*/.env.example
 !infra/*/oauth2.env.example
+
+# Capturas de tela na RAIZ. Elas nascem de teste em navegador e entram por `git add -A`
+# sem ninguém reparar — foi assim que `roadmap-*.png` chegou ao histórico. As imagens do
+# produto vivem em `apps/*/public/`, que continua versionado.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
